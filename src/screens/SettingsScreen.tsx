@@ -27,7 +27,7 @@ interface SettingsScreenProps {
   onShowWelcome?: () => void;
 }
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = () => {
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome }) => {
   const {
     settings,
     updatePublisherStatus,
@@ -478,6 +478,17 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = () => {
           <ShieldCheck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
           <span>{t.settings.aboutSecure}</span>
         </div>
+
+        {onShowWelcome && (
+          <div className="pt-2">
+            <button
+              onClick={onShowWelcome}
+              className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+            >
+              {language === 'hy' ? 'Դիտել Ողջույնի Էջը' : language === 'ru' ? 'Открыть страницу приветствия' : 'View Welcome Screen'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}

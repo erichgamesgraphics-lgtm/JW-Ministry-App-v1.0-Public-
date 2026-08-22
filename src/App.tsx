@@ -15,7 +15,7 @@ import { MinistryEntry, ScheduledEvent } from './types.ts';
 const AppContent: React.FC = () => {
   const { settings } = useMinistry();
   const [activeTab, setActiveTab] = useState<TabType>('home');
-  const [manualWelcome, setManualWelcome] = useState<boolean | null>(null);
+  const [manualWelcome, setManualWelcome] = useState<boolean | null>(true);
 
   // Modal states
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
