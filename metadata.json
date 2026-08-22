@@ -1,0 +1,6 @@
+{
+  "name": "JW Ministry App",
+  "description": "Christian ministry activity tracker for recording hours, return visits, Bible studies, schedules, and goals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

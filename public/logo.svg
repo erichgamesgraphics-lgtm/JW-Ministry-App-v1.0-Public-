@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Shadow for Monogram -->
+    <filter id="jwShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#000000" flood-opacity="0.16"/>
+    </filter>
+    <!-- Shadow for Center Ribbon / Cut -->
+    <filter id="ribbonShadow" x="-10%" y="-20%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.10"/>
+    </filter>
+    <!-- Shadow for Book -->
+    <filter id="bookShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000000" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <!-- Background Base Canvas (Matches uploaded image warm neutral tone) -->
+  <rect width="500" height="500" fill="#EAE6DF"/>
+
+  <!-- ==================== JW MONOGRAM ==================== -->
+  <g filter="url(#jwShadow)">
+    <!-- J (Upper Part) -->
+    <path d="M 152 70 L 214 70 L 214 80 L 190 80 L 190 230 L 175 230 L 175 80 L 152 80 Z" fill="#004EA7"/>
+
+    <!-- J (Lower Part with sweeping flourish) -->
+    <path d="M 175 270 L 190 270 L 190 305 C 190 355 160 380 120 380 C 102 380 82 370 65 358 C 88 356 122 344 140 315 C 150 298 152 284 152 270 Z" fill="#004EA7"/>
+
+    <!-- W - Left Diagonal Stem (Upper & Lower) -->
+    <path d="M 200 70 L 222 70 L 254 230 L 240 230 L 212 80 L 200 80 Z" fill="#004EA7"/>
+    <path d="M 235 270 L 248 270 L 262 340 L 248 340 L 235 270 Z" fill="#004EA7"/>
+
+    <!-- W - Center Loop Flourish (Upper) -->
+    <path d="M 268 85 C 268 50 295 50 295 85 C 295 130 264 195 260 230 L 274 230 C 280 195 308 135 308 85 C 308 36 255 36 255 85 C 255 110 262 145 268 180 Z" fill="#004EA7"/>
+
+    <!-- W - Center Lower Connection -->
+    <path d="M 260 270 L 274 270 L 285 330 L 272 330 Z" fill="#004EA7"/>
+
+    <!-- W - Right Stem (Upper & Lower) -->
+    <path d="M 350 70 L 372 70 L 372 80 L 360 80 L 305 230 L 292 230 L 340 80 L 328 80 L 328 70 Z" fill="#004EA7"/>
+    <path d="M 292 270 L 305 270 L 326 340 L 312 340 Z" fill="#004EA7"/>
+
+    <!-- W - Bottom Serif Feet -->
+    <path d="M 238 340 L 270 340 L 270 334 L 238 334 Z" fill="#004EA7"/>
+    <path d="M 302 340 L 334 340 L 334 334 L 302 334 Z" fill="#004EA7"/>
+  </g>
+
+  <!-- ==================== CENTER RIBBON / CUT ==================== -->
+  <rect x="30" y="234" width="440" height="34" fill="#EAE6DF" />
+
+  <!-- Center Text: MINISTRY APP -->
+  <text x="250" y="258" text-anchor="middle" font-family="'Times New Roman', Georgia, 'Playfair Display', serif" font-size="21" font-weight="700" letter-spacing="8.5" fill="#111827">
+    MINISTRY APP
+  </text>
+
+  <!-- ==================== RADIATING RAYS ==================== -->
+  <g stroke="#EA6A1C" stroke-width="3.5" stroke-linecap="round">
+    <!-- Ray 1 -->
+    <line x1="170" y1="365" x2="190" y2="415"/>
+    <!-- Ray 2 -->
+    <line x1="210" y1="360" x2="225" y2="415"/>
+    <!-- Ray 3 -->
+    <line x1="250" y1="358" x2="250" y2="415"/>
+    <!-- Ray 4 -->
+    <line x1="290" y1="360" x2="275" y2="415"/>
+    <!-- Ray 5 -->
+    <line x1="330" y1="365" x2="310" y2="415"/>
+  </g>
+
+  <!-- ==================== OPEN BIBLE ICON ==================== -->
+  <g transform="translate(182, 412) scale(0.68)" filter="url(#bookShadow)">
+    <!-- Dark Navy Base & Binding -->
+    <path d="M 12 28 C 12 18 20 12 32 12 L 88 24 C 98 26 104 32 104 42 L 104 165 C 104 158 98 152 88 150 L 32 138 C 20 135 12 142 12 152 Z" fill="#1C385C"/>
+    <path d="M 196 28 C 196 18 188 12 176 12 L 120 24 C 110 26 104 32 104 42 L 104 165 C 104 158 110 152 120 150 L 176 138 C 188 135 196 142 196 152 Z" fill="#1C385C"/>
+    
+    <!-- Outer Border -->
+    <path d="M 10 32 C 10 20 22 15 36 17 L 96 28 C 102 29 104 34 104 40 L 104 168 C 104 162 100 158 92 156 L 36 144 C 22 141 10 148 10 160 Z" fill="#142A47"/>
+    <path d="M 198 32 C 198 20 186 15 172 17 L 112 28 C 106 29 104 34 104 40 L 104 168 C 104 162 108 158 116 156 L 172 144 C 186 141 198 148 198 160 Z" fill="#142A47"/>
+
+    <!-- Center Book Spine Line -->
+    <line x1="104" y1="36" x2="104" y2="172" stroke="#0F1F36" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- Left White Page -->
+    <path d="M 22 25 C 22 18 30 14 42 16 L 98 26 C 102 27 104 30 104 34 L 104 152 C 104 148 100 145 94 144 L 40 133 C 28 131 22 136 22 144 Z" fill="#FFFFFF" stroke="#0F1F36" stroke-width="5.5" stroke-linejoin="round"/>
+    
+    <!-- Right White Page -->
+    <path d="M 186 25 C 186 18 178 14 166 16 L 110 26 C 106 27 104 30 104 34 L 104 152 C 104 148 108 145 114 144 L 168 133 C 180 131 186 136 186 144 Z" fill="#FFFFFF" stroke="#0F1F36" stroke-width="5.5" stroke-linejoin="round"/>
+
+    <!-- Text Lines Left -->
+    <g stroke="#0F1F36" stroke-width="4.5" stroke-linecap="round">
+      <line x1="38" y1="48" x2="88" y2="56"/>
+      <line x1="38" y1="70" x2="88" y2="78"/>
+      <line x1="38" y1="92" x2="88" y2="100"/>
+      <line x1="38" y1="114" x2="88" y2="122"/>
+    </g>
+
+    <!-- Text Lines Right -->
+    <g stroke="#0F1F36" stroke-width="4.5" stroke-linecap="round">
+      <line x1="120" y1="56" x2="170" y2="48"/>
+      <line x1="120" y1="78" x2="170" y2="70"/>
+      <line x1="120" y1="100" x2="170" y2="92"/>
+      <line x1="120" y1="122" x2="155" y2="116"/>
+    </g>
+  </g>
+</svg>
