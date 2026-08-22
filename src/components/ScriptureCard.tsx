@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BookOpen, Copy, Check, Share2 } from 'lucide-react';
 import { DailyScripture } from '../types.ts';
+import { useMinistry } from '../context/MinistryContext.tsx';
 
 interface ScriptureCardProps {
   scripture: DailyScripture;
@@ -8,6 +9,7 @@ interface ScriptureCardProps {
 }
 
 export const ScriptureCard: React.FC<ScriptureCardProps> = ({ scripture, className = '' }) => {
+  const { t } = useMinistry();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -18,11 +20,11 @@ export const ScriptureCard: React.FC<ScriptureCardProps> = ({ scripture, classNa
   };
 
   const handleShare = async () => {
-    const shareText = `"${scripture.text}" — ${scripture.reference} (JW Ministry App Daily Scripture)`;
+    const shareText = `"${scripture.text}" — ${scripture.reference} (${t.common.appName} ${t.scriptureCard.dailyScripture})`;
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Daily Scripture',
+          title: t.scriptureCard.dailyScripture,
           text: shareText,
         });
       } catch {
@@ -44,7 +46,7 @@ export const ScriptureCard: React.FC<ScriptureCardProps> = ({ scripture, classNa
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-              Daily Scripture
+              {t.scriptureCard.dailyScripture}
             </h3>
             {scripture.theme && (
               <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
@@ -57,17 +59,17 @@ export const ScriptureCard: React.FC<ScriptureCardProps> = ({ scripture, classNa
         <div className="flex items-center gap-1">
           <button
             onClick={handleCopy}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            title="Copy scripture"
-            aria-label="Copy scripture text"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            title={t.scriptureCard.copyScripture}
+            aria-label={t.scriptureCard.copyScripture}
           >
             {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
           </button>
           <button
             onClick={handleShare}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            title="Share scripture"
-            aria-label="Share scripture text"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            title={t.scriptureCard.shareScripture}
+            aria-label={t.scriptureCard.shareScripture}
           >
             <Share2 className="h-4 w-4" />
           </button>

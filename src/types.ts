@@ -169,6 +169,8 @@ export interface ScheduledEvent {
   lastSyncedAt?: number;
 }
 
+export type SupportedLanguage = 'en' | 'hy' | 'ru';
+
 export interface UserSettings {
   publisherStatus: PublisherStatusType;
   customGoalHours: number;
@@ -176,6 +178,7 @@ export interface UserSettings {
   dailyReminderHour: number;
   dailyReminderMinute: number;
   themeMode: 'SYSTEM' | 'LIGHT' | 'DARK';
+  language: SupportedLanguage;
   notificationsEnabled: boolean;
   isFirstLaunch: boolean;
   onboardingCompleted: boolean;

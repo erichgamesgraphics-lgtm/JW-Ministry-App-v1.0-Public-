@@ -14,19 +14,19 @@ export const Navigation: React.FC<NavigationProps> = ({
   activeTab,
   onSelectTab,
 }) => {
-  const { timer } = useMinistry();
+  const { timer, t } = useMinistry();
 
   const navItems = [
-    { id: 'home' as TabType, label: 'Home', icon: Home },
+    { id: 'home' as TabType, label: t.navigation.home, icon: Home },
     {
       id: 'activity' as TabType,
-      label: 'Activity',
+      label: t.navigation.activity,
       icon: Clock,
-      badge: timer.isRunning ? 'Active' : undefined,
+      badge: timer.isRunning ? t.navigation.activeTimer : undefined,
     },
-    { id: 'calendar' as TabType, label: 'Calendar', icon: Calendar },
-    { id: 'reports' as TabType, label: 'Reports', icon: BarChart2 },
-    { id: 'settings' as TabType, label: 'Settings', icon: Settings },
+    { id: 'calendar' as TabType, label: t.navigation.calendar, icon: Calendar },
+    { id: 'reports' as TabType, label: t.navigation.reports, icon: BarChart2 },
+    { id: 'settings' as TabType, label: t.navigation.settings, icon: Settings },
   ];
 
   return (
@@ -63,7 +63,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                   </span>
                 )}
               </div>
-              <span className={`mt-0.5 text-[11px] leading-tight tracking-tight ${isActive ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>
+              <span className={`mt-0.5 text-[11px] leading-tight tracking-tight whitespace-nowrap ${isActive ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>
                 {item.label}
               </span>
             </button>

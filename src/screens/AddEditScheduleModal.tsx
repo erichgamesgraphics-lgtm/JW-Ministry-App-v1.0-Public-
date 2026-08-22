@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar as CalendarIcon, Clock, MapPin, Bell, Repeat, FileText, Trash2, Check } from 'lucide-react';
-import { ScheduledEvent, ReminderOptionType, RepeatOptionType, REMINDER_OPTIONS, REPEAT_OPTIONS } from '../types.ts';
+import { ScheduledEvent, ReminderOptionType, RepeatOptionType, REMINDER_OPTIONS } from '../types.ts';
 import { useMinistry } from '../context/MinistryContext.tsx';
 
 interface AddEditScheduleModalProps {
@@ -16,7 +16,7 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
   eventToEdit,
   initialDate,
 }) => {
-  const { saveEvent, deleteEvent } = useMinistry();
+  const { saveEvent, deleteEvent, t } = useMinistry();
 
   const [title, setTitle] = useState('');
   const [dateStr, setDateStr] = useState(() => (initialDate || new Date()).toISOString().split('T')[0]);
@@ -72,7 +72,7 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
 
     saveEvent({
       id: eventToEdit ? eventToEdit.id : undefined,
-      title: title.trim() || 'Ministry Activity',
+      title: title.trim() || t.scheduleModal.titlePlaceholder,
       dateMillis,
       startTimeMillis,
       endTimeMillis,
@@ -93,6 +93,22 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
     }
   };
 
+  const reminderOptionsList: Array<{ id: ReminderOptionType; label: string }> = [
+    { id: 'NONE', label: t.scheduleModal.reminders.none },
+    { id: 'AT_TIME', label: t.scheduleModal.reminders.atTime },
+    { id: 'MINUTES_15', label: t.scheduleModal.reminders.min15 },
+    { id: 'MINUTES_30', label: t.scheduleModal.reminders.min30 },
+    { id: 'HOUR_1', label: t.scheduleModal.reminders.hr1 },
+    { id: 'DAY_1', label: t.scheduleModal.reminders.day1 },
+  ];
+
+  const repeatOptionsList: Array<{ id: RepeatOptionType; label: string }> = [
+    { id: 'NONE', label: t.scheduleModal.repeats.none },
+    { id: 'DAILY', label: t.scheduleModal.repeats.daily },
+    { id: 'WEEKLY', label: t.scheduleModal.repeats.weekly },
+    { id: 'MONTHLY', label: t.scheduleModal.repeats.monthly },
+  ];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
       <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-[#131D31] shadow-2xl border border-slate-200 dark:border-slate-800 p-6">
@@ -103,7 +119,7 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
               <CalendarIcon className="h-5 w-5" />
             </div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              {eventToEdit ? 'Edit Ministry Schedule' : 'Schedule Ministry'}
+              {eventToEdit ? t.scheduleModal.titleEdit : t.scheduleModal.titleAdd}
             </h2>
           </div>
           <button
@@ -118,15 +134,15 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
           {/* Title */}
           <div>
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
-              Arrangement Title
+              {t.scheduleModal.titleLabel}
             </label>
             <input
               type="text"
               required
-              placeholder="e.g. Saturday Morning Ministry, Return Visit to John"
+              placeholder={t.scheduleModal.titlePlaceholder}
               value={title}
               onChange={e => setTitle(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3.5 py-2.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3.5 py-2.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-blue-500 focus:outline-hidden"
             />
           </div>
 
@@ -134,14 +150,14 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
           <div>
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
               <CalendarIcon className="h-3.5 w-3.5 text-blue-500" />
-              Date
+              {t.scheduleModal.dateLabel}
             </label>
             <input
               type="date"
               required
               value={dateStr}
               onChange={e => setDateStr(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:outline-hidden"
             />
           </div>
 
@@ -150,25 +166,25 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5 text-slate-400" />
-                Start Time
+                {t.scheduleModal.startTime}
               </label>
               <input
                 type="time"
                 value={startTime}
                 onChange={e => setStartTime(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:outline-hidden"
               />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5 text-slate-400" />
-                End Time
+                {t.scheduleModal.endTime}
               </label>
               <input
                 type="time"
                 value={endTime}
                 onChange={e => setEndTime(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:outline-hidden"
               />
             </div>
           </div>
@@ -177,14 +193,14 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
           <div>
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5 text-slate-400" />
-              Meeting Location (Optional)
+              {t.scheduleModal.locationOptional}
             </label>
             <input
               type="text"
-              placeholder="e.g. Kingdom Hall Parking, Coffee Shop"
+              placeholder={t.scheduleModal.locationPlaceholder}
               value={location}
               onChange={e => setLocation(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3.5 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3.5 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-blue-500 focus:outline-hidden"
             />
           </div>
 
@@ -193,16 +209,16 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
                 <Bell className="h-3.5 w-3.5 text-slate-400" />
-                Reminder
+                {t.scheduleModal.reminderLabel}
               </label>
               <select
                 value={reminder}
                 onChange={e => setReminder(e.target.value as ReminderOptionType)}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:outline-hidden"
               >
-                {Object.values(REMINDER_OPTIONS).map(opt => (
+                {reminderOptionsList.map(opt => (
                   <option key={opt.id} value={opt.id}>
-                    {opt.displayName}
+                    {opt.label}
                   </option>
                 ))}
               </select>
@@ -211,16 +227,16 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
                 <Repeat className="h-3.5 w-3.5 text-slate-400" />
-                Repeat
+                {t.scheduleModal.repeatLabel}
               </label>
               <select
                 value={repeat}
                 onChange={e => setRepeat(e.target.value as RepeatOptionType)}
-                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:outline-hidden"
               >
-                {Object.values(REPEAT_OPTIONS).map(opt => (
+                {repeatOptionsList.map(opt => (
                   <option key={opt.id} value={opt.id}>
-                    {opt.displayName}
+                    {opt.label}
                   </option>
                 ))}
               </select>
@@ -231,14 +247,14 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
           <div>
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
               <FileText className="h-3.5 w-3.5 text-slate-400" />
-              Notes / Partner / Territory Notes (Optional)
+              {t.scheduleModal.notesOptional}
             </label>
             <textarea
               rows={2}
-              placeholder="e.g. Working with Brother Mark, bringing cart magazines"
+              placeholder={t.scheduleModal.notesPlaceholder}
               value={description}
               onChange={e => setDescription(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3.5 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-blue-500 focus:outline-none resize-none"
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] px-3.5 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-blue-500 focus:outline-hidden resize-none"
             />
           </div>
 
@@ -251,7 +267,7 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
                 className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 px-3.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
               >
                 <Trash2 className="h-4 w-4" />
-                <span>Delete</span>
+                <span>{t.common.delete}</span>
               </button>
             )}
 
@@ -261,14 +277,14 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
                 onClick={onClose}
                 className="h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               >
-                Cancel
+                {t.common.cancel}
               </button>
               <button
                 type="submit"
                 className="flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-5 text-xs font-bold text-white shadow-md shadow-blue-500/25 active:scale-95 transition-all"
               >
                 <Check className="h-4 w-4" />
-                <span>Save Schedule</span>
+                <span>{t.scheduleModal.saveSchedule}</span>
               </button>
             </div>
           </div>
@@ -282,10 +298,10 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
                 <Trash2 className="h-6 w-6" />
               </div>
               <h3 className="mt-3 text-base font-bold text-slate-900 dark:text-white">
-                Delete Schedule Arrangement?
+                {t.scheduleModal.deleteConfirmTitle}
               </h3>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Are you sure you want to remove this scheduled ministry arrangement?
+                {t.scheduleModal.deleteConfirmDesc}
               </p>
               <div className="mt-4 flex gap-2 justify-center">
                 <button
@@ -293,14 +309,14 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
                   onClick={() => setShowDeleteConfirm(false)}
                   className="rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300"
                 >
-                  Cancel
+                  {t.common.cancel}
                 </button>
                 <button
                   type="button"
                   onClick={handleDelete}
                   className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-red-700"
                 >
-                  Delete
+                  {t.common.delete}
                 </button>
               </div>
             </div>

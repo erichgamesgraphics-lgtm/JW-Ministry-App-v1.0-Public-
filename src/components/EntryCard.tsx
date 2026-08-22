@@ -1,6 +1,8 @@
 import React from 'react';
 import { Pencil, Trash2, MapPin, FileText } from 'lucide-react';
-import { MinistryEntry, MINISTRY_TYPE_OPTIONS } from '../types.ts';
+import { MinistryEntry } from '../types.ts';
+import { useMinistry } from '../context/MinistryContext.tsx';
+import { formatDateLocalized, formatDurationLocalized } from '../translations/index.ts';
 
 interface EntryCardProps {
   entry: MinistryEntry;
@@ -10,12 +12,32 @@ interface EntryCardProps {
 }
 
 export const EntryCard: React.FC<EntryCardProps> = ({ entry, onEdit, onDelete, className = '' }) => {
-  const hours = Math.floor(entry.durationMinutes / 60);
-  const minutes = entry.durationMinutes % 60;
-  const durationText = hours > 0 ? (minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h 0m`) : `${minutes}m`;
-  const typeInfo = MINISTRY_TYPE_OPTIONS[entry.ministryType] || { displayName: entry.ministryType };
+  const { language, t } = useMinistry();
 
-  const dateFormatted = new Date(entry.dateMillis).toLocaleDateString('en-US', {
+  const durationText = formatDurationLocalized(entry.durationMinutes, language);
+
+  const getMinistryTypeDisplayName = () => {
+    switch (entry.ministryType) {
+      case 'HOUSE_TO_HOUSE':
+        return t.ministryTypes.houseToHouse;
+      case 'PUBLIC_WITNESSING':
+        return t.ministryTypes.publicWitnessing;
+      case 'INFORMAL_WITNESSING':
+        return t.ministryTypes.informalWitnessing;
+      case 'TELEPHONE_WITNESSING':
+        return t.ministryTypes.telephoneWitnessing;
+      case 'LETTER_WRITING':
+        return t.ministryTypes.letterWriting;
+      case 'CART_WITNESSING':
+        return t.ministryTypes.cartWitnessing;
+      case 'OTHER':
+        return t.ministryTypes.other;
+      default:
+        return entry.ministryType;
+    }
+  };
+
+  const dateFormatted = formatDateLocalized(entry.dateMillis, language, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -28,31 +50,31 @@ export const EntryCard: React.FC<EntryCardProps> = ({ entry, onEdit, onDelete, c
     >
       <div className="flex items-center justify-between gap-3">
         {/* Badges: Duration & Ministry Type */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="rounded-xl bg-blue-50/90 dark:bg-blue-950/60 px-3 py-1 text-xs sm:text-sm font-bold text-blue-600 dark:text-blue-400">
             {durationText}
           </div>
 
           <div className="rounded-xl bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300">
-            {typeInfo.displayName}
+            {getMinistryTypeDisplayName()}
           </div>
         </div>
 
         {/* Action icons: Edit (Blue Pencil) & Delete (Red Trash) */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => onEdit(entry)}
             className="p-1.5 text-blue-600 hover:text-blue-700 dark:text-blue-400 transition-colors cursor-pointer"
-            title="Edit entry"
-            aria-label="Edit entry"
+            title={t.common.edit}
+            aria-label={t.common.edit}
           >
             <Pencil className="h-4 w-4" />
           </button>
           <button
             onClick={() => onDelete(entry.id)}
             className="p-1.5 text-red-600 hover:text-red-700 dark:text-red-400 transition-colors cursor-pointer"
-            title="Delete entry"
-            aria-label="Delete entry"
+            title={t.common.delete}
+            aria-label={t.common.delete}
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -71,17 +93,17 @@ export const EntryCard: React.FC<EntryCardProps> = ({ entry, onEdit, onDelete, c
             <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
               {entry.returnVisits > 0 && (
                 <span className="rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5">
-                  {entry.returnVisits} RV
+                  {entry.returnVisits} {t.common.rvShort}
                 </span>
               )}
               {entry.bibleStudies > 0 && (
                 <span className="rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 px-2 py-0.5">
-                  {entry.bibleStudies} Studies
+                  {entry.bibleStudies} {t.common.studiesShort}
                 </span>
               )}
               {entry.placements > 0 && (
                 <span className="rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-2 py-0.5">
-                  {entry.placements} Placements
+                  {entry.placements} {t.common.placementsShort}
                 </span>
               )}
             </div>

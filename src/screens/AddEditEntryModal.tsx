@@ -10,8 +10,9 @@ import {
   FileText,
   Trash2
 } from 'lucide-react';
-import { MinistryEntry, MinistryTypeCategory, MINISTRY_TYPE_OPTIONS } from '../types.ts';
+import { MinistryEntry, MinistryTypeCategory } from '../types.ts';
 import { useMinistry } from '../context/MinistryContext.tsx';
+import { formatDateLocalized, formatDurationLocalized } from '../translations/index.ts';
 
 interface AddEditEntryModalProps {
   isOpen: boolean;
@@ -26,7 +27,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
   entryToEdit,
   initialDate,
 }) => {
-  const { saveEntry, deleteEntry } = useMinistry();
+  const { saveEntry, deleteEntry, language, t } = useMinistry();
 
   const [date, setDate] = useState<Date>(() => initialDate || new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -95,9 +96,9 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
   if (!isOpen) return null;
 
   const totalCalculatedMinutes = hours * 60 + minutes;
-  const durationSummaryFormatted = `${hours}h ${minutes}m (${totalCalculatedMinutes} mins)`;
+  const durationSummaryFormatted = formatDurationLocalized(totalCalculatedMinutes, language);
 
-  const dateFormatted = date.toLocaleDateString('en-US', {
+  const dateFormatted = formatDateLocalized(date, language, {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
@@ -127,14 +128,14 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
     }
   };
 
-  const ministryTypeKeys: MinistryTypeCategory[] = [
-    'HOUSE_TO_HOUSE',
-    'PUBLIC_WITNESSING',
-    'INFORMAL_WITNESSING',
-    'TELEPHONE_WITNESSING',
-    'LETTER_WRITING',
-    'CART_WITNESSING',
-    'OTHER',
+  const ministryTypeKeys: Array<{ key: MinistryTypeCategory; label: string }> = [
+    { key: 'HOUSE_TO_HOUSE', label: t.ministryTypes.houseToHouse },
+    { key: 'PUBLIC_WITNESSING', label: t.ministryTypes.publicWitnessing },
+    { key: 'INFORMAL_WITNESSING', label: t.ministryTypes.informalWitnessing },
+    { key: 'TELEPHONE_WITNESSING', label: t.ministryTypes.telephoneWitnessing },
+    { key: 'LETTER_WRITING', label: t.ministryTypes.letterWriting },
+    { key: 'CART_WITNESSING', label: t.ministryTypes.cartWitnessing },
+    { key: 'OTHER', label: t.ministryTypes.other },
   ];
 
   return (
@@ -145,13 +146,13 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
           <button
             onClick={onClose}
             className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white dark:bg-[#131D31] border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200 shadow-xs hover:bg-slate-50 cursor-pointer"
-            title="Back"
+            title={t.common.back}
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
 
           <h1 className="text-lg font-bold text-slate-900 dark:text-white">
-            {entryToEdit ? 'Edit Ministry Entry' : 'New Ministry Entry'}
+            {entryToEdit ? t.entryModal.titleEdit : t.entryModal.titleAdd}
           </h1>
 
           {entryToEdit ? (
@@ -159,7 +160,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
               type="button"
               onClick={() => setShowDeleteConfirm(true)}
               className="p-2 text-red-600 hover:text-red-700 cursor-pointer"
-              title="Delete entry"
+              title={t.common.delete}
             >
               <Trash2 className="h-5 w-5" />
             </button>
@@ -172,7 +173,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
           {/* Section: Date */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-600 dark:text-slate-400 px-1">
-              Date
+              {t.entryModal.dateLabel}
             </label>
             <div className="flex items-center justify-between rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-4 shadow-xs">
               <div className="flex items-center gap-3">
@@ -189,7 +190,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
                 onClick={() => setShowDatePicker(!showDatePicker)}
                 className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
               >
-                Change
+                {t.entryModal.dateChange}
               </button>
             </div>
 
@@ -215,7 +216,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between px-1">
               <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                Manual Duration Entry
+                {t.entryModal.manualDuration}
               </label>
               <button
                 type="button"
@@ -237,27 +238,31 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
               {isManualDuration ? (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3">
-                    <span className="text-[11px] font-semibold text-slate-400 block mb-1">Start Time</span>
+                    <span className="text-[11px] font-semibold text-slate-400 block mb-1">
+                      {t.entryModal.startTime}
+                    </span>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-blue-600" />
                       <input
                         type="time"
                         value={startTime}
                         onChange={e => setStartTime(e.target.value)}
-                        className="bg-transparent text-sm font-bold text-slate-900 dark:text-white focus:outline-none w-full"
+                        className="bg-transparent text-sm font-bold text-slate-900 dark:text-white focus:outline-hidden w-full"
                       />
                     </div>
                   </div>
 
                   <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-3">
-                    <span className="text-[11px] font-semibold text-slate-400 block mb-1">End Time</span>
+                    <span className="text-[11px] font-semibold text-slate-400 block mb-1">
+                      {t.entryModal.endTime}
+                    </span>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-blue-600" />
                       <input
                         type="time"
                         value={endTime}
                         onChange={e => setEndTime(e.target.value)}
-                        className="bg-transparent text-sm font-bold text-slate-900 dark:text-white focus:outline-none w-full"
+                        className="bg-transparent text-sm font-bold text-slate-900 dark:text-white focus:outline-hidden w-full"
                       />
                     </div>
                   </div>
@@ -265,7 +270,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
               ) : (
                 <div className="flex items-center gap-4 justify-center py-1">
                   <div className="text-center">
-                    <span className="text-xs text-slate-400 block mb-1">Hours</span>
+                    <span className="text-xs text-slate-400 block mb-1">{t.entryModal.hours}</span>
                     <input
                       type="number"
                       min="0"
@@ -277,7 +282,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
                   </div>
                   <span className="text-xl font-bold text-slate-400 mt-5">:</span>
                   <div className="text-center">
-                    <span className="text-xs text-slate-400 block mb-1">Minutes</span>
+                    <span className="text-xs text-slate-400 block mb-1">{t.entryModal.minutes}</span>
                     <input
                       type="number"
                       min="0"
@@ -293,7 +298,9 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
 
               {/* Total Duration Row */}
               <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-                <span className="font-semibold text-slate-600 dark:text-slate-300">Total Duration:</span>
+                <span className="font-semibold text-slate-600 dark:text-slate-300">
+                  {t.entryModal.totalDuration}
+                </span>
                 <span className="font-bold text-blue-600 dark:text-blue-400">
                   {durationSummaryFormatted}
                 </span>
@@ -304,11 +311,10 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
           {/* Section: Ministry Type */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-600 dark:text-slate-400 px-1">
-              Ministry Type
+              {t.entryModal.ministryType}
             </label>
             <div className="flex flex-wrap gap-2">
-              {ministryTypeKeys.map(key => {
-                const info = MINISTRY_TYPE_OPTIONS[key];
+              {ministryTypeKeys.map(({ key, label }) => {
                 const isSelected = ministryType === key;
                 return (
                   <button
@@ -322,7 +328,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
                     }`}
                   >
                     {isSelected && <Check className="h-3.5 w-3.5 text-blue-600 stroke-[3]" />}
-                    <span>{info.displayName}</span>
+                    <span>{label}</span>
                   </button>
                 );
               })}
@@ -332,13 +338,13 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
           {/* Section: Activity Counts */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-600 dark:text-slate-400 px-1">
-              Activity Counts
+              {t.entryModal.activityCounts}
             </label>
             <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-4 shadow-xs divide-y divide-slate-100 dark:divide-slate-800">
               {/* Return Visits */}
               <div className="flex items-center justify-between py-2.5 first:pt-0">
                 <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                  Return Visits
+                  {t.entryModal.returnVisits}
                 </span>
                 <div className="flex items-center gap-3">
                   <button
@@ -364,7 +370,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
               {/* Bible Studies */}
               <div className="flex items-center justify-between py-2.5">
                 <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                  Bible Studies
+                  {t.entryModal.bibleStudies}
                 </span>
                 <div className="flex items-center gap-3">
                   <button
@@ -390,7 +396,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
               {/* Placements */}
               <div className="flex items-center justify-between py-2.5 last:pb-0">
                 <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                  Placements
+                  {t.entryModal.placements}
                 </span>
                 <div className="flex items-center gap-3">
                   <button
@@ -419,32 +425,32 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
           <div className="space-y-3">
             <div>
               <label className="text-xs font-bold text-slate-600 dark:text-slate-400 px-1 mb-1 block">
-                Location (Optional)
+                {t.entryModal.locationOptional}
               </label>
               <div className="flex items-center gap-2 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] px-3.5 py-2.5 shadow-xs">
                 <MapPin className="h-4 w-4 text-slate-400 shrink-0" />
                 <input
                   type="text"
-                  placeholder="e.g. Territory 12, Cart Station, Main Street"
+                  placeholder={t.entryModal.locationPlaceholder}
                   value={location}
                   onChange={e => setLocation(e.target.value)}
-                  className="w-full bg-transparent text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
+                  className="w-full bg-transparent text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden"
                 />
               </div>
             </div>
 
             <div>
               <label className="text-xs font-bold text-slate-600 dark:text-slate-400 px-1 mb-1 block">
-                Notes (Optional)
+                {t.entryModal.notesOptional}
               </label>
               <div className="flex items-start gap-2 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] px-3.5 py-2.5 shadow-xs">
                 <FileText className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
                 <textarea
                   rows={2}
-                  placeholder="e.g. Discussed Psalm 37:11 with householder; follow up on Saturday."
+                  placeholder={t.entryModal.notesPlaceholder}
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
-                  className="w-full bg-transparent text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none resize-none"
+                  className="w-full bg-transparent text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden resize-none"
                 />
               </div>
             </div>
@@ -457,7 +463,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
               className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] py-3.5 sm:py-4 px-6 text-base font-semibold text-white shadow-xs shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Check className="h-5 w-5 stroke-[2.5]" />
-              <span>{entryToEdit ? 'Update Entry' : 'Save Entry'}</span>
+              <span>{entryToEdit ? t.entryModal.updateEntry : t.entryModal.saveEntry}</span>
             </button>
           </div>
         </form>
@@ -470,10 +476,10 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
                 <Trash2 className="h-6 w-6" />
               </div>
               <h3 className="mt-3 text-base font-bold text-slate-900 dark:text-white">
-                Delete Ministry Entry?
+                {t.entryModal.deleteConfirmTitle}
               </h3>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Are you sure you want to delete this recorded activity?
+                {t.entryModal.deleteConfirmDesc}
               </p>
               <div className="mt-4 flex gap-2 justify-center">
                 <button
@@ -481,14 +487,14 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
                   onClick={() => setShowDeleteConfirm(false)}
                   className="rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300"
                 >
-                  Cancel
+                  {t.common.cancel}
                 </button>
                 <button
                   type="button"
                   onClick={handleDelete}
                   className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700"
                 >
-                  Delete
+                  {t.common.delete}
                 </button>
               </div>
             </div>

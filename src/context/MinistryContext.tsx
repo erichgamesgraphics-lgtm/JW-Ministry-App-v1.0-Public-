@@ -8,9 +8,11 @@ import {
   MinistryTypeCategory,
   DashboardStats,
   ReportsData,
+  SupportedLanguage,
   PUBLISHER_STATUS_OPTIONS,
 } from '../types.ts';
 import { storage, DEFAULT_TIMER } from '../utils/storage.ts';
+import { getTranslation, TranslationSchema } from '../translations/index.ts';
 
 interface MinistryContextType {
   entries: MinistryEntry[];
@@ -18,6 +20,8 @@ interface MinistryContextType {
   settings: UserSettings;
   timer: TimerState;
   dashboardStats: DashboardStats;
+  language: SupportedLanguage;
+  t: TranslationSchema;
   
   // Entry Operations
   saveEntry: (entryData: Partial<MinistryEntry> & { id?: number }) => MinistryEntry;
@@ -32,6 +36,7 @@ interface MinistryContextType {
   updateSettings: (partial: Partial<UserSettings>) => void;
   updatePublisherStatus: (status: PublisherStatusType, customGoal?: number) => void;
   updateTheme: (theme: 'SYSTEM' | 'LIGHT' | 'DARK') => void;
+  updateLanguage: (lang: SupportedLanguage) => void;
   completeOnboarding: (status: PublisherStatusType, customGoalHours?: number) => void;
   resetOnboarding: () => void;
   
@@ -273,6 +278,17 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const updateTheme = useCallback((themeMode: 'SYSTEM' | 'LIGHT' | 'DARK') => {
     setSettings(prev => ({ ...prev, themeMode }));
   }, []);
+
+  const updateLanguage = useCallback((lang: SupportedLanguage) => {
+    setSettings(prev => {
+      const updated = { ...prev, language: lang };
+      storage.saveSettings(updated);
+      return updated;
+    });
+  }, []);
+
+  const language = settings.language || 'en';
+  const t = useMemo(() => getTranslation(language), [language]);
 
   // Timer controls
   const startTimer = useCallback((ministryType: MinistryTypeCategory = 'HOUSE_TO_HOUSE', location: string = '', notes: string = '') => {
@@ -527,6 +543,8 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     settings,
     timer,
     dashboardStats,
+    language,
+    t,
     saveEntry,
     deleteEntry,
     saveEvent,
@@ -535,6 +553,7 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     updateSettings,
     updatePublisherStatus,
     updateTheme,
+    updateLanguage,
     completeOnboarding,
     resetOnboarding,
     startTimer,

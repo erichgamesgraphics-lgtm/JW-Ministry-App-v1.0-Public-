@@ -11,7 +11,8 @@ import {
   Edit2,
 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
-import { ScheduledEvent, MinistryEntry, MINISTRY_TYPE_OPTIONS } from '../types.ts';
+import { ScheduledEvent, MinistryEntry } from '../types.ts';
+import { formatDurationLocalized, formatDateLocalized, formatMonthYearLocalized } from '../translations/index.ts';
 
 interface CalendarScreenProps {
   onOpenNewSchedule: (date?: Date) => void;
@@ -32,6 +33,8 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
     toggleEventCompleted,
     deleteEvent,
     deleteEntry,
+    language,
+    t,
   } = useMinistry();
 
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -46,7 +49,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
   const startDayOfWeek = firstDayOfMonth.getDay(); // 0 is Sunday
   const daysInMonth = lastDayOfMonth.getDate();
 
-  const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const monthName = formatMonthYearLocalized(currentDate, language);
 
   const prevMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1));
@@ -98,19 +101,40 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
     );
   });
 
-  const selectedDateFormatted = selectedDate.toLocaleDateString('en-US', {
+  const selectedDateFormatted = formatDateLocalized(selectedDate, language, {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
     year: 'numeric',
   });
 
+  const getMinistryTypeDisplayName = (type: string) => {
+    switch (type) {
+      case 'HOUSE_TO_HOUSE':
+        return t.ministryTypes.houseToHouse;
+      case 'PUBLIC_WITNESSING':
+        return t.ministryTypes.publicWitnessing;
+      case 'INFORMAL_WITNESSING':
+        return t.ministryTypes.informalWitnessing;
+      case 'TELEPHONE_WITNESSING':
+        return t.ministryTypes.telephoneWitnessing;
+      case 'LETTER_WRITING':
+        return t.ministryTypes.letterWriting;
+      case 'CART_WITNESSING':
+        return t.ministryTypes.cartWitnessing;
+      case 'OTHER':
+        return t.ministryTypes.other;
+      default:
+        return type;
+    }
+  };
+
   return (
     <div className="space-y-4 pb-24 max-w-lg mx-auto">
       {/* Screen Title */}
       <div className="pt-2 flex items-center justify-between">
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-          Calendar
+          {t.calendar.title}
         </h1>
       </div>
 
@@ -121,7 +145,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
           <button
             onClick={prevMonth}
             className="flex h-8 w-8 items-center justify-center rounded-full text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
-            title="Previous month"
+            title={t.calendar.prevMonth}
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -133,7 +157,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
           <button
             onClick={nextMonth}
             className="flex h-8 w-8 items-center justify-center rounded-full text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
-            title="Next month"
+            title={t.calendar.nextMonth}
           >
             <ChevronRight className="h-5 w-5" />
           </button>
@@ -141,13 +165,13 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
 
         {/* Days of Week Header */}
         <div className="grid grid-cols-7 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">
-          <span>Sun</span>
-          <span>Mon</span>
-          <span>Tue</span>
-          <span>Wed</span>
-          <span>Thu</span>
-          <span>Fri</span>
-          <span>Sat</span>
+          <span>{t.calendar.daysOfWeek.sun}</span>
+          <span>{t.calendar.daysOfWeek.mon}</span>
+          <span>{t.calendar.daysOfWeek.tue}</span>
+          <span>{t.calendar.daysOfWeek.wed}</span>
+          <span>{t.calendar.daysOfWeek.thu}</span>
+          <span>{t.calendar.daysOfWeek.fri}</span>
+          <span>{t.calendar.daysOfWeek.sat}</span>
         </div>
 
         {/* Month Dates Grid */}
@@ -194,11 +218,11 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
         <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-5 text-xs text-slate-500 dark:text-slate-400">
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-blue-600" />
-            <span>Ministry Activity</span>
+            <span>{t.calendar.legendMinistry}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-amber-500" />
-            <span>Scheduled Arrangement</span>
+            <span>{t.calendar.legendArrangement}</span>
           </div>
         </div>
       </div>
@@ -210,7 +234,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
           className="flex items-center justify-center gap-2 rounded-2xl bg-[#2A3B4C] dark:bg-slate-800 hover:bg-slate-800 text-white font-semibold py-3.5 px-4 text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
         >
           <CalendarIcon className="h-4 w-4" />
-          <span>Schedule Ministry</span>
+          <span>{t.calendar.scheduleMinistry}</span>
         </button>
 
         <button
@@ -218,7 +242,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
           className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#131D31] hover:bg-slate-50 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400 font-semibold py-3.5 px-4 text-xs sm:text-sm transition-all cursor-pointer"
         >
           <Plus className="h-4 w-4 stroke-[2.5]" />
-          <span>Record Entry</span>
+          <span>{t.calendar.recordEntry}</span>
         </button>
       </div>
 
@@ -235,10 +259,10 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
               <CalendarIcon className="h-7 w-7" />
             </div>
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              No Activity Recorded
+              {t.calendar.noActivityDay}
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              Tap "Schedule Ministry" or "Record Entry" above to plan or log your service.
+              {t.calendar.noActivityDayDesc}
             </p>
           </div>
         ) : (
@@ -257,7 +281,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <div className="inline-flex items-center gap-1 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-xs font-semibold">
-                          <span>Scheduled Arrangement</span>
+                          <span>{t.calendar.scheduledArrangementBadge}</span>
                         </div>
                       </div>
                       <h3 className="text-base font-bold text-slate-900 dark:text-white">
@@ -281,21 +305,21 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                         className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
                           ev.isCompleted ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50' : 'text-slate-400 hover:text-emerald-600'
                         }`}
-                        title="Toggle completed"
+                        title={t.common.save}
                       >
                         <CheckCircle2 className="h-5 w-5" />
                       </button>
                       <button
                         onClick={() => onOpenEditSchedule(ev)}
                         className="p-1.5 text-blue-600 hover:text-blue-700 cursor-pointer"
-                        title="Edit event"
+                        title={t.common.edit}
                       >
                         <Edit2 className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => deleteEvent(ev.id)}
                         className="p-1.5 text-red-600 hover:text-red-700 cursor-pointer"
-                        title="Delete event"
+                        title={t.common.delete}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -307,10 +331,8 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
 
             {/* Ministry Entries */}
             {selectedDayEntries.map(entry => {
-              const hours = Math.floor(entry.durationMinutes / 60);
-              const minutes = entry.durationMinutes % 60;
-              const durationText = hours > 0 ? (minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h 0m`) : `${minutes}m`;
-              const typeInfo = MINISTRY_TYPE_OPTIONS[entry.ministryType] || { displayName: entry.ministryType };
+              const durationText = formatDurationLocalized(entry.durationMinutes, language);
+              const typeDisplayName = getMinistryTypeDisplayName(entry.ministryType);
 
               return (
                 <div
@@ -323,7 +345,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                         {durationText}
                       </span>
                       <span className="rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-1 text-xs font-medium">
-                        {typeInfo.displayName}
+                        {typeDisplayName}
                       </span>
                     </div>
 
@@ -332,6 +354,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                         <button
                           onClick={() => onOpenEditEntry(entry)}
                           className="p-1.5 text-blue-600 hover:text-blue-700 cursor-pointer"
+                          title={t.common.edit}
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
@@ -339,6 +362,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                       <button
                         onClick={() => deleteEntry(entry.id)}
                         className="p-1.5 text-red-600 hover:text-red-700 cursor-pointer"
+                        title={t.common.delete}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

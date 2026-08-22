@@ -6,6 +6,7 @@ import {
   PublisherStatusType,
   PUBLISHER_STATUS_OPTIONS
 } from '../types.ts';
+import { getInitialLanguage } from '../translations/index.ts';
 
 const BASE_ENTRIES_KEY = 'ministry_tracker_entries_v2';
 const BASE_EVENTS_KEY = 'ministry_tracker_events_v2';
@@ -23,6 +24,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   dailyReminderHour: 20,
   dailyReminderMinute: 0,
   themeMode: 'SYSTEM',
+  language: 'en',
   notificationsEnabled: true,
   isFirstLaunch: true,
   onboardingCompleted: false,
@@ -124,23 +126,38 @@ export const storage = {
 
   getSettings(): UserSettings {
     try {
+      const initialLang = getInitialLanguage();
       const data = localStorage.getItem(SETTINGS_KEY);
-      if (!data) return DEFAULT_SETTINGS;
+      if (!data) {
+        return {
+          ...DEFAULT_SETTINGS,
+          language: initialLang,
+        };
+      }
       const parsed = JSON.parse(data);
       const isCompleted = parsed.onboardingCompleted ?? (parsed.isFirstLaunch === false);
       let status = parsed.publisherStatus || 'PUBLISHER';
       if (status === 'AUXILIARY_PIONEER_30' || status === 'AUXILIARY_PIONEER_15') status = 'AUXILIARY_PIONEER';
       if (status === 'REGULAR_PIONEER_50') status = 'PIONEER';
       if (status === 'SPECIAL_PIONEER_100') status = 'SPECIAL_PIONEER';
+
+      const resolvedLang = (parsed.language === 'en' || parsed.language === 'hy' || parsed.language === 'ru')
+        ? parsed.language
+        : initialLang;
+
       return {
         ...DEFAULT_SETTINGS,
         ...parsed,
+        language: resolvedLang,
         publisherStatus: status,
         isFirstLaunch: !isCompleted,
         onboardingCompleted: isCompleted,
       };
     } catch {
-      return DEFAULT_SETTINGS;
+      return {
+        ...DEFAULT_SETTINGS,
+        language: getInitialLanguage(),
+      };
     }
   },
 
