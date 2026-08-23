@@ -128,14 +128,37 @@ export const storage = {
     try {
       const initialLang = getInitialLanguage();
       const data = localStorage.getItem(SETTINGS_KEY);
+
+      // Check if user already has saved ministry entries or events (guest or legacy)
+      const hasExistingEntries = (() => {
+        try {
+          const scopedKey = getStorageKey(BASE_ENTRIES_KEY, 'guest');
+          const entriesRaw = localStorage.getItem(scopedKey) || localStorage.getItem(BASE_ENTRIES_KEY) || localStorage.getItem(LEGACY_ENTRIES_KEY);
+          if (entriesRaw) {
+            const parsed = JSON.parse(entriesRaw);
+            return Array.isArray(parsed) && parsed.length > 0;
+          }
+        } catch {}
+        return false;
+      })();
+
       if (!data) {
         return {
           ...DEFAULT_SETTINGS,
           language: initialLang,
+          isFirstLaunch: !hasExistingEntries,
+          onboardingCompleted: hasExistingEntries,
         };
       }
+
       const parsed = JSON.parse(data);
-      const isCompleted = parsed.onboardingCompleted ?? (parsed.isFirstLaunch === false);
+      let isCompleted = parsed.onboardingCompleted === true || parsed.isFirstLaunch === false;
+
+      // Safe recovery: if onboardingCompleted is missing or false but the user has activity records, preserve data & state
+      if (!isCompleted && hasExistingEntries) {
+        isCompleted = true;
+      }
+
       let status = parsed.publisherStatus || 'PUBLISHER';
       if (status === 'AUXILIARY_PIONEER_30' || status === 'AUXILIARY_PIONEER_15') status = 'AUXILIARY_PIONEER';
       if (status === 'REGULAR_PIONEER_50') status = 'PIONEER';
@@ -145,7 +168,7 @@ export const storage = {
         ? parsed.language
         : initialLang;
 
-      return {
+      const resolvedSettings: UserSettings = {
         ...DEFAULT_SETTINGS,
         ...parsed,
         language: resolvedLang,
@@ -153,6 +176,8 @@ export const storage = {
         isFirstLaunch: !isCompleted,
         onboardingCompleted: isCompleted,
       };
+
+      return resolvedSettings;
     } catch {
       return {
         ...DEFAULT_SETTINGS,

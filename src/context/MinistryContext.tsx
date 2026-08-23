@@ -15,6 +15,7 @@ import { storage, DEFAULT_TIMER } from '../utils/storage.ts';
 import { getTranslation, TranslationSchema } from '../translations/index.ts';
 
 interface MinistryContextType {
+  isLoaded: boolean;
   entries: MinistryEntry[];
   events: ScheduledEvent[];
   settings: UserSettings;
@@ -60,28 +61,38 @@ interface MinistryContextType {
 const MinistryContext = createContext<MinistryContextType | undefined>(undefined);
 
 export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [settings, setSettings] = useState<UserSettings>(() => storage.getSettings());
   const [entries, setEntries] = useState<MinistryEntry[]>(() => storage.getEntries());
   const [events, setEvents] = useState<ScheduledEvent[]>(() => storage.getEvents());
   const [timer, setTimer] = useState<TimerState>(() => storage.getTimer());
   const [timerTicker, setTimerTicker] = useState<number>(0);
 
+  // Mark storage as securely initialized after component mounts
+  useEffect(() => {
+    setIsLoaded(true);
+  }, []);
+
   // Sync to local storage on state changes
   useEffect(() => {
+    if (!isLoaded) return;
     storage.saveEntries(entries);
-  }, [entries]);
+  }, [entries, isLoaded]);
 
   useEffect(() => {
+    if (!isLoaded) return;
     storage.saveEvents(events);
-  }, [events]);
+  }, [events, isLoaded]);
 
   useEffect(() => {
+    if (!isLoaded) return;
     storage.saveSettings(settings);
-  }, [settings]);
+  }, [settings, isLoaded]);
 
   useEffect(() => {
+    if (!isLoaded) return;
     storage.saveTimer(timer);
-  }, [timer]);
+  }, [timer, isLoaded]);
 
   // Apply theme class to document element and listen for system theme changes
   useEffect(() => {
@@ -538,6 +549,7 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [entries, dashboardStats.streakMonths]);
 
   const value = {
+    isLoaded,
     entries,
     events,
     settings,
