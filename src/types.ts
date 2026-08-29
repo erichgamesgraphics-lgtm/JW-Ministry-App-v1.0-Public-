@@ -169,7 +169,7 @@ export interface ScheduledEvent {
   lastSyncedAt?: number;
 }
 
-export type SupportedLanguage = 'en' | 'hy' | 'ru';
+export type SupportedLanguage = 'en' | 'hy' | 'ru' | 'hi' | 'pa';
 
 export interface UserSettings {
   publisherStatus: PublisherStatusType;

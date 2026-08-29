@@ -2,6 +2,8 @@ import { SupportedLanguage, TranslationSchema } from './types.ts';
 import { en } from './en.ts';
 import { hy } from './hy.ts';
 import { ru } from './ru.ts';
+import { hi } from './hi.ts';
+import { pa } from './pa.ts';
 
 export * from './types.ts';
 
@@ -15,12 +17,16 @@ export const SUPPORTED_LANGUAGES: LanguageOption[] = [
   { code: 'en', name: 'English', nativeName: 'English' },
   { code: 'hy', name: 'Armenian', nativeName: 'Հայերեն' },
   { code: 'ru', name: 'Russian', nativeName: 'Русский' },
+  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
+  { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ' },
 ];
 
 export const translations: Record<SupportedLanguage, TranslationSchema> = {
   en,
   hy,
   ru,
+  hi,
+  pa,
 };
 
 export const DEFAULT_LANGUAGE: SupportedLanguage = 'en';
@@ -31,6 +37,8 @@ export const DEFAULT_LANGUAGE: SupportedLanguage = 'en';
  * Supports:
  * - Armenian (hy, hy-AM, etc.) -> 'hy'
  * - Russian (ru, ru-RU, etc.) -> 'ru'
+ * - Hindi (hi, hi-IN, etc.) -> 'hi'
+ * - Punjabi (pa, pa-IN, etc.) -> 'pa'
  * - English (en, en-US, en-GB, etc.) -> 'en'
  * Fallbacks to English for unsupported languages.
  */
@@ -56,6 +64,12 @@ export function detectSystemLanguage(): SupportedLanguage {
     if (clean.startsWith('ru')) {
       return 'ru';
     }
+    if (clean.startsWith('hi')) {
+      return 'hi';
+    }
+    if (clean.startsWith('pa')) {
+      return 'pa';
+    }
     if (clean.startsWith('en')) {
       return 'en';
     }
@@ -75,7 +89,7 @@ export function getInitialLanguage(): SupportedLanguage {
     const rawSettings = localStorage.getItem('ministry_tracker_settings_v2') || localStorage.getItem('ministry_tracker_settings_v1');
     if (rawSettings) {
       const parsed = JSON.parse(rawSettings);
-      if (parsed && (parsed.language === 'en' || parsed.language === 'hy' || parsed.language === 'ru')) {
+      if (parsed && (parsed.language === 'en' || parsed.language === 'hy' || parsed.language === 'ru' || parsed.language === 'hi' || parsed.language === 'pa')) {
         return parsed.language;
       }
     }
@@ -124,6 +138,8 @@ export function formatDateLocalized(
     en: 'en-US',
     hy: 'hy-AM',
     ru: 'ru-RU',
+    hi: 'hi-IN',
+    pa: 'pa-IN',
   };
   const locale = localeMap[lang] || 'en-US';
 

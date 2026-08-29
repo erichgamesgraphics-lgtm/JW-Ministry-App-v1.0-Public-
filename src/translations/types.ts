@@ -1,4 +1,4 @@
-export type SupportedLanguage = 'en' | 'hy' | 'ru';
+export type SupportedLanguage = 'en' | 'hy' | 'ru' | 'hi' | 'pa';
 
 export interface TranslationSchema {
   common: {

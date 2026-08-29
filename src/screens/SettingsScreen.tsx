@@ -219,6 +219,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
     { code: 'en', label: 'English', nativeLabel: 'English' },
     { code: 'hy', label: 'Armenian', nativeLabel: 'Հայերեն' },
     { code: 'ru', label: 'Russian', nativeLabel: 'Русский' },
+    { code: 'hi', label: 'Hindi', nativeLabel: 'हिन्दी' },
+    { code: 'pa', label: 'Punjabi', nativeLabel: 'ਪੰਜਾਬੀ' },
   ];
 
   const currentLanguageObj = languageOptions.find(l => l.code === language) || languageOptions[0];

@@ -67,16 +67,34 @@ const AppContent: React.FC = () => {
   if (!isLoaded) {
     const isArmenian = settings.language === 'hy';
     const isRussian = settings.language === 'ru';
+    const isHindi = settings.language === 'hi';
+    const isPunjabi = settings.language === 'pa';
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] text-slate-900 dark:text-white flex flex-col items-center justify-center p-6 select-none">
         <div className="flex flex-col items-center text-center space-y-4">
           <JWMinistryLogo size={80} className="rounded-3xl shadow-lg animate-pulse" />
           <div className="space-y-1">
             <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-              {isArmenian ? 'Ծառայության Ծրագիր' : isRussian ? 'Служебный Дневник' : 'Ministry Tracker'}
+              {isArmenian
+                ? 'Ծառայության Ծրագիր'
+                : isRussian
+                ? 'Служебный Дневник'
+                : isHindi
+                ? 'सेवकाई ट्रैकर'
+                : isPunjabi
+                ? 'ਸੇਵਕਾਈ ਟਰੈਕਰ'
+                : 'Ministry Tracker'}
             </h2>
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              {isArmenian ? 'Բեռնվում է...' : isRussian ? 'Загрузка...' : 'Loading...'}
+              {isArmenian
+                ? 'Բեռնվում է...'
+                : isRussian
+                ? 'Загрузка...'
+                : isHindi
+                ? 'लोड हो रहा है...'
+                : isPunjabi
+                ? 'ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...'
+                : 'Loading...'}
             </p>
           </div>
         </div>

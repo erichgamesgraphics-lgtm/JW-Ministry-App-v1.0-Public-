@@ -164,7 +164,7 @@ export const storage = {
       if (status === 'REGULAR_PIONEER_50') status = 'PIONEER';
       if (status === 'SPECIAL_PIONEER_100') status = 'SPECIAL_PIONEER';
 
-      const resolvedLang = (parsed.language === 'en' || parsed.language === 'hy' || parsed.language === 'ru')
+      const resolvedLang = (parsed.language === 'en' || parsed.language === 'hy' || parsed.language === 'ru' || parsed.language === 'hi' || parsed.language === 'pa')
         ? parsed.language
         : initialLang;
 
