@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Bell, X, Calendar as CalendarIcon } from 'lucide-react';
 import { MinistryProvider, useMinistry } from './context/MinistryContext.tsx';
 import { Header } from './components/Header.tsx';
 import { Navigation, TabType } from './components/Navigation.tsx';
@@ -11,10 +12,10 @@ import { WelcomeScreen } from './screens/WelcomeScreen.tsx';
 import { AddEditEntryModal } from './screens/AddEditEntryModal.tsx';
 import { AddEditScheduleModal } from './screens/AddEditScheduleModal.tsx';
 import { JWMinistryLogo } from './components/JWMinistryLogo.tsx';
-import { MinistryEntry, ScheduledEvent } from './types.ts';
+import { MinistryEntry, ScheduledEvent, ExpandedCalendarEvent } from './types.ts';
 
 const AppContent: React.FC = () => {
-  const { settings, isLoaded } = useMinistry();
+  const { settings, isLoaded, activeNotification, dismissActiveNotification } = useMinistry();
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [manualWelcome, setManualWelcome] = useState<boolean>(false);
 
@@ -23,7 +24,7 @@ const AppContent: React.FC = () => {
   const [entryToEdit, setEntryToEdit] = useState<MinistryEntry | null>(null);
 
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [eventToEdit, setEventToEdit] = useState<ScheduledEvent | null>(null);
+  const [eventToEdit, setEventToEdit] = useState<ScheduledEvent | ExpandedCalendarEvent | null>(null);
   const [initialScheduleDate, setInitialScheduleDate] = useState<Date | undefined>(undefined);
 
   const handleOpenNewEntry = () => {
@@ -47,7 +48,7 @@ const AppContent: React.FC = () => {
     setIsScheduleModalOpen(true);
   };
 
-  const handleOpenEditSchedule = (event: ScheduledEvent) => {
+  const handleOpenEditSchedule = (event: ScheduledEvent | ExpandedCalendarEvent) => {
     setEventToEdit(event);
     setInitialScheduleDate(new Date(event.dateMillis));
     setIsScheduleModalOpen(true);
@@ -112,6 +113,46 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 flex flex-col selection:bg-blue-500/20">
+      {/* Active In-App Notification Toast */}
+      {activeNotification && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md animate-in slide-in-from-top duration-300">
+          <div className="rounded-2xl bg-amber-500 text-white p-4 shadow-xl flex items-start justify-between gap-3 border border-amber-400/50">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-white/20 p-2 mt-0.5 shrink-0">
+                <Bell className="h-5 w-5" />
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-100">
+                  {activeNotification.title}
+                </p>
+                <p className="text-sm font-bold leading-snug">
+                  {activeNotification.body}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => {
+                  setActiveTab('calendar');
+                  dismissActiveNotification();
+                }}
+                className="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-xs font-bold transition-colors cursor-pointer"
+              >
+                <CalendarIcon className="h-3.5 w-3.5 inline mr-1" />
+                View
+              </button>
+              <button
+                onClick={dismissActiveNotification}
+                className="rounded-lg p-1 text-amber-100 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                title="Dismiss"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Header */}
       <Header onOpenNewEntry={handleOpenNewEntry} />
 
@@ -175,3 +216,4 @@ export const App: React.FC = () => {
 };
 
 export default App;
+

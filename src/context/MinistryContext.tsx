@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import {
   MinistryEntry,
   ScheduledEvent,
+  ExpandedCalendarEvent,
   UserSettings,
   TimerState,
   PublisherStatusType,
@@ -13,6 +14,22 @@ import {
 } from '../types.ts';
 import { storage, DEFAULT_TIMER } from '../utils/storage.ts';
 import { getTranslation, TranslationSchema } from '../translations/index.ts';
+import {
+  getOccurrencesForDate,
+  getOccurrencesForMonth,
+  getUpcomingOccurrences,
+  parseDateKey,
+} from '../utils/recurrence.ts';
+import {
+  syncNotificationQueue,
+  processDueNotifications,
+  cancelNotificationsForEvent,
+} from '../utils/notifications.ts';
+
+interface InAppNotification {
+  title: string;
+  body: string;
+}
 
 interface MinistryContextType {
   isLoaded: boolean;
@@ -29,9 +46,24 @@ interface MinistryContextType {
   deleteEntry: (id: number) => void;
   
   // Event Operations
-  saveEvent: (eventData: Partial<ScheduledEvent> & { id?: number }) => ScheduledEvent;
-  deleteEvent: (id: number) => void;
-  toggleEventCompleted: (id: number) => void;
+  saveEvent: (
+    eventData: Partial<ScheduledEvent> & { id?: number },
+    editMode?: 'THIS_OCCURRENCE' | 'ALL_OCCURRENCES',
+    targetOccurrenceDate?: string
+  ) => ScheduledEvent;
+  deleteEvent: (
+    id: number,
+    deleteMode?: 'THIS_OCCURRENCE' | 'ALL_OCCURRENCES',
+    targetOccurrenceDate?: string
+  ) => void;
+  toggleEventCompleted: (id: number, targetOccurrenceDate?: string) => void;
+  getEventsForDate: (date: Date) => ExpandedCalendarEvent[];
+  getEventsForMonth: (year: number, month: number) => Map<number, ExpandedCalendarEvent[]>;
+  upcomingArrangements: ExpandedCalendarEvent[];
+
+  // In-app notifications
+  activeNotification: InAppNotification | null;
+  dismissActiveNotification: () => void;
   
   // Settings & Status
   updateSettings: (partial: Partial<UserSettings>) => void;
@@ -67,6 +99,7 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [events, setEvents] = useState<ScheduledEvent[]>(() => storage.getEvents());
   const [timer, setTimer] = useState<TimerState>(() => storage.getTimer());
   const [timerTicker, setTimerTicker] = useState<number>(0);
+  const [activeNotification, setActiveNotification] = useState<InAppNotification | null>(null);
 
   // Mark storage as securely initialized after component mounts
   useEffect(() => {
@@ -93,6 +126,63 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!isLoaded) return;
     storage.saveTimer(timer);
   }, [timer, isLoaded]);
+
+  // Synchronize recurring notifications whenever events or settings change
+  useEffect(() => {
+    if (!isLoaded) return;
+    syncNotificationQueue(events, settings);
+  }, [events, settings, isLoaded]);
+
+  // Active notification check loop (runs periodically and on app focus/resume)
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const checkNotifications = () => {
+      processDueNotifications((item) => {
+        const startStr = new Date(item.startTimeMillis).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        let timingText = `Starts at ${startStr}`;
+        if (item.reminderMinutesBefore > 0) {
+          timingText = `Starts in ${item.reminderMinutesBefore}m (${startStr})`;
+        } else if (item.reminderMinutesBefore === 0) {
+          timingText = `Starting now (${startStr})`;
+        }
+        const body = item.location ? `${timingText} • 📍 ${item.location}` : timingText;
+        setActiveNotification({
+          title: item.title || 'Ministry Arrangement',
+          body,
+        });
+      });
+    };
+
+    // Initial check
+    checkNotifications();
+
+    const intervalId = setInterval(checkNotifications, 25000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkNotifications();
+      }
+    };
+    const handleWindowFocus = () => checkNotifications();
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('pageshow', handleWindowFocus);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('pageshow', handleWindowFocus);
+    };
+  }, [isLoaded]);
+
+  const dismissActiveNotification = useCallback(() => {
+    setActiveNotification(null);
+  }, []);
 
   // Apply theme class to document element and listen for system theme changes
   useEffect(() => {
@@ -196,51 +286,185 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setEntries(prev => prev.filter(e => e.id !== id));
   }, []);
 
-  // Event operations (standalone local calendar)
-  const saveEvent = useCallback((eventData: Partial<ScheduledEvent> & { id?: number }): ScheduledEvent => {
-    let saved: ScheduledEvent;
-    if (eventData.id && eventData.id > 0) {
-      saved = {
-        id: eventData.id,
-        title: eventData.title ?? 'Ministry Arrangement',
-        dateMillis: eventData.dateMillis ?? Date.now(),
-        startTimeMillis: eventData.startTimeMillis ?? Date.now(),
-        endTimeMillis: eventData.endTimeMillis ?? Date.now() + 2 * 3600 * 1000,
-        location: eventData.location ?? '',
-        description: eventData.description ?? '',
-        reminderMinutesBefore: eventData.reminderMinutesBefore ?? 15,
-        repeatOption: eventData.repeatOption ?? 'NONE',
-        isCompleted: eventData.isCompleted ?? false,
-        createdAt: eventData.createdAt ?? Date.now(),
-      };
-      setEvents(prev => prev.map(ev => ev.id === saved.id ? saved : ev));
-    } else {
-      const now = Date.now();
-      saved = {
+  // Event & Recurrence Operations
+  const saveEvent = useCallback((
+    eventData: Partial<ScheduledEvent> & { id?: number },
+    editMode?: 'THIS_OCCURRENCE' | 'ALL_OCCURRENCES',
+    targetOccurrenceDate?: string
+  ): ScheduledEvent => {
+    const now = Date.now();
+
+    // Mode A: Edit only this specific occurrence of a recurring series
+    if (
+      eventData.id &&
+      eventData.id > 0 &&
+      editMode === 'THIS_OCCURRENCE' &&
+      targetOccurrenceDate
+    ) {
+      const parentId = eventData.id;
+      const targetMiddayMillis = parseDateKey(targetOccurrenceDate).getTime();
+
+      // 1. Exclude this date from the recurring parent event
+      setEvents(prev =>
+        prev.map(ev => {
+          if (ev.id === parentId) {
+            const excluded = ev.excludedDates ? [...ev.excludedDates] : [];
+            if (!excluded.includes(targetOccurrenceDate)) {
+              excluded.push(targetOccurrenceDate);
+            }
+            return { ...ev, excludedDates: excluded };
+          }
+          return ev;
+        })
+      );
+
+      // 2. Create detached one-off event for this date with customized details
+      const detachedEvent: ScheduledEvent = {
         id: now,
         title: eventData.title ?? 'Ministry Arrangement',
-        dateMillis: eventData.dateMillis ?? now,
+        dateMillis: targetMiddayMillis,
         startTimeMillis: eventData.startTimeMillis ?? now,
         endTimeMillis: eventData.endTimeMillis ?? now + 2 * 3600 * 1000,
         location: eventData.location ?? '',
         description: eventData.description ?? '',
         reminderMinutesBefore: eventData.reminderMinutesBefore ?? 15,
-        repeatOption: eventData.repeatOption ?? 'NONE',
-        isCompleted: false,
+        repeatOption: 'NONE', // Detached instance is a single event
+        isCompleted: eventData.isCompleted ?? false,
         createdAt: now,
+        parentEventId: parentId,
+        originalOccurrenceDate: targetOccurrenceDate,
       };
-      setEvents(prev => [saved, ...prev]);
+
+      setEvents(prev => [detachedEvent, ...prev]);
+      return detachedEvent;
     }
-    return saved;
+
+    // Mode B: Update entire series or existing single event
+    if (eventData.id && eventData.id > 0) {
+      let updatedEvent: ScheduledEvent | undefined;
+      setEvents(prev => {
+        return prev.map(ev => {
+          if (ev.id === eventData.id) {
+            updatedEvent = {
+              ...ev,
+              title: eventData.title ?? ev.title,
+              dateMillis: eventData.dateMillis ?? ev.dateMillis,
+              startTimeMillis: eventData.startTimeMillis ?? ev.startTimeMillis,
+              endTimeMillis: eventData.endTimeMillis ?? ev.endTimeMillis,
+              location: eventData.location ?? ev.location,
+              description: eventData.description ?? ev.description,
+              reminderMinutesBefore: eventData.reminderMinutesBefore ?? ev.reminderMinutesBefore,
+              repeatOption: eventData.repeatOption ?? ev.repeatOption,
+              isCompleted: eventData.isCompleted ?? ev.isCompleted,
+              excludedDates: eventData.excludedDates ?? ev.excludedDates,
+              completedDates: eventData.completedDates ?? ev.completedDates,
+            };
+            return updatedEvent;
+          }
+          return ev;
+        });
+      });
+      return updatedEvent || (eventData as ScheduledEvent);
+    }
+
+    // Mode C: Create brand new event / recurring series
+    const newEvent: ScheduledEvent = {
+      id: now,
+      title: eventData.title ?? 'Ministry Arrangement',
+      dateMillis: eventData.dateMillis ?? now,
+      startTimeMillis: eventData.startTimeMillis ?? now,
+      endTimeMillis: eventData.endTimeMillis ?? now + 2 * 3600 * 1000,
+      location: eventData.location ?? '',
+      description: eventData.description ?? '',
+      reminderMinutesBefore: eventData.reminderMinutesBefore ?? 15,
+      repeatOption: eventData.repeatOption ?? 'NONE',
+      isCompleted: false,
+      createdAt: now,
+      excludedDates: [],
+      completedDates: [],
+    };
+    setEvents(prev => [newEvent, ...prev]);
+    return newEvent;
   }, []);
 
-  const deleteEvent = useCallback((id: number): void => {
-    setEvents(prev => prev.filter(ev => ev.id !== id));
+  const deleteEvent = useCallback((
+    id: number,
+    deleteMode?: 'THIS_OCCURRENCE' | 'ALL_OCCURRENCES',
+    targetOccurrenceDate?: string
+  ): void => {
+    // Mode A: Delete only this occurrence from a recurring series
+    if (deleteMode === 'THIS_OCCURRENCE' && targetOccurrenceDate) {
+      setEvents(prev => {
+        // If this is a detached one-off instance, delete it directly
+        const isDetached = prev.some(
+          ev => ev.id === id && ev.parentEventId && ev.originalOccurrenceDate === targetOccurrenceDate
+        );
+        if (isDetached) {
+          return prev.filter(ev => ev.id !== id);
+        }
+
+        // Otherwise add the date to the recurring event's excludedDates
+        return prev.map(ev => {
+          if (ev.id === id) {
+            const excluded = ev.excludedDates ? [...ev.excludedDates] : [];
+            if (!excluded.includes(targetOccurrenceDate)) {
+              excluded.push(targetOccurrenceDate);
+            }
+            return { ...ev, excludedDates: excluded };
+          }
+          return ev;
+        });
+      });
+      cancelNotificationsForEvent(id, targetOccurrenceDate);
+      return;
+    }
+
+    // Mode B: Delete the entire series or single event (and any detached instances)
+    setEvents(prev => prev.filter(ev => ev.id !== id && ev.parentEventId !== id));
+    cancelNotificationsForEvent(id);
   }, []);
 
-  const toggleEventCompleted = useCallback((id: number) => {
-    setEvents(prev => prev.map(ev => ev.id === id ? { ...ev, isCompleted: !ev.isCompleted } : ev));
+  const toggleEventCompleted = useCallback((id: number, targetOccurrenceDate?: string) => {
+    setEvents(prev =>
+      prev.map(ev => {
+        if (ev.id !== id) return ev;
+
+        // If recurring event and a specific occurrence date is provided, toggle per-date completion
+        if (ev.repeatOption !== 'NONE' && targetOccurrenceDate) {
+          const completedDates = ev.completedDates ? [...ev.completedDates] : [];
+          const idx = completedDates.indexOf(targetOccurrenceDate);
+          if (idx >= 0) {
+            completedDates.splice(idx, 1);
+          } else {
+            completedDates.push(targetOccurrenceDate);
+          }
+          return { ...ev, completedDates };
+        }
+
+        // Otherwise toggle master isCompleted
+        return { ...ev, isCompleted: !ev.isCompleted };
+      })
+    );
   }, []);
+
+  // Recurrence getters
+  const getEventsForDate = useCallback(
+    (date: Date): ExpandedCalendarEvent[] => {
+      return getOccurrencesForDate(events, date);
+    },
+    [events]
+  );
+
+  const getEventsForMonth = useCallback(
+    (year: number, month: number): Map<number, ExpandedCalendarEvent[]> => {
+      return getOccurrencesForMonth(events, year, month);
+    },
+    [events]
+  );
+
+  const upcomingArrangements = useMemo(() => {
+    return getUpcomingOccurrences(events, new Date(), 60, 30);
+  }, [events]);
 
   // Settings
   const updateSettings = useCallback((partial: Partial<UserSettings>) => {
@@ -447,8 +671,6 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
-    const upcomingEvents = events.filter(ev => !ev.isCompleted && ev.dateMillis >= Date.now() - 24 * 3600 * 1000);
-
     return {
       monthlyMinutes,
       monthlyReturnVisits,
@@ -458,10 +680,10 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       goalProgressPercentage,
       streakMonths: streak,
       recentEntriesCount: entries.length,
-      upcomingEventsCount: upcomingEvents.length,
+      upcomingEventsCount: upcomingArrangements.length,
       monthName,
     };
-  }, [entries, events, settings]);
+  }, [entries, upcomingArrangements.length, settings]);
 
   // Reports Breakdown computation
   const getReportsForPeriod = useCallback((periodIndex: number): ReportsData => {
@@ -562,6 +784,11 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     saveEvent,
     deleteEvent,
     toggleEventCompleted,
+    getEventsForDate,
+    getEventsForMonth,
+    upcomingArrangements,
+    activeNotification,
+    dismissActiveNotification,
     updateSettings,
     updatePublisherStatus,
     updateTheme,

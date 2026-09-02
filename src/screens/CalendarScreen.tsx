@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -9,14 +9,15 @@ import {
   CheckCircle2,
   Trash2,
   Edit2,
+  Repeat,
 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
-import { ScheduledEvent, MinistryEntry } from '../types.ts';
+import { ScheduledEvent, ExpandedCalendarEvent, MinistryEntry } from '../types.ts';
 import { formatDurationLocalized, formatDateLocalized, formatMonthYearLocalized } from '../translations/index.ts';
 
 interface CalendarScreenProps {
   onOpenNewSchedule: (date?: Date) => void;
-  onOpenEditSchedule: (event: ScheduledEvent) => void;
+  onOpenEditSchedule: (event: ScheduledEvent | ExpandedCalendarEvent) => void;
   onOpenNewEntry?: (date?: Date) => void;
   onOpenEditEntry?: (entry: MinistryEntry) => void;
 }
@@ -28,8 +29,9 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
   onOpenEditEntry,
 }) => {
   const {
-    events,
     entries,
+    getEventsForMonth,
+    getEventsForDate,
     toggleEventCompleted,
     deleteEvent,
     deleteEntry,
@@ -39,6 +41,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
 
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [eventToDelete, setEventToDelete] = useState<ExpandedCalendarEvent | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -67,12 +70,15 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
     );
   };
 
+  // Pre-calculate occurrences for the whole viewed month (handles daily, weekly, monthly, yearly recurrence)
+  const monthOccurrencesMap = useMemo(() => {
+    return getEventsForMonth(year, month);
+  }, [getEventsForMonth, year, month]);
+
   // Get events & entries for calendar day dots
   const getDayMeta = (day: number) => {
-    const hasEvents = events.some(e => {
-      const d = new Date(e.dateMillis);
-      return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
-    });
+    const dayEvents = monthOccurrencesMap.get(day) || [];
+    const hasEvents = dayEvents.length > 0;
 
     const hasEntries = entries.some(e => {
       const d = new Date(e.dateMillis);
@@ -83,23 +89,20 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
   };
 
   // Filter events and ministry entries for selected date
-  const selectedDayEvents = events.filter(e => {
-    const d = new Date(e.dateMillis);
-    return (
-      d.getFullYear() === selectedDate.getFullYear() &&
-      d.getMonth() === selectedDate.getMonth() &&
-      d.getDate() === selectedDate.getDate()
-    );
-  });
+  const selectedDayEvents = useMemo(() => {
+    return getEventsForDate(selectedDate);
+  }, [getEventsForDate, selectedDate]);
 
-  const selectedDayEntries = entries.filter(e => {
-    const d = new Date(e.dateMillis);
-    return (
-      d.getFullYear() === selectedDate.getFullYear() &&
-      d.getMonth() === selectedDate.getMonth() &&
-      d.getDate() === selectedDate.getDate()
-    );
-  });
+  const selectedDayEntries = useMemo(() => {
+    return entries.filter(e => {
+      const d = new Date(e.dateMillis);
+      return (
+        d.getFullYear() === selectedDate.getFullYear() &&
+        d.getMonth() === selectedDate.getMonth() &&
+        d.getDate() === selectedDate.getDate()
+      );
+    });
+  }, [entries, selectedDate]);
 
   const selectedDateFormatted = formatDateLocalized(selectedDate, language, {
     weekday: 'long',
@@ -126,6 +129,35 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
         return t.ministryTypes.other;
       default:
         return type;
+    }
+  };
+
+  const getRecurrenceLabel = (repeatOption: string) => {
+    switch (repeatOption) {
+      case 'DAILY':
+        return t.scheduleModal.repeats.daily;
+      case 'WEEKLY':
+        return t.scheduleModal.repeats.weekly;
+      case 'MONTHLY':
+        return t.scheduleModal.repeats.monthly;
+      case 'YEARLY':
+        return t.scheduleModal.repeats.yearly;
+      default:
+        return null;
+    }
+  };
+
+  const handleDeleteOccurrence = () => {
+    if (eventToDelete) {
+      deleteEvent(eventToDelete.id, 'THIS_OCCURRENCE', eventToDelete.occurrenceDateKey);
+      setEventToDelete(null);
+    }
+  };
+
+  const handleDeleteAll = () => {
+    if (eventToDelete) {
+      deleteEvent(eventToDelete.id, 'ALL_OCCURRENCES');
+      setEventToDelete(null);
     }
   };
 
@@ -267,24 +299,32 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
           </div>
         ) : (
           <div className="space-y-3">
-            {/* Scheduled Events */}
+            {/* Scheduled Events & Occurrences */}
             {selectedDayEvents.map(ev => {
               const startStr = new Date(ev.startTimeMillis).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
               const endStr = new Date(ev.endTimeMillis).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const repeatLabel = getRecurrenceLabel(ev.repeatOption);
+              const isRecurringEvent = ev.isOccurrence || (ev.repeatOption && ev.repeatOption !== 'NONE') || Boolean(ev.parentEventId);
 
               return (
                 <div
-                  key={ev.id}
+                  key={`${ev.id}-${ev.occurrenceDateKey}`}
                   className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-4 sm:p-5 shadow-xs"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <div className="inline-flex items-center gap-1 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-xs font-semibold">
                           <span>{t.calendar.scheduledArrangementBadge}</span>
                         </div>
+                        {repeatLabel && (
+                          <div className="inline-flex items-center gap-1 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 text-xs font-semibold">
+                            <Repeat className="h-3 w-3" />
+                            <span>{repeatLabel}</span>
+                          </div>
+                        )}
                       </div>
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                      <h3 className={`text-base font-bold ${ev.isCompleted ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>
                         {ev.title}
                       </h3>
                       <div className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400">
@@ -301,7 +341,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
 
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => toggleEventCompleted(ev.id)}
+                        onClick={() => toggleEventCompleted(ev.id, ev.occurrenceDateKey)}
                         className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
                           ev.isCompleted ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50' : 'text-slate-400 hover:text-emerald-600'
                         }`}
@@ -317,7 +357,13 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                         <Edit2 className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => deleteEvent(ev.id)}
+                        onClick={() => {
+                          if (isRecurringEvent) {
+                            setEventToDelete(ev);
+                          } else {
+                            deleteEvent(ev.id);
+                          }
+                        }}
                         className="p-1.5 text-red-600 hover:text-red-700 cursor-pointer"
                         title={t.common.delete}
                       >
@@ -374,6 +420,47 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
           </div>
         )}
       </div>
+
+      {/* Recurring Delete Confirmation Dialog */}
+      {eventToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="relative w-full max-w-sm rounded-3xl bg-white dark:bg-[#131D31] p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40 text-red-600">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <h3 className="mt-3 text-base font-bold text-slate-900 dark:text-white">
+              {t.scheduleModal.deleteRecurringTitle}
+            </h3>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {t.scheduleModal.deleteRecurringDesc}
+            </p>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleDeleteOccurrence}
+                className="w-full rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 py-2.5 px-3 text-xs font-bold text-red-600 dark:text-red-300 hover:bg-red-100 transition-colors cursor-pointer"
+              >
+                {t.scheduleModal.deleteThisOccurrence}
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAll}
+                className="w-full rounded-xl bg-red-600 py-2.5 px-3 text-xs font-bold text-white shadow-xs hover:bg-red-700 transition-colors cursor-pointer"
+              >
+                {t.scheduleModal.deleteAllOccurrences}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEventToDelete(null)}
+                className="mt-1 rounded-xl border border-slate-200 dark:border-slate-700 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer"
+              >
+                {t.common.cancel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

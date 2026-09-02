@@ -121,7 +121,7 @@ export const REMINDER_OPTIONS: Record<ReminderOptionType, ReminderOptionInfo> = 
   DAY_1: { id: 'DAY_1', displayName: '1 day before', minutesBefore: 1440 },
 };
 
-export type RepeatOptionType = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
+export type RepeatOptionType = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 
 export interface RepeatOptionInfo {
   id: RepeatOptionType;
@@ -133,6 +133,7 @@ export const REPEAT_OPTIONS: Record<RepeatOptionType, RepeatOptionInfo> = {
   DAILY: { id: 'DAILY', displayName: 'Every day' },
   WEEKLY: { id: 'WEEKLY', displayName: 'Every week' },
   MONTHLY: { id: 'MONTHLY', displayName: 'Every month' },
+  YEARLY: { id: 'YEARLY', displayName: 'Every year' },
 };
 
 export interface MinistryEntry {
@@ -164,9 +165,26 @@ export interface ScheduledEvent {
   repeatOption: RepeatOptionType;
   isCompleted: boolean;
   createdAt: number;
+  excludedDates?: string[]; // Array of 'YYYY-MM-DD' dates excluded from recurring series
+  completedDates?: string[]; // Array of 'YYYY-MM-DD' dates marked completed
+  parentEventId?: number; // If an instance was detached / edited separately
+  originalOccurrenceDate?: string; // 'YYYY-MM-DD' date string if detached
+  recurrenceEndDateMillis?: number; // Optional end date
   googleCalendarEventId?: string;
   syncStatus?: 'synced' | 'pending' | 'error';
   lastSyncedAt?: number;
+}
+
+export interface ExpandedCalendarEvent extends ScheduledEvent {
+  occurrenceDateStr: string; // 'YYYY-MM-DD' formatted date in local time
+  occurrenceDateKey: string; // Alias for occurrenceDateStr
+  occurrenceDateMillis: number; // Midday on the occurrence date in local time
+  occurrenceStartTimeMillis: number; // Exact start timestamp for this occurrence in local time
+  occurrenceEndTimeMillis: number; // Exact end timestamp for this occurrence in local time
+  isRecurringInstance: boolean;
+  isOccurrence: boolean; // Alias for isRecurringInstance
+  isCompletedForOccurrence: boolean;
+  instanceId: string; // Stable identifier: `${event.id}_${occurrenceDateStr}`
 }
 
 export type SupportedLanguage = 'en' | 'hy' | 'ru' | 'hi' | 'pa';

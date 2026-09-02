@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar as CalendarIcon, Clock, MapPin, Bell, Repeat, FileText, Trash2, Check } from 'lucide-react';
-import { ScheduledEvent, ReminderOptionType, RepeatOptionType, REMINDER_OPTIONS } from '../types.ts';
+import { ScheduledEvent, ExpandedCalendarEvent, ReminderOptionType, RepeatOptionType, REMINDER_OPTIONS } from '../types.ts';
 import { useMinistry } from '../context/MinistryContext.tsx';
 
 interface AddEditScheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
-  eventToEdit?: ScheduledEvent | null;
+  eventToEdit?: (ScheduledEvent | ExpandedCalendarEvent) | null;
   initialDate?: Date;
 }
 
@@ -27,6 +27,18 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
   const [reminder, setReminder] = useState<ReminderOptionType>('MINUTES_15');
   const [repeat, setRepeat] = useState<RepeatOptionType>('NONE');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showEditRecurringPrompt, setShowEditRecurringPrompt] = useState(false);
+  const [pendingSaveData, setPendingSaveData] = useState<Partial<ScheduledEvent> | null>(null);
+
+  const isRecurring = Boolean(
+    eventToEdit && (
+      (eventToEdit as ExpandedCalendarEvent).isOccurrence ||
+      (eventToEdit.repeatOption && eventToEdit.repeatOption !== 'NONE') ||
+      eventToEdit.parentEventId
+    )
+  );
+
+  const occurrenceDateKey = (eventToEdit as ExpandedCalendarEvent)?.occurrenceDateKey || dateStr;
 
   useEffect(() => {
     if (eventToEdit) {
@@ -56,11 +68,13 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
       setRepeat('NONE');
     }
     setShowDeleteConfirm(false);
+    setShowEditRecurringPrompt(false);
+    setPendingSaveData(null);
   }, [eventToEdit, initialDate, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const [y, m, d] = dateStr.split('-').map(Number);
     const [startH, startM] = startTime.split(':').map(Number);
@@ -70,7 +84,7 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
     const startTimeMillis = new Date(y, m - 1, d, startH, startM, 0).getTime();
     const endTimeMillis = new Date(y, m - 1, d, endH, endM, 0).getTime();
 
-    saveEvent({
+    const payload: Partial<ScheduledEvent> = {
       id: eventToEdit ? eventToEdit.id : undefined,
       title: title.trim() || t.scheduleModal.titlePlaceholder,
       dateMillis,
@@ -81,14 +95,40 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
       reminderMinutesBefore: REMINDER_OPTIONS[reminder].minutesBefore,
       repeatOption: repeat,
       isCompleted: eventToEdit ? eventToEdit.isCompleted : false,
-    });
+    };
 
+    // If editing a recurring instance, ask user whether to update this occurrence only or the series
+    if (eventToEdit && isRecurring) {
+      setPendingSaveData(payload);
+      setShowEditRecurringPrompt(true);
+      return;
+    }
+
+    saveEvent(payload);
     onClose();
   };
 
-  const handleDelete = () => {
+  const handleApplyEditMode = (mode: 'THIS_OCCURRENCE' | 'ALL_OCCURRENCES') => {
+    if (pendingSaveData) {
+      saveEvent(pendingSaveData, mode, occurrenceDateKey);
+    }
+    setShowEditRecurringPrompt(false);
+    setPendingSaveData(null);
+    onClose();
+  };
+
+  const handleDeleteOccurrence = () => {
     if (eventToEdit) {
-      deleteEvent(eventToEdit.id);
+      deleteEvent(eventToEdit.id, 'THIS_OCCURRENCE', occurrenceDateKey);
+      setShowDeleteConfirm(false);
+      onClose();
+    }
+  };
+
+  const handleDeleteAll = () => {
+    if (eventToEdit) {
+      deleteEvent(eventToEdit.id, 'ALL_OCCURRENCES');
+      setShowDeleteConfirm(false);
       onClose();
     }
   };
@@ -107,6 +147,7 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
     { id: 'DAILY', label: t.scheduleModal.repeats.daily },
     { id: 'WEEKLY', label: t.scheduleModal.repeats.weekly },
     { id: 'MONTHLY', label: t.scheduleModal.repeats.monthly },
+    { id: 'YEARLY', label: t.scheduleModal.repeats.yearly },
   ];
 
   return (
@@ -124,13 +165,13 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="mt-5 space-y-4">
+        <form onSubmit={handleFormSubmit} className="mt-5 space-y-4">
           {/* Title */}
           <div>
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
@@ -264,7 +305,7 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
-                className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 px-3.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 px-3.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors cursor-pointer"
               >
                 <Trash2 className="h-4 w-4" />
                 <span>{t.common.delete}</span>
@@ -275,13 +316,13 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                className="h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
               >
                 {t.common.cancel}
               </button>
               <button
                 type="submit"
-                className="flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-5 text-xs font-bold text-white shadow-md shadow-blue-500/25 active:scale-95 transition-all"
+                className="flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-5 text-xs font-bold text-white shadow-md shadow-blue-500/25 active:scale-95 transition-all cursor-pointer"
               >
                 <Check className="h-4 w-4" />
                 <span>{t.scheduleModal.saveSchedule}</span>
@@ -290,33 +331,103 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
           </div>
         </form>
 
-        {/* Delete Confirmation Alert */}
+        {/* Delete Confirmation Alert (supports single occurrence vs full series) */}
         {showDeleteConfirm && (
           <div className="absolute inset-0 z-20 flex items-center justify-center rounded-3xl bg-white/95 dark:bg-[#131D31]/95 p-6 backdrop-blur-xs">
-            <div className="text-center max-w-xs">
+            <div className="text-center max-w-sm w-full">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40 text-red-600">
                 <Trash2 className="h-6 w-6" />
               </div>
               <h3 className="mt-3 text-base font-bold text-slate-900 dark:text-white">
-                {t.scheduleModal.deleteConfirmTitle}
+                {isRecurring ? t.scheduleModal.deleteRecurringTitle : t.scheduleModal.deleteConfirmTitle}
               </h3>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                {t.scheduleModal.deleteConfirmDesc}
+                {isRecurring ? t.scheduleModal.deleteRecurringDesc : t.scheduleModal.deleteConfirmDesc}
               </p>
-              <div className="mt-4 flex gap-2 justify-center">
+              
+              {isRecurring ? (
+                <div className="mt-4 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDeleteOccurrence}
+                    className="w-full rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 py-2.5 px-3 text-xs font-bold text-red-600 dark:text-red-300 hover:bg-red-100 transition-colors cursor-pointer"
+                  >
+                    {t.scheduleModal.deleteThisOccurrence}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAll}
+                    className="w-full rounded-xl bg-red-600 py-2.5 px-3 text-xs font-bold text-white shadow-xs hover:bg-red-700 transition-colors cursor-pointer"
+                  >
+                    {t.scheduleModal.deleteAllOccurrences}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="mt-1 rounded-xl border border-slate-200 dark:border-slate-700 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer"
+                  >
+                    {t.common.cancel}
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-4 flex gap-2 justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer"
+                  >
+                    {t.common.cancel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAll}
+                    className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-red-700 cursor-pointer"
+                  >
+                    {t.common.delete}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Edit Recurring Prompt Dialog */}
+        {showEditRecurringPrompt && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center rounded-3xl bg-white/95 dark:bg-[#131D31]/95 p-6 backdrop-blur-xs">
+            <div className="text-center max-w-sm w-full">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600">
+                <Repeat className="h-6 w-6" />
+              </div>
+              <h3 className="mt-3 text-base font-bold text-slate-900 dark:text-white">
+                {t.scheduleModal.editRecurringTitle}
+              </h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {t.scheduleModal.editRecurringDesc}
+              </p>
+              <div className="mt-4 flex flex-col gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300"
+                  onClick={() => handleApplyEditMode('THIS_OCCURRENCE')}
+                  className="w-full rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 py-2.5 px-3 text-xs font-bold text-blue-600 dark:text-blue-300 hover:bg-blue-100 transition-colors cursor-pointer"
                 >
-                  {t.common.cancel}
+                  {t.scheduleModal.editThisOccurrence}
                 </button>
                 <button
                   type="button"
-                  onClick={handleDelete}
-                  className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-red-700"
+                  onClick={() => handleApplyEditMode('ALL_OCCURRENCES')}
+                  className="w-full rounded-xl bg-blue-600 py-2.5 px-3 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
                 >
-                  {t.common.delete}
+                  {t.scheduleModal.editAllOccurrences}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditRecurringPrompt(false);
+                    setPendingSaveData(null);
+                  }}
+                  className="mt-1 rounded-xl border border-slate-200 dark:border-slate-700 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer"
+                >
+                  {t.common.cancel}
                 </button>
               </div>
             </div>
@@ -326,3 +437,4 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
     </div>
   );
 };
+

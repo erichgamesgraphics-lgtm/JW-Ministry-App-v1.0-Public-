@@ -192,6 +192,15 @@ export interface TranslationSchema {
     scheduledArrangementBadge: string;
     toggleCompleted: string;
     deleteEventConfirm: string;
+    deleteRecurringTitle: string;
+    deleteRecurringPrompt: string;
+    deleteOnlyThisOccurrence: string;
+    deleteAllOccurrencesInSeries: string;
+    recurringDailyBadge: string;
+    recurringWeeklyBadge: string;
+    recurringMonthlyBadge: string;
+    recurringYearlyBadge: string;
+    upcomingSectionTitle: string;
   };
   entryModal: {
     newTitle: string;
@@ -258,6 +267,14 @@ export interface TranslationSchema {
     deleteConfirm: string;
     deleteConfirmTitle: string;
     deleteConfirmDesc: string;
+    deleteRecurringTitle: string;
+    deleteRecurringDesc: string;
+    deleteThisOccurrence: string;
+    deleteAllOccurrences: string;
+    editRecurringTitle: string;
+    editRecurringDesc: string;
+    editThisOccurrence: string;
+    editAllOccurrences: string;
     saveSchedule: string;
     reminders: {
       none: string;
@@ -274,6 +291,7 @@ export interface TranslationSchema {
       weekly: string;
       biweekly: string;
       monthly: string;
+      yearly: string;
     };
   };
   reminders: {
@@ -289,6 +307,7 @@ export interface TranslationSchema {
     daily: string;
     weekly: string;
     monthly: string;
+    yearly: string;
   };
   ministryTypes: {
     houseToHouse: string;
