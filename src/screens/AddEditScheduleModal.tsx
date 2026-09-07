@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Calendar as CalendarIcon, Clock, MapPin, Bell, Repeat, FileText, Trash2, Check } from 'lucide-react';
 import { ScheduledEvent, ExpandedCalendarEvent, ReminderOptionType, RepeatOptionType, REMINDER_OPTIONS } from '../types.ts';
 import { useMinistry } from '../context/MinistryContext.tsx';
+import { formatDateKey } from '../utils/recurrence.ts';
 
 interface AddEditScheduleModalProps {
   isOpen: boolean;
@@ -19,7 +20,7 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
   const { saveEvent, deleteEvent, t } = useMinistry();
 
   const [title, setTitle] = useState('');
-  const [dateStr, setDateStr] = useState(() => (initialDate || new Date()).toISOString().split('T')[0]);
+  const [dateStr, setDateStr] = useState(() => formatDateKey(initialDate || new Date()));
   const [startTime, setStartTime] = useState('09:30');
   const [endTime, setEndTime] = useState('11:30');
   const [location, setLocation] = useState('');
@@ -43,7 +44,8 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
   useEffect(() => {
     if (eventToEdit) {
       setTitle(eventToEdit.title);
-      setDateStr(new Date(eventToEdit.dateMillis).toISOString().split('T')[0]);
+      const evDate = (eventToEdit as ExpandedCalendarEvent).occurrenceDateKey || formatDateKey(new Date(eventToEdit.dateMillis));
+      setDateStr(evDate);
       
       const startD = new Date(eventToEdit.startTimeMillis);
       const endD = new Date(eventToEdit.endTimeMillis);
@@ -59,7 +61,7 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
       setRepeat(eventToEdit.repeatOption || 'NONE');
     } else {
       setTitle('');
-      setDateStr((initialDate || new Date()).toISOString().split('T')[0]);
+      setDateStr(formatDateKey(initialDate || new Date()));
       setStartTime('09:30');
       setEndTime('11:30');
       setLocation('');

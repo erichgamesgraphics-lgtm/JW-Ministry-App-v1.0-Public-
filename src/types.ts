@@ -293,3 +293,57 @@ export interface OAuthDiagnosticInfo {
   } | null;
 }
 
+export interface JWSourceResult {
+  id: string;
+  title: string;
+  source: 'JW.ORG' | 'WOL.JW.ORG';
+  url: string;
+  jwUrl?: string;
+  wolUrl?: string;
+  summary: string;
+  context?: string;
+  scripture?: string;
+  date?: string;
+  imageUrl?: string;
+}
+
+export interface MinistryAIMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+  sources?: JWSourceResult[];
+  intent?: 'MINISTRY_PROGRESS' | 'JW_RESEARCH' | 'HYBRID';
+  status?: 'success' | 'no_sources' | 'error';
+  detectedTopic?: string;
+}
+
+export interface MinistryAnalyticsSummary {
+  monthName: string;
+  publisherStatus: string;
+  goalHours: number;
+  completedHours: number;
+  completedMinutesTotal: number;
+  remainingHours: number;
+  progressPercentage: number;
+  daysRemainingInMonth: number;
+  hoursPerRemainingDayNeeded: number;
+  returnVisitsThisMonth: number;
+  bibleStudiesThisMonth: number;
+  placementsThisMonth: number;
+  videoShowingsThisMonth: number;
+  totalEntriesThisMonth: number;
+  recentEntriesSummary?: string;
+  scheduledMinistrySummary?: string;
+  historicalStreakMonths?: number;
+}
+
+export interface MinistryAIResponse {
+  answer: string;
+  intent: 'MINISTRY_PROGRESS' | 'JW_RESEARCH' | 'HYBRID';
+  sources: JWSourceResult[];
+  status: 'success' | 'no_sources' | 'error';
+  detectedTopic?: string;
+}
+
+

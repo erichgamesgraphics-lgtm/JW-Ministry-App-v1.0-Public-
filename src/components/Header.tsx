@@ -1,13 +1,15 @@
 import React from 'react';
-import { Sun, Moon, Sparkles, ShieldCheck } from 'lucide-react';
+import { Sun, Moon, Sparkles, ShieldCheck, Settings } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { JWMinistryLogo } from './JWMinistryLogo.tsx';
 
 interface HeaderProps {
   onOpenNewEntry: () => void;
+  onOpenSettings?: () => void;
+  isSettingsActive?: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = () => {
+export const Header: React.FC<HeaderProps> = ({ onOpenSettings, isSettingsActive }) => {
   const { settings, updateTheme, t } = useMinistry();
 
   const handleToggleTheme = () => {
@@ -81,6 +83,22 @@ export const Header: React.FC<HeaderProps> = () => {
               <Sparkles className="h-4 w-4 text-slate-500 dark:text-slate-400" />
             )}
           </button>
+
+          {/* Settings Button (Moved to top-right) */}
+          {onOpenSettings && (
+            <button
+              onClick={onOpenSettings}
+              className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-colors cursor-pointer ${
+                isSettingsActive
+                  ? 'border-blue-500 bg-blue-50 text-blue-600 dark:border-blue-500 dark:bg-blue-950/60 dark:text-blue-400 font-bold shadow-xs'
+                  : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+              title={t.navigation.settings}
+              aria-label={t.navigation.settings}
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
     </header>
