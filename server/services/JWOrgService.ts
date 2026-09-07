@@ -12,6 +12,7 @@ export interface JWSourceResult {
   scripture?: string;
   date?: string;
   imageUrl?: string;
+  relevanceExplanation?: string;
 }
 
 export interface JWSearchResponse {
@@ -165,23 +166,31 @@ export class JWOrgService {
   /**
    * Search JW.ORG and WOL publications using the official OmniSearch API
    */
-  static async search(query: string, lang = 'en', limit = 6): Promise<JWSearchResponse> {
-    const trimmed = query.trim();
-    if (!trimmed) {
+  static async search(
+    query: string,
+    lang = 'en',
+    limit = 6,
+    englishFallbackQuery?: string
+  ): Promise<JWSearchResponse> {
+    const cleanQuery = query.replace(/[?։!।.,;:"'«»()]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!cleanQuery) {
       return { query: '', langCode: 'E', results: [], totalResults: 0 };
     }
 
     const langInfo = JW_LANG_MAP[lang] || JW_LANG_MAP.en;
     const token = await getJwtToken();
 
-    let results = await this.executeSearch(trimmed, langInfo.langCode, token, limit);
+    let results = await this.executeSearch(cleanQuery, langInfo.langCode, token, limit);
 
-    // Fallback: If 0 results in non-English, try English to ensure the user gets helpful content
-    if (results.length === 0 && langInfo.langCode !== 'E') {
+    // Fallback: If 0 results in non-English, try with englishFallbackQuery if available
+    if (results.length === 0 && langInfo.langCode !== 'E' && englishFallbackQuery) {
       try {
-        const enResults = await this.executeSearch(trimmed, 'E', token, limit);
-        if (enResults.length > 0) {
-          results = enResults;
+        const cleanEn = englishFallbackQuery.replace(/[?։!।.,;:"'«»()]/g, ' ').replace(/\s+/g, ' ').trim();
+        if (cleanEn) {
+          const enResults = await this.executeSearch(cleanEn, 'E', token, limit);
+          if (enResults.length > 0) {
+            results = enResults;
+          }
         }
       } catch (err) {
         console.warn('English fallback search failed:', err);
@@ -189,7 +198,7 @@ export class JWOrgService {
     }
 
     return {
-      query: trimmed,
+      query: cleanQuery,
       langCode: langInfo.langCode,
       results,
       totalResults: results.length,

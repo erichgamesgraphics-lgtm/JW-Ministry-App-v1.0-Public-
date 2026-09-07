@@ -305,6 +305,7 @@ export interface JWSourceResult {
   scripture?: string;
   date?: string;
   imageUrl?: string;
+  relevanceExplanation?: string;
 }
 
 export interface MinistryAIMessage {

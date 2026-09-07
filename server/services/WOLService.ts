@@ -5,11 +5,16 @@ export class WOLService {
    * Specifically query WOL.JW.ORG (Watchtower Online Library)
    * Prioritizes study publications (Insight on the Scriptures, Reasoning, Research Guides, etc.)
    */
-  static async searchWOL(query: string, lang = 'en', limit = 6): Promise<JWSourceResult[]> {
+  static async searchWOL(
+    query: string,
+    lang = 'en',
+    limit = 6,
+    englishFallbackQuery?: string
+  ): Promise<JWSourceResult[]> {
     const langInfo = JW_LANG_MAP[lang] || JW_LANG_MAP.en;
 
     // Use OmniSearch with deeper research keywords or direct filtering
-    const searchRes = await JWOrgService.search(query, lang, limit * 2);
+    const searchRes = await JWOrgService.search(query, lang, limit * 2, englishFallbackQuery);
 
     // Transform and prioritize WOL links
     const wolResults: JWSourceResult[] = [];

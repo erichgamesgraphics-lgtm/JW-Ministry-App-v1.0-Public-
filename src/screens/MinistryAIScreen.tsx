@@ -359,6 +359,12 @@ export const MinistryAIScreen: React.FC = () => {
                             {source.title}
                           </h4>
 
+                          {source.relevanceExplanation && (
+                            <p className="text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50/90 dark:bg-blue-950/60 p-1.5 rounded-lg border border-blue-100 dark:border-blue-900/40">
+                              💡 {source.relevanceExplanation}
+                            </p>
+                          )}
+
                           {source.summary && (
                             <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed">
                               {source.summary}
