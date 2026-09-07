@@ -50,7 +50,6 @@ export interface TranslationSchema {
   navigation: {
     home: string;
     activity: string;
-    ministryAi: string;
     calendar: string;
     reports: string;
     settings: string;
@@ -423,35 +422,4 @@ export interface TranslationSchema {
     copyScripture: string;
     shareScripture: string;
   };
-  ministryAi: {
-    title: string;
-    badge: string;
-    shortDescription: string;
-    inputPlaceholder: string;
-    send: string;
-    clearChat: string;
-    clearConfirm: string;
-    searchingSources: string;
-    analyzingProgress: string;
-    thinking: string;
-    retry: string;
-    noResultsFound: string;
-    errorOccurred: string;
-    sourceJw: string;
-    sourceWol: string;
-    openArticle: string;
-    suggestedTitle: string;
-    suggestedQ1: string;
-    suggestedQ2: string;
-    suggestedQ3: string;
-    suggestedQ4: string;
-    suggestedQ5: string;
-    suggestedQ6: string;
-    sourcesCount: (count: number) => string;
-    scriptureLabel: string;
-    modeProgress: string;
-    modeResearch: string;
-    groundedNotice: string;
-  };
 }
-

@@ -80,7 +80,6 @@ export const ru: TranslationSchema = {
   navigation: {
     home: 'Главная',
     activity: 'Служение',
-    ministryAi: 'Ministry AI',
     calendar: 'Календарь',
     reports: 'Отчеты',
     settings: 'Настройки',
@@ -457,41 +456,4 @@ export const ru: TranslationSchema = {
     copyScripture: 'Скопировать стих',
     shareScripture: 'Поделиться стихом',
   },
-  ministryAi: {
-    title: 'Ministry AI',
-    badge: 'JW.ORG и прогресс',
-    shortDescription: 'Ваш помощник в служении для поиска информации на JW.ORG и анализа ваших отчетов.',
-    inputPlaceholder: 'Спросите Ministry AI (напр., «Как мои успехи?» или «Найди статью о надежде»)...',
-    send: 'Отправить',
-    clearChat: 'Очистить чат',
-    clearConfirm: 'Вы уверены, что хотите очистить этот диалог?',
-    searchingSources: 'Поиск на JW.ORG и WOL.JW.ORG...',
-    analyzingProgress: 'Анализ служебного прогресса...',
-    thinking: 'Ministry AI формирует ответ...',
-    retry: 'Повторить',
-    noResultsFound: 'По вашему запросу на JW.ORG и WOL.JW.ORG не найдено статей. Попробуйте другие ключевые слова или измените формулировку.',
-    errorOccurred: 'В данный момент не удалось связаться с помощником. Пожалуйста, проверьте подключение и повторите попытку.',
-    sourceJw: 'JW.ORG',
-    sourceWol: 'WOL.JW.ORG',
-    openArticle: 'Открыть статью',
-    suggestedTitle: 'Предложенные вопросы',
-    suggestedQ1: 'Как мои успехи в этом месяце?',
-    suggestedQ2: 'Сколько часов мне осталось до цели?',
-    suggestedQ3: 'Найди статью о надежде.',
-    suggestedQ4: 'Что сказать человеку, который спрашивает о страданиях?',
-    suggestedQ5: 'Найди информацию о Царстве Бога.',
-    suggestedQ6: 'Покажи материал о воскресении.',
-    sourcesCount: (count: number) => {
-      const mod10 = count % 10;
-      const mod100 = count % 100;
-      if (mod10 === 1 && mod100 !== 11) return `${count} проверенный источник`;
-      if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${count} проверенных источника`;
-      return `${count} проверенных источников`;
-    },
-    scriptureLabel: 'Ключевой библейский стих',
-    modeProgress: 'Прогресс в служении',
-    modeResearch: 'Исследование JW',
-    groundedNotice: 'Все ответы основаны на ваших реальных записях в приложении и материалах с JW.ORG / WOL.JW.ORG.',
-  },
 };
-

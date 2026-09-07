@@ -343,10 +343,8 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (eventData.id && eventData.id > 0) {
       let updatedEvent: ScheduledEvent | undefined;
       setEvents(prev => {
-        const target = prev.find(e => e.id === eventData.id);
-        const targetId = target?.parentEventId || eventData.id;
         return prev.map(ev => {
-          if (ev.id === targetId) {
+          if (ev.id === eventData.id) {
             updatedEvent = {
               ...ev,
               title: eventData.title ?? ev.title,
@@ -422,11 +420,7 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     // Mode B: Delete the entire series or single event (and any detached instances)
-    setEvents(prev => {
-      const target = prev.find(e => e.id === id);
-      const masterId = target?.parentEventId || id;
-      return prev.filter(ev => ev.id !== masterId && ev.parentEventId !== masterId && ev.id !== id);
-    });
+    setEvents(prev => prev.filter(ev => ev.id !== id && ev.parentEventId !== id));
     cancelNotificationsForEvent(id);
   }, []);
 
