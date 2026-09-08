@@ -129,7 +129,7 @@ export const MinistryAIScreen: React.FC = () => {
       const errorAssistantMsg: MinistryAIMessage = {
         id: `ai-err-${Date.now()}`,
         role: 'assistant',
-        content: t.ministryAi.errorOccurred,
+        content: err?.message || t.ministryAi.errorOccurred,
         timestamp: Date.now(),
         status: 'error',
       };

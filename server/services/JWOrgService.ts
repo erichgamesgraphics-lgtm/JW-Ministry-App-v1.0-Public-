@@ -1,5 +1,3 @@
-import https from 'node:https';
-
 export interface JWSourceResult {
   id: string;
   title: string;
@@ -34,69 +32,54 @@ export const JW_LANG_MAP: Record<string, { langCode: string; wtLocale: string; l
 let cachedJwtToken: string | null = null;
 let tokenExpiresAt = 0;
 
-function fetchJson(url: string, headers: Record<string, string> = {}): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const req = https.get(
-      url,
-      {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          ...headers,
-        },
+async function fetchJson(url: string, headers: Record<string, string> = {}): Promise<any> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        ...headers,
       },
-      (res) => {
-        let data = '';
-        res.on('data', (chunk) => (data += chunk));
-        res.on('end', () => {
-          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-            try {
-              resolve(JSON.parse(data));
-            } catch (err) {
-              resolve(data);
-            }
-          } else {
-            reject(new Error(`HTTP ${res.statusCode}: ${data.slice(0, 200)}`));
-          }
-        });
-      }
-    );
-    req.on('error', reject);
-    req.setTimeout(10000, () => {
-      req.destroy();
-      reject(new Error('Request timed out'));
+      signal: controller.signal,
     });
-  });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+    }
+    return await res.json();
+  } catch (err: any) {
+    clearTimeout(timeout);
+    throw err;
+  }
 }
 
-function fetchText(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const req = https.get(
-      url,
-      {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        },
+async function fetchText(url: string): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
       },
-      (res) => {
-        let data = '';
-        res.on('data', (chunk) => (data += chunk));
-        res.on('end', () => {
-          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-            resolve(data.trim());
-          } else {
-            reject(new Error(`HTTP ${res.statusCode}: ${data.slice(0, 200)}`));
-          }
-        });
-      }
-    );
-    req.on('error', reject);
-    req.setTimeout(8000, () => {
-      req.destroy();
-      reject(new Error('Request timed out'));
+      signal: controller.signal,
     });
-  });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+    }
+    const data = await res.text();
+    return data.trim();
+  } catch (err: any) {
+    clearTimeout(timeout);
+    throw err;
+  }
 }
 
 async function getJwtToken(): Promise<string> {

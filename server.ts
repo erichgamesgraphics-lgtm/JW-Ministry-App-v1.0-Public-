@@ -16,6 +16,17 @@ async function startServer() {
   // JSON Body Parser
   app.use(express.json({ limit: '5mb' }));
 
+  // CORS Middleware
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+
   // 1. Health check
   app.get('/api/health', (req, res) => {
     res.json({

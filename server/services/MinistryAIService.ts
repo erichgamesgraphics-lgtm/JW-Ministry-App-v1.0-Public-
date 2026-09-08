@@ -39,18 +39,20 @@ export interface MinistryAIResponse {
 // Lazy Gemini client initialization with standard aistudio-build header
 let geminiClient: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.warn('GEMINI_API_KEY environment variable is missing on server.');
+    return null;
+  }
   if (!geminiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey) {
-      geminiClient = new GoogleGenAI({
-        apiKey,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          },
+    geminiClient = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
         },
-      });
-    }
+      },
+    });
   }
   return geminiClient;
 }
@@ -246,7 +248,7 @@ Instructions:
 `;
 
         const response = await ai.models.generateContent({
-          model: 'gemini-3.1-flash-lite',
+          model: 'gemini-3.8-flash',
           contents: prompt,
         });
 
@@ -352,7 +354,7 @@ Instructions:
 `;
 
         const response = await ai.models.generateContent({
-          model: 'gemini-3.1-flash-lite',
+          model: 'gemini-3.8-flash',
           contents: prompt,
         });
 
