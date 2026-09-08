@@ -142,6 +142,10 @@ export function getExpandedEventForDate(
 
   return {
     ...event,
+    dateMillis: occurrenceDateMillis,
+    startTimeMillis: occurrenceStartTimeMillis,
+    endTimeMillis: occurrenceEndTimeMillis,
+    isCompleted: isCompletedForOccurrence,
     occurrenceDateStr,
     occurrenceDateKey: occurrenceDateStr,
     occurrenceDateMillis,
@@ -155,6 +159,151 @@ export function getExpandedEventForDate(
 }
 
 /**
+ * Generates concrete recurring event instances for a master recurring event.
+ * Covers:
+ * - DAILY: 90 days
+ * - WEEKLY: 52 weeks (1 full year)
+ * - MONTHLY: 24 months (2 full years)
+ * - YEARLY: 5 years
+ */
+export function generateRecurringEventInstances(
+  master: ScheduledEvent,
+  maxCount?: number
+): ScheduledEvent[] {
+  if (!master.repeatOption || master.repeatOption === 'NONE') {
+    return [];
+  }
+
+  const baseDate = new Date(master.dateMillis);
+  const origStart = new Date(master.startTimeMillis);
+  const origEnd = new Date(master.endTimeMillis);
+  const duration = Math.max(0, origEnd.getTime() - origStart.getTime());
+
+  const instances: ScheduledEvent[] = [];
+  const startYear = baseDate.getFullYear();
+  const startMonth = baseDate.getMonth();
+  const startDay = baseDate.getDate();
+
+  let limit = maxCount;
+  if (!limit) {
+    switch (master.repeatOption) {
+      case 'DAILY':
+        limit = 90;
+        break;
+      case 'WEEKLY':
+        limit = 52;
+        break;
+      case 'MONTHLY':
+        limit = 24;
+        break;
+      case 'YEARLY':
+        limit = 5;
+        break;
+      default:
+        limit = 30;
+    }
+  }
+
+  for (let i = 1; i <= limit; i++) {
+    let occurrenceDate: Date;
+
+    if (master.repeatOption === 'DAILY') {
+      occurrenceDate = new Date(startYear, startMonth, startDay + i, 12, 0, 0, 0);
+    } else if (master.repeatOption === 'WEEKLY') {
+      occurrenceDate = new Date(startYear, startMonth, startDay + i * 7, 12, 0, 0, 0);
+    } else if (master.repeatOption === 'MONTHLY') {
+      const targetMonth = startMonth + i;
+      const daysInTargetMonth = new Date(startYear, targetMonth + 1, 0).getDate();
+      const expectedDay = Math.min(startDay, daysInTargetMonth);
+      occurrenceDate = new Date(startYear, targetMonth, expectedDay, 12, 0, 0, 0);
+    } else if (master.repeatOption === 'YEARLY') {
+      const targetYear = startYear + i;
+      const daysInTargetMonth = new Date(targetYear, startMonth + 1, 0).getDate();
+      const expectedDay = Math.min(startDay, daysInTargetMonth);
+      occurrenceDate = new Date(targetYear, startMonth, expectedDay, 12, 0, 0, 0);
+    } else {
+      break;
+    }
+
+    const occYear = occurrenceDate.getFullYear();
+    const occMonth = occurrenceDate.getMonth();
+    const occDay = occurrenceDate.getDate();
+
+    const occStartMillis = new Date(
+      occYear,
+      occMonth,
+      occDay,
+      origStart.getHours(),
+      origStart.getMinutes(),
+      origStart.getSeconds(),
+      0
+    ).getTime();
+
+    const occEndMillis = occStartMillis + duration;
+    const occDateKey = formatDateKey(occurrenceDate);
+
+    // Stop if past optional recurrence end date
+    if (master.recurrenceEndDateMillis && occurrenceDate.getTime() > master.recurrenceEndDateMillis) {
+      break;
+    }
+
+    // Skip if marked as excluded/deleted
+    if (master.excludedDates && master.excludedDates.includes(occDateKey)) {
+      continue;
+    }
+
+    const isCompleted = master.completedDates ? master.completedDates.includes(occDateKey) : false;
+
+    instances.push({
+      id: master.id + i * 1000000 + Math.floor(Math.random() * 999),
+      parentEventId: master.id,
+      title: master.title,
+      location: master.location || '',
+      description: master.description || '',
+      dateMillis: occurrenceDate.getTime(),
+      startTimeMillis: occStartMillis,
+      endTimeMillis: occEndMillis,
+      reminderMinutesBefore: master.reminderMinutesBefore,
+      repeatOption: 'NONE', // Concrete child occurrence belongs to the series
+      isCompleted,
+      createdAt: master.createdAt || Date.now(),
+      originalOccurrenceDate: occDateKey,
+      excludedDates: [],
+      completedDates: [],
+    });
+  }
+
+  return instances;
+}
+
+/**
+ * Hydrates existing recurring series that don't yet have concrete child occurrences generated
+ */
+export function ensureRecurringInstancesExist(events: ScheduledEvent[]): { events: ScheduledEvent[]; changed: boolean } {
+  const existingParentIds = new Set<number>();
+  for (const ev of events) {
+    if (ev.parentEventId) {
+      existingParentIds.add(ev.parentEventId);
+    }
+  }
+
+  const toAdd: ScheduledEvent[] = [];
+  for (const ev of events) {
+    if (ev.repeatOption && ev.repeatOption !== 'NONE' && !ev.parentEventId) {
+      if (!existingParentIds.has(ev.id)) {
+        const instances = generateRecurringEventInstances(ev);
+        toAdd.push(...instances);
+      }
+    }
+  }
+
+  if (toAdd.length > 0) {
+    return { events: [...toAdd, ...events], changed: true };
+  }
+  return { events, changed: false };
+}
+
+/**
  * Returns all expanded occurrences of events occurring on a specific date, sorted by start time
  */
 export function getOccurrencesForDate(
@@ -164,17 +313,20 @@ export function getOccurrencesForDate(
   const targetDateKey = formatDateKey(targetDate);
   const results: ExpandedCalendarEvent[] = [];
 
-  // Track parent event IDs of any detached one-off instances for this date
-  const detachedParentIds = new Set<number>();
+  // Track parent event IDs that already have a concrete occurrence for this date
+  const coveredParentIds = new Set<number>();
   for (const ev of events) {
-    if (ev.parentEventId && ev.originalOccurrenceDate === targetDateKey) {
-      detachedParentIds.add(ev.parentEventId);
+    if (ev.parentEventId) {
+      const evDateKey = ev.originalOccurrenceDate || formatDateKey(new Date(ev.dateMillis));
+      if (evDateKey === targetDateKey) {
+        coveredParentIds.add(ev.parentEventId);
+      }
     }
   }
 
   for (const ev of events) {
-    // If this is a recurring series whose occurrence for this date was detached as a separate event, skip the series occurrence
-    if (detachedParentIds.has(ev.id)) {
+    // If this is a recurring master series and this date already has a concrete child occurrence, skip expanding master
+    if (coveredParentIds.has(ev.id)) {
       continue;
     }
 
@@ -209,13 +361,13 @@ export function getOccurrencesForMonth(
 }
 
 /**
- * Calculates upcoming occurrences for all events within a future window (e.g., 60 days)
+ * Calculates upcoming occurrences for all events within a future window (370 days to cover yearly)
  */
 export function getUpcomingOccurrences(
   events: ScheduledEvent[],
   fromDate: Date = new Date(),
-  daysAhead: number = 60,
-  maxTotal: number = 100
+  daysAhead: number = 370,
+  maxTotal: number = 250
 ): ExpandedCalendarEvent[] {
   const occurrences: ExpandedCalendarEvent[] = [];
   const start = getMidnight(fromDate);

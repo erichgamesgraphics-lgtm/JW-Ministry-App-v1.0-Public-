@@ -8,6 +8,7 @@ import { ActivityScreen } from './screens/ActivityScreen.tsx';
 import { CalendarScreen } from './screens/CalendarScreen.tsx';
 import { ReportsScreen } from './screens/ReportsScreen.tsx';
 import { SettingsScreen } from './screens/SettingsScreen.tsx';
+import { MinistryAIScreen } from './screens/MinistryAIScreen.tsx';
 import { WelcomeScreen } from './screens/WelcomeScreen.tsx';
 import { AddEditEntryModal } from './screens/AddEditEntryModal.tsx';
 import { AddEditScheduleModal } from './screens/AddEditScheduleModal.tsx';
@@ -154,7 +155,11 @@ const AppContent: React.FC = () => {
       )}
 
       {/* Top Header */}
-      <Header onOpenNewEntry={handleOpenNewEntry} />
+      <Header
+        onOpenNewEntry={handleOpenNewEntry}
+        onOpenSettings={() => setActiveTab(activeTab === 'settings' ? 'home' : 'settings')}
+        isSettingsActive={activeTab === 'settings'}
+      />
 
       {/* Main Screen Content */}
       <main className="flex-1 mx-auto w-full max-w-5xl px-4 py-5 sm:px-6">
@@ -171,6 +176,7 @@ const AppContent: React.FC = () => {
             onOpenEditEntry={handleOpenEditEntry}
           />
         )}
+        {activeTab === 'ministry-ai' && <MinistryAIScreen />}
         {activeTab === 'calendar' && (
           <CalendarScreen
             onOpenNewSchedule={handleOpenNewSchedule}
