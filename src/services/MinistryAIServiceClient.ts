@@ -1,5 +1,6 @@
 import { MinistryAIResponse, MinistryAnalyticsSummary } from '../types.ts';
 import { SupportedLanguage } from '../translations/index.ts';
+import { normalizeAIError } from '../utils/errorUtils.ts';
 
 export class MinistryAIServiceClient {
   /**
@@ -18,7 +19,7 @@ export class MinistryAIServiceClient {
     }
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 35000); // 35 second timeout
 
     try {
       const res = await fetch('/api/ai/chat', {
@@ -40,7 +41,7 @@ export class MinistryAIServiceClient {
       // Check if server returned HTML (static routing fallback)
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('text/html')) {
-        console.error('Ministry AI Client Error: Server returned HTML instead of JSON. Check serverless/API routing.');
+        console.error('Ministry AI Client Error: Server returned HTML page instead of JSON API response.');
         throw new Error(
           'Ministry AI server route was not reached. Please verify that the API backend is deployed.'
         );
@@ -54,23 +55,33 @@ export class MinistryAIServiceClient {
           // Ignore JSON parse failure on raw error responses
         }
 
-        const serverMsg = errorData.message || errorData.error;
+        const normalizedServerMsg = normalizeAIError(errorData);
+
+        // Safe console diagnostic log during debugging
+        console.error('[Ministry AI Client Debug]', {
+          status: res.status,
+          statusText: res.statusText,
+          errorData,
+          normalizedMessage: normalizedServerMsg,
+        });
 
         if (res.status === 401 || res.status === 403) {
           throw new Error(
-            serverMsg || 'Ministry AI server authentication failed. Please verify GEMINI_API_KEY environment variable.'
+            normalizedServerMsg.includes('GEMINI_API_KEY')
+              ? normalizedServerMsg
+              : `Ministry AI server authentication failed (HTTP ${res.status}): ${normalizedServerMsg}`
           );
         }
 
         if (res.status === 429) {
           throw new Error(
-            serverMsg || 'AI service quota or rate limit exceeded. Please wait a moment before trying again.'
+            `AI service rate limit or quota exceeded: ${normalizedServerMsg}`
           );
         }
 
         if (res.status === 502 || res.status === 503 || res.status === 504) {
           throw new Error(
-            serverMsg || `Backend server temporarily unavailable (HTTP ${res.status}). Please try again shortly.`
+            `Backend server temporarily unavailable (HTTP ${res.status}): ${normalizedServerMsg}`
           );
         }
 
@@ -80,7 +91,7 @@ export class MinistryAIServiceClient {
           );
         }
 
-        throw new Error(serverMsg || `Server responded with HTTP status ${res.status}`);
+        throw new Error(normalizedServerMsg || `Server responded with HTTP status ${res.status}`);
       }
 
       const data: MinistryAIResponse = await res.json();
@@ -88,17 +99,22 @@ export class MinistryAIServiceClient {
     } catch (err: any) {
       clearTimeout(timeoutId);
 
+      // Detailed console error logging
+      console.error('[Ministry AI Client Error Caught]', err);
+
       if (err.name === 'AbortError') {
-        throw new Error('Request timed out. The server took too long to respond. Please tap Retry.');
+        throw new Error('Request timed out after 35 seconds. The server took too long to respond. Please tap Retry.');
       }
 
-      if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
+      const rawMsg = err?.message || String(err);
+      if (rawMsg.includes('Failed to fetch') || rawMsg.includes('NetworkError') || rawMsg.includes('Load failed')) {
         throw new Error(
           'Unable to reach Ministry AI server. Please check your network connection or server availability.'
         );
       }
 
-      throw err;
+      throw new Error(normalizeAIError(err));
     }
   }
 }
+

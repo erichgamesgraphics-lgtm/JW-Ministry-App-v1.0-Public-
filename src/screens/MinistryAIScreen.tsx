@@ -16,6 +16,7 @@ import { useMinistry } from '../context/MinistryContext.tsx';
 import { MinistryAIMessage, JWSourceResult } from '../types.ts';
 import { MinistryAnalyticsService } from '../services/MinistryAnalyticsService.ts';
 import { MinistryAIServiceClient } from '../services/MinistryAIServiceClient.ts';
+import { normalizeAIError } from '../utils/errorUtils.ts';
 
 const STORAGE_KEY = 'jw_ministry_ai_history_v1';
 
@@ -124,12 +125,14 @@ export const MinistryAIScreen: React.FC = () => {
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
       clearTimeout(stageTimer);
-      console.error('Ministry AI error:', err);
+      console.error('[Ministry AI Screen Catch Debug]', err);
+
+      const cleanErrorMsg = normalizeAIError(err);
 
       const errorAssistantMsg: MinistryAIMessage = {
         id: `ai-err-${Date.now()}`,
         role: 'assistant',
-        content: err?.message || t.ministryAi.errorOccurred,
+        content: cleanErrorMsg,
         timestamp: Date.now(),
         status: 'error',
       };
@@ -308,9 +311,9 @@ export const MinistryAIScreen: React.FC = () => {
                 {/* Error status retry */}
                 {msg.status === 'error' && (
                   <div className="mt-3 pt-2 border-t border-rose-100 dark:border-rose-900/40 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                    <div className="flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-semibold">
                       <AlertCircle className="h-4 w-4 shrink-0" />
-                      <span>{t.ministryAi.errorOccurred}</span>
+                      <span>Request Error</span>
                     </div>
                     <button
                       onClick={handleRetryLast}

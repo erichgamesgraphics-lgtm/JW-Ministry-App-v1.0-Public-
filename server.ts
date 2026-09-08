@@ -5,6 +5,7 @@ import { createServer as createViteServer } from 'vite';
 import { MinistryAIService } from './server/services/MinistryAIService.ts';
 import { JWOrgService } from './server/services/JWOrgService.ts';
 import { WOLService } from './server/services/WOLService.ts';
+import { normalizeAIError } from './src/utils/errorUtils.ts';
 
 const currentFilename = typeof __filename !== 'undefined' ? __filename : (typeof import.meta !== 'undefined' && import.meta.url ? fileURLToPath(import.meta.url) : '');
 const currentDirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(currentFilename);
@@ -39,7 +40,7 @@ async function startServer() {
   // 2. Ministry AI Chat endpoint
   app.post('/api/ai/chat', async (req, res) => {
     try {
-      const { question, language = 'en', analytics } = req.body;
+      const { question, language = 'en', analytics } = req.body || {};
 
       if (!question || typeof question !== 'string' || !question.trim()) {
         return res.status(400).json({ error: 'Question is required' });
@@ -53,10 +54,27 @@ async function startServer() {
 
       return res.json(response);
     } catch (error: any) {
-      console.error('Error in /api/ai/chat:', error);
-      return res.status(500).json({
-        error: 'Failed to process AI request',
-        message: error?.message || 'Internal error',
+      console.error('[Express /api/ai/chat Error]:', error);
+
+      const cleanMsg = normalizeAIError(error);
+
+      let statusCode = 500;
+      if (
+        cleanMsg.includes('GEMINI_API_KEY') ||
+        cleanMsg.includes('API key') ||
+        cleanMsg.includes('authentication') ||
+        cleanMsg.includes('401') ||
+        cleanMsg.includes('403')
+      ) {
+        statusCode = 401;
+      } else if (cleanMsg.includes('quota') || cleanMsg.includes('rate limit') || cleanMsg.includes('429')) {
+        statusCode = 429;
+      }
+
+      return res.status(statusCode).json({
+        error: 'Ministry AI Express Server Error',
+        message: cleanMsg,
+        status: statusCode,
       });
     }
   });

@@ -1,4 +1,5 @@
 import { MinistryAIService } from '../../server/services/MinistryAIService.ts';
+import { normalizeAIError } from '../../src/utils/errorUtils.ts';
 
 export default async function handler(req: any, res: any) {
   // CORS Headers
@@ -34,9 +35,26 @@ export default async function handler(req: any, res: any) {
     return res.status(200).json(response);
   } catch (error: any) {
     console.error('Error in Vercel serverless function /api/ai/chat:', error);
-    return res.status(500).json({
-      error: 'Failed to process AI request',
-      message: error?.message || 'Internal server error',
+
+    const cleanMsg = normalizeAIError(error);
+
+    let statusCode = 500;
+    if (
+      cleanMsg.includes('GEMINI_API_KEY') ||
+      cleanMsg.includes('API key') ||
+      cleanMsg.includes('authentication') ||
+      cleanMsg.includes('401') ||
+      cleanMsg.includes('403')
+    ) {
+      statusCode = 401;
+    } else if (cleanMsg.includes('quota') || cleanMsg.includes('rate limit') || cleanMsg.includes('429')) {
+      statusCode = 429;
+    }
+
+    return res.status(statusCode).json({
+      error: 'Ministry AI Server Error',
+      message: cleanMsg,
+      status: statusCode,
     });
   }
 }

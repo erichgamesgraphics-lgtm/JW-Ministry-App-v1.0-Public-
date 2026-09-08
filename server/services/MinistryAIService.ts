@@ -38,11 +38,12 @@ export interface MinistryAIResponse {
 
 // Lazy Gemini client initialization with standard aistudio-build header
 let geminiClient: GoogleGenAI | null = null;
-function getGeminiClient(): GoogleGenAI | null {
+function getGeminiClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.warn('GEMINI_API_KEY environment variable is missing on server.');
-    return null;
+    throw new Error(
+      'GEMINI_API_KEY environment variable is not configured on the server. Please check production environment variables.'
+    );
   }
   if (!geminiClient) {
     geminiClient = new GoogleGenAI({
@@ -213,9 +214,8 @@ export class MinistryAIService {
     }
 
     const ai = getGeminiClient();
-    if (ai) {
-      try {
-        const prompt = `
+    try {
+      const prompt = `
 You are "Ministry AI", a warm, encouraging, respectful Christian ministry assistant for Jehovah's Witnesses using the Ministry Tracker app.
 The user is asking about their personal ministry progress and hours for the current month.
 
@@ -247,26 +247,25 @@ Instructions:
 6. Do NOT mention internal code, databases, or API keys.
 `;
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: prompt,
-        });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.6-flash',
+        contents: prompt,
+      });
 
-        const text = response.text;
-        if (text && text.trim().length > 0) {
-          return {
-            answer: text.trim(),
-            intent: 'MINISTRY_PROGRESS',
-            sources: [],
-            status: 'success',
-          };
-        }
-      } catch (err) {
-        console.warn('Gemini call failed for ministry progress, using structured fallback:', err);
+      const text = response.text;
+      if (text && text.trim().length > 0) {
+        return {
+          answer: text.trim(),
+          intent: 'MINISTRY_PROGRESS',
+          sources: [],
+          status: 'success',
+        };
       }
+    } catch (err: any) {
+      console.error('[Ministry AI Service Error in handleMinistryProgress]:', err);
+      throw err;
     }
 
-    // Deterministic fallback if Gemini is offline
     const fallbackAnswer = this.buildStructuredProgressSummary(analytics, language);
     return {
       answer: fallbackAnswer,
@@ -325,16 +324,15 @@ Instructions:
 
     // Now synthesize grounded answer using Gemini with the retrieved articles
     const ai = getGeminiClient();
-    if (ai) {
-      try {
-        const sourcesContext = sources
-          .map(
-            (s, idx) =>
-              `[Source ${idx + 1}] Title: "${s.title}" (${s.source}${s.context ? ' - ' + s.context : ''})\nSummary/Snippet: ${s.summary}\nScriptures Mentioned: ${s.scripture || 'None'}\nURL: ${s.url}`
-          )
-          .join('\n\n');
+    try {
+      const sourcesContext = sources
+        .map(
+          (s, idx) =>
+            `[Source ${idx + 1}] Title: "${s.title}" (${s.source}${s.context ? ' - ' + s.context : ''})\nSummary/Snippet: ${s.summary}\nScriptures Mentioned: ${s.scripture || 'None'}\nURL: ${s.url}`
+        )
+        .join('\n\n');
 
-        const prompt = `
+      const prompt = `
 You are "Ministry AI", an assistant helping a publisher in the Christian ministry prepare to share Bible-based truths with people they meet.
 The user asked: "${question}"
 User's Language: "${language}" (Respond in this language: 'en' for English, 'ru' for Russian, 'hy' for Armenian, 'hi' for Hindi, 'pa' for Punjabi).
@@ -353,26 +351,25 @@ Instructions:
 5. Do NOT invent scriptures, fake article titles, or make up claims not supported by the sources.
 `;
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: prompt,
-        });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.6-flash',
+        contents: prompt,
+      });
 
-        const text = response.text;
-        if (text && text.trim().length > 0) {
-          return {
-            answer: text.trim(),
-            intent: 'JW_RESEARCH',
-            sources,
-            status: 'success',
-          };
-        }
-      } catch (err) {
-        console.warn('Gemini grounded synthesis failed, using structured source fallback:', err);
+      const text = response.text;
+      if (text && text.trim().length > 0) {
+        return {
+          answer: text.trim(),
+          intent: 'JW_RESEARCH',
+          sources,
+          status: 'success',
+        };
       }
+    } catch (err: any) {
+      console.error('[Ministry AI Service Error in handleJWResearch]:', err);
+      throw err;
     }
 
-    // Deterministic fallback if Gemini is offline/quota
     const fallbackAnswer = this.buildStructuredResearchSummary(question, sources, language);
     return {
       answer: fallbackAnswer,
