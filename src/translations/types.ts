@@ -50,7 +50,6 @@ export interface TranslationSchema {
   navigation: {
     home: string;
     activity: string;
-    ministryAi: string;
     calendar: string;
     reports: string;
     settings: string;
@@ -422,19 +421,5 @@ export interface TranslationSchema {
     dailyScripture: string;
     copyScripture: string;
     shareScripture: string;
-  };
-  ministryAi: {
-    title: string;
-    subtitle: string;
-    askPlaceholder: string;
-    sourcesHeader: string;
-    openArticle: string;
-    clearChat: string;
-    retry: string;
-    noSourcesFound: string;
-    errorMessage: string;
-    thinking: string;
-    suggestedTitle: string;
-    suggestedQuestions: string[];
   };
 }

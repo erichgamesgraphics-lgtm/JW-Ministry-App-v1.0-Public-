@@ -50,7 +50,6 @@ export const hi: TranslationSchema = {
   navigation: {
     home: 'मुख्य',
     activity: 'गतिविधि',
-    ministryAi: 'मिनिस्ट्री AI',
     calendar: 'कैलेंडर',
     reports: 'रिपोर्ट',
     settings: 'सेटिंग्स',
@@ -426,25 +425,5 @@ export const hi: TranslationSchema = {
     dailyScripture: 'दैनिक वचन',
     copyScripture: 'वचन कॉपी करें',
     shareScripture: 'वचन साझा करें',
-  },
-  ministryAi: {
-    title: 'मिनिस्ट्री AI',
-    subtitle: 'प्रगति और अनुसंधान के लिए आपका प्रचार सहायक।',
-    askPlaceholder: 'मिनिस्ट्री AI से पूछें...',
-    sourcesHeader: 'स्रोत',
-    openArticle: 'लेख खोलें',
-    clearChat: 'बातचीत साफ करें',
-    retry: 'पुनः प्रयास करें',
-    noSourcesFound: 'कोई प्रासंगिक JW.ORG / WOL.JW.ORG स्रोत नहीं मिला।',
-    errorMessage: 'मिनिस्ट्री AI से संपर्क करने में असमर्थ। कृपया अपना कनेक्शन जांचें।',
-    thinking: 'मिनिस्ट्री AI सोच रहा है...',
-    suggestedTitle: 'सुझाए गए प्रश्न',
-    suggestedQuestions: [
-      'इस महीने मेरी क्या प्रगति है?',
-      'मेरे पास कितने घंटे बाकी हैं?',
-      'आशा के बारे में एक लेख खोजें।',
-      'दुख-तकलीफों के बारे में पूछने वाले को क्या दिखाएं?',
-      'परमेश्वर के राज्य के बारे में जानकारी खोजें।',
-    ],
   },
 };

@@ -50,7 +50,6 @@ export const hy: TranslationSchema = {
   navigation: {
     home: 'Գլխավոր',
     activity: 'Գործունե.',
-    ministryAi: 'Ծառայության AI',
     calendar: 'Օրացույց',
     reports: 'Հաշվետվ.',
     settings: 'Կարգավոր.',
@@ -426,25 +425,5 @@ export const hy: TranslationSchema = {
     dailyScripture: 'Օրվա Խոսքը',
     copyScripture: 'Պատճենել համարը',
     shareScripture: 'Կիսվել համարով',
-  },
-  ministryAi: {
-    title: 'ԾԱՌԱՅՈՒԹՅԱՆ AI',
-    subtitle: 'Ձեր ծառայության օգնականը առաջընթացի և հետազոտության համար:',
-    askPlaceholder: 'Հարցրեք Ministry AI-ին...',
-    sourcesHeader: 'ԱՂԲՅՈՒՐՆԵՐ',
-    openArticle: 'ԲԱՑԵԼ ՀՈԴՎԱԾԸ',
-    clearChat: 'Մաքրել Զրույցը',
-    retry: 'ԿՐԿՆԵԼ',
-    noSourcesFound: 'Համապատասխան JW.ORG / WOL.JW.ORG աղբյուր չգտնվեց:',
-    errorMessage: 'Չհաջողվեց կապվել Ministry AI-ի հետ: Խնդրում ենք ստուգել կապը և փորձել նորից:',
-    thinking: 'Ministry AI-ն մտածում է...',
-    suggestedTitle: 'Առաջարկվող Հարցեր',
-    suggestedQuestions: [
-      'Ինչպե՞ս է իմ առաջընթացը այս ամիս:',
-      'Քանի՞ ժամ է ինձ մնացել:',
-      'Գտնել հոդված հույսի մասին:',
-      'Ի՞նչ կարող եմ ցույց տալ տառապանքի մասին հարցնողին:',
-      'Գտնել տեղեկություն Աստծո Թագավորության մասին:',
-    ],
   },
 };
