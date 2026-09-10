@@ -80,6 +80,7 @@ export const ru: TranslationSchema = {
   navigation: {
     home: 'Главная',
     activity: 'Служение',
+    ministryAi: 'Ministry AI',
     calendar: 'Календарь',
     reports: 'Отчеты',
     settings: 'Настройки',
@@ -455,5 +456,25 @@ export const ru: TranslationSchema = {
     dailyScripture: 'Стих на день',
     copyScripture: 'Скопировать стих',
     shareScripture: 'Поделиться стихом',
+  },
+  ministryAi: {
+    title: 'MINISTRY AI',
+    subtitle: 'Ваш помощник в служении для анализа прогресса и исследований.',
+    askPlaceholder: 'Спросите Ministry AI...',
+    sourcesHeader: 'ИСТОЧНИКИ',
+    openArticle: 'ОТКРЫТЬ СТАТЬЮ',
+    clearChat: 'Очистить историю',
+    retry: 'ПОВТОРИТЬ',
+    noSourcesFound: 'Подходящих источников на JW.ORG / WOL.JW.ORG не найдено.',
+    errorMessage: 'Не удалось связаться с Ministry AI. Проверьте подключение к сети и повторите попытку.',
+    thinking: 'Ministry AI размышляет...',
+    suggestedTitle: 'Предлагаемые вопросы',
+    suggestedQuestions: [
+      'Как успехи в этом месяце?',
+      'Сколько часов мне осталось?',
+      'Найди статью о надежде.',
+      'Что показать человеку, который спрашивает о страданиях?',
+      'Найди информацию о Царстве Бога.',
+    ],
   },
 };

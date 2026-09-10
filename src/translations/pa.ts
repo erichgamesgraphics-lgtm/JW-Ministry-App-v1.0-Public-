@@ -50,6 +50,7 @@ export const pa: TranslationSchema = {
   navigation: {
     home: 'ਮੁੱਖ',
     activity: 'ਗਤੀਵਿਧੀ',
+    ministryAi: 'ਮਿਨਿਸਟ੍ਰੀ AI',
     calendar: 'ਕੈਲੰਡਰ',
     reports: 'ਰਿਪੋਰਟ',
     settings: 'ਸੈਟਿੰਗਜ਼',
@@ -425,5 +426,25 @@ export const pa: TranslationSchema = {
     dailyScripture: 'ਰੋਜ਼ਾਨਾ ਹਵਾਲਾ',
     copyScripture: 'ਹਵਾਲਾ ਕਾਪੀ ਕਰੋ',
     shareScripture: 'ਹਵਾਲਾ ਸਾਂਝਾ ਕਰੋ',
+  },
+  ministryAi: {
+    title: 'ਮਿਨਿਸਟ੍ਰੀ AI',
+    subtitle: 'ਤਰੱਕੀ ਅਤੇ ਖੋਜ ਲਈ ਤੁਹਾਡਾ ਪ੍ਰਚਾਰ ਸਹਾਇਕ।',
+    askPlaceholder: 'ਮਿਨਿਸਟ੍ਰੀ AI ਨੂੰ ਪੁੱਛੋ...',
+    sourcesHeader: 'ਸਰੋਤ',
+    openArticle: 'ਲੇਖ ਖੋਲ੍ਹੋ',
+    clearChat: 'ਗੱਲਬਾਤ ਸਾਫ਼ ਕਰੋ',
+    retry: 'ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ',
+    noSourcesFound: 'ਕੋਈ ਢੁਕਵਾਂ JW.ORG / WOL.JW.ORG ਸਰੋਤ ਨਹੀਂ ਮਿਲਿਆ।',
+    errorMessage: 'ਮਿਨਿਸਟ੍ਰੀ AI ਨਾਲ ਸੰਪਰਕ ਕਰਨ ਵਿੱਚ ਅਸਮਰੱਥ। ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੇ ਇੰਟਰਨੈੱਟ ਦੀ ਜਾਂਚ ਕਰੋ।',
+    thinking: 'ਮਿਨਿਸਟ੍ਰੀ AI ਸੋਚ ਰਿਹਾ ਹੈ...',
+    suggestedTitle: 'ਸੁਝਾਏ ਗਏ ਸਵਾਲ',
+    suggestedQuestions: [
+      'ਇਸ ਮਹੀਨੇ ਮੇਰੀ ਤਰੱਕੀ ਕਿਵੇਂ ਹੈ?',
+      'ਮੇਰੇ ਕੋਲ ਕਿੰਨੇ ਘੰਟੇ ਬਾਕੀ ਹਨ?',
+      'ਉਮੀਦ ਬਾਰੇ ਲੇਖ ਲੱਭੋ।',
+      'ਦੁੱਖ-ਤਕਲੀਫ਼ਾਂ ਬਾਰੇ ਪੁੱਛਣ ਵਾਲੇ ਨੂੰ ਕੀ ਦਿਖਾਇਆ ਜਾਵੇ?',
+      'ਪਰਮੇਸ਼ੁਰ ਦੇ ਰਾਜ ਬਾਰੇ ਜਾਣਕਾਰੀ ਲੱਭੋ।',
+    ],
   },
 };
