@@ -50,6 +50,7 @@ export const en: TranslationSchema = {
   navigation: {
     home: 'Home',
     activity: 'Activity',
+    ministryAi: 'Ministry AI',
     calendar: 'Calendar',
     reports: 'Reports',
     settings: 'Settings',
@@ -425,5 +426,25 @@ export const en: TranslationSchema = {
     dailyScripture: 'Daily Scripture',
     copyScripture: 'Copy scripture',
     shareScripture: 'Share scripture',
+  },
+  ministryAi: {
+    title: 'MINISTRY AI',
+    subtitle: 'Your ministry assistant for progress and research.',
+    askPlaceholder: 'Ask Ministry AI...',
+    sourcesHeader: 'SOURCES',
+    openArticle: 'OPEN ARTICLE',
+    clearChat: 'Clear Conversation',
+    retry: 'RETRY',
+    noSourcesFound: 'No relevant JW.ORG / WOL.JW.ORG source found.',
+    errorMessage: 'Unable to reach Ministry AI. Please check your connection and try again.',
+    thinking: 'Ministry AI is thinking...',
+    suggestedTitle: 'Suggested Questions',
+    suggestedQuestions: [
+      'How am I doing this month?',
+      'How many hours do I have left?',
+      'Find an article about hope.',
+      'What can I show someone who asks about suffering?',
+      'Find information about God’s Kingdom.',
+    ],
   },
 };
