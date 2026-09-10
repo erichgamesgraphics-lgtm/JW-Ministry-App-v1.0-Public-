@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useMinistry } from '../context/MinistryContext.tsx';
+import { MinistryAssistantRouter } from '../../server/services/MinistryAssistantRouter.js';
 
 export interface SearchResultItem {
   id: string;
@@ -35,7 +36,6 @@ export const MinistryAIScreen: React.FC = () => {
   const { entries, scheduledEvents, settings, dashboardStats, language, t } = useMinistry();
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    // Initial welcome message from Ministry Assistant
     return [
       {
         id: 'welcome-1',
@@ -86,37 +86,56 @@ How can I assist your ministry today?`,
     setLoading(true);
     setError(null);
 
-    // Prepare API context payload
-    const conversationHistoryForApi = newHistory
-      .filter(m => m.id !== 'welcome-1')
-      .map(m => ({
-        role: m.role === 'user' ? ('user' as const) : ('model' as const),
-        text: m.content,
-      }));
+    const userContext = {
+      stats: dashboardStats,
+      entries,
+      events: scheduledEvents,
+      settings,
+    };
+
+    let answerText = '';
+    let answerSources: SearchResultItem[] = [];
 
     try {
+      // 1. Attempt API fetch
       const response = await fetch('/api/ministry-ai', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({
           message: textToSend.trim(),
-          conversationHistory: conversationHistoryForApi,
-          userContext: {
-            stats: dashboardStats,
-            entries,
-            events: scheduledEvents,
-            settings,
-          },
+          userContext,
           language,
         }),
       });
 
-      const data = await response.json();
+      // 2. Read response as text first to inspect non-JSON responses safely
+      const responseText = await response.text();
 
-      if (!response.ok || data.error) {
-        throw new Error(data.error || t.ministryAi.errorMessage);
+      let data: any = null;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        console.warn('API returned non-JSON response text:', responseText.slice(0, 150));
+      }
+
+      if (response.ok && data && (data.answer || data.message)) {
+        answerText = data.answer || data.message;
+        answerSources = data.sources || [];
+      } else if (data && data.error) {
+        throw new Error(data.error.message || data.error);
+      } else {
+        // Fallback: If Vercel/proxy returns HTML 404/500, execute native router locally
+        console.warn('Backend API endpoint returned non-JSON HTML or 404. Using client-side native Ministry Assistant router fallback.');
+        const fallbackResult = await MinistryAssistantRouter.handleRequest(
+          textToSend.trim(),
+          userContext,
+          language
+        );
+        answerText = fallbackResult.answer;
+        answerSources = fallbackResult.sources || [];
       }
 
       setMessages(prev => [
@@ -124,14 +143,33 @@ How can I assist your ministry today?`,
         {
           id: `ai-${Date.now()}`,
           role: 'assistant',
-          content: data.answer,
-          sources: data.sources || [],
+          content: answerText,
+          sources: answerSources,
           timestamp: Date.now(),
         },
       ]);
     } catch (err: any) {
-      console.error('Ministry Assistant Request Error:', err);
-      setError(err?.message || t.ministryAi.errorMessage);
+      console.warn('API Request Failed, executing local fallback:', err);
+      try {
+        const fallbackResult = await MinistryAssistantRouter.handleRequest(
+          textToSend.trim(),
+          userContext,
+          language
+        );
+        setMessages(prev => [
+          ...prev,
+          {
+            id: `ai-${Date.now()}`,
+            role: 'assistant',
+            content: fallbackResult.answer,
+            sources: fallbackResult.sources || [],
+            timestamp: Date.now(),
+          },
+        ]);
+      } catch (fallbackErr: any) {
+        console.error('Local fallback failed:', fallbackErr);
+        setError(t.ministryAi?.errorMessage || 'Ministry Assistant is temporarily unavailable. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -149,7 +187,7 @@ How can I assist your ministry today?`,
     setError(null);
   };
 
-  const suggestedQuestions = t.ministryAi.suggestedQuestions || [
+  const suggestedQuestions = t.ministryAi?.suggestedQuestions || [
     'How am I doing this month?',
     'How many hours do I have left?',
     'Give me some tips.',
@@ -169,7 +207,7 @@ How can I assist your ministry today?`,
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
-                  {t.ministryAi.title}
+                  {t.ministryAi?.title || 'Ministry AI'}
                 </h1>
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/10 dark:bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50">
                   <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
@@ -177,7 +215,7 @@ How can I assist your ministry today?`,
                 </span>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-0.5">
-                {t.ministryAi.subtitle}
+                {t.ministryAi?.subtitle || 'Instant progress analysis & JW research'}
               </p>
             </div>
           </div>
@@ -185,7 +223,7 @@ How can I assist your ministry today?`,
           <button
             onClick={handleClearChat}
             className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-            title={t.ministryAi.clearChat}
+            title={t.ministryAi?.clearChat || 'Clear chat'}
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -230,7 +268,7 @@ How can I assist your ministry today?`,
                 <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800/90 space-y-2">
                   <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     <BookOpen className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                    <span>{t.ministryAi.sourcesHeader} ({msg.sources.length})</span>
+                    <span>{t.ministryAi?.sourcesHeader || 'Retrieved Sources'} ({msg.sources.length})</span>
                   </div>
 
                   <div className="grid grid-cols-1 gap-2 pt-1">
@@ -286,7 +324,7 @@ How can I assist your ministry today?`,
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 shrink-0 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 px-2.5 py-1.5 text-[11px] font-bold text-white transition-all shadow-xs cursor-pointer"
                           >
-                            <span>{t.ministryAi.openArticle}</span>
+                            <span>{t.ministryAi?.openArticle || 'Open Article'}</span>
                             <ExternalLink className="h-3 w-3" />
                           </a>
                         </div>
@@ -303,7 +341,7 @@ How can I assist your ministry today?`,
         {loading && (
           <div className="flex items-center gap-2 p-3 rounded-2xl bg-white dark:bg-[#131D31] border border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-300 text-xs w-max">
             <RefreshCw className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
-            <span className="font-semibold">{t.ministryAi.thinking}</span>
+            <span className="font-semibold">{t.ministryAi?.thinking || 'Analyzing...'}</span>
           </div>
         )}
 
@@ -319,7 +357,7 @@ How can I assist your ministry today?`,
               className="inline-flex items-center gap-1 rounded-lg bg-red-600 hover:bg-red-700 px-2.5 py-1 text-[11px] font-bold text-white cursor-pointer shrink-0"
             >
               <RefreshCw className="h-3 w-3" />
-              <span>{t.ministryAi.retry}</span>
+              <span>{t.ministryAi?.retry || 'Retry'}</span>
             </button>
           </div>
         )}
@@ -331,7 +369,7 @@ How can I assist your ministry today?`,
       <div className="shrink-0 pt-2 pb-1">
         <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 flex items-center gap-1">
           <Search className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-          <span>{t.ministryAi.suggestedTitle}</span>
+          <span>{t.ministryAi?.suggestedTitle || 'Suggested questions'}</span>
         </p>
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           {suggestedQuestions.map((q, idx) => (
@@ -361,7 +399,7 @@ How can I assist your ministry today?`,
             value={input}
             onChange={e => setInput(e.target.value)}
             disabled={loading}
-            placeholder={t.ministryAi.askPlaceholder}
+            placeholder={t.ministryAi?.askPlaceholder || 'Ask a question...'}
             className="flex-1 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131D31] px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-600 focus:outline-hidden dark:focus:border-blue-500 transition-colors shadow-xs disabled:opacity-60"
           />
           <button
