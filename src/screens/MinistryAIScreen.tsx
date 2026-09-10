@@ -13,6 +13,7 @@ import {
 import Markdown from 'react-markdown';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { MinistryAssistantRouter } from '../../server/services/MinistryAssistantRouter.js';
+import { LanguageService } from '../../server/services/LanguageService.js';
 
 export interface SearchResultItem {
   id: string;
@@ -35,23 +36,14 @@ export interface ChatMessage {
 export const MinistryAIScreen: React.FC = () => {
   const { entries, scheduledEvents, settings, dashboardStats, language, t } = useMinistry();
 
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    return [
-      {
-        id: 'welcome-1',
-        role: 'assistant',
-        content: `Hello! I am your **JW Ministry Assistant**.
-
-I am here to assist you with:
-- **Ministry Tracker Progress**: Analyzing your monthly hours, goals, return visits, and Bible studies.
-- **JW.ORG & WOL Research**: Finding articles, publications, and Scriptural reasoning from **JW.ORG** and **WOL.JW.ORG**.
-- **Field Ministry Support**: Locating relevant publications to share when someone asks questions during preaching.
-
-How can I assist your ministry today?`,
-        timestamp: Date.now(),
-      },
-    ];
-  });
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [
+    {
+      id: 'welcome-1',
+      role: 'assistant',
+      content: LanguageService.getGeneralGreeting(language),
+      timestamp: Date.now(),
+    },
+  ]);
 
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -65,6 +57,20 @@ How can I assist your ministry today?`,
   useEffect(() => {
     scrollToBottom();
   }, [messages, loading]);
+
+  // Update initial welcome message if language changes and chat hasn't started
+  useEffect(() => {
+    if (messages.length === 1 && messages[0].id.startsWith('welcome')) {
+      setMessages([
+        {
+          id: `welcome-${language}`,
+          role: 'assistant',
+          content: LanguageService.getGeneralGreeting(language),
+          timestamp: Date.now(),
+        },
+      ]);
+    }
+  }, [language]);
 
   const handleSendMessage = async (customText?: string) => {
     const textToSend = customText || input;
@@ -111,7 +117,7 @@ How can I assist your ministry today?`,
         }),
       });
 
-      // 2. Read response as text first to inspect non-JSON responses safely
+      // 2. Read response text safely
       const responseText = await response.text();
 
       let data: any = null;
@@ -168,7 +174,7 @@ How can I assist your ministry today?`,
         ]);
       } catch (fallbackErr: any) {
         console.error('Local fallback failed:', fallbackErr);
-        setError(t.ministryAi?.errorMessage || 'Ministry Assistant is temporarily unavailable. Please try again.');
+        setError(LanguageService.getLocalizedError(language));
       }
     } finally {
       setLoading(false);
@@ -178,22 +184,16 @@ How can I assist your ministry today?`,
   const handleClearChat = () => {
     setMessages([
       {
-        id: 'welcome-reset',
+        id: `welcome-reset-${Date.now()}`,
         role: 'assistant',
-        content: `Conversation reset. I am your **JW Ministry Assistant**. How can I help you?`,
+        content: LanguageService.getGeneralGreeting(language),
         timestamp: Date.now(),
       },
     ]);
     setError(null);
   };
 
-  const suggestedQuestions = t.ministryAi?.suggestedQuestions || [
-    'How am I doing this month?',
-    'How many hours do I have left?',
-    'Give me some tips.',
-    'Find an article about hope.',
-    'Search WOL for prayer.',
-  ];
+  const suggestedQuestions = LanguageService.getLocalizedSuggestions(language);
 
   return (
     <div className="flex flex-col h-[calc(100vh-8.5rem)] max-w-2xl mx-auto pb-2">

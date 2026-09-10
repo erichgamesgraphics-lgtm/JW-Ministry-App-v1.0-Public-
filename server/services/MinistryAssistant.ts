@@ -1,7 +1,11 @@
+import { LanguageService } from './LanguageService.js';
+import { SupportedLanguage } from '../../src/types.js';
+
 export interface ProgressAnalysisResult {
   currentMonthName: string;
   year: number;
   publisherStatus: string;
+  publisherStatusFormatted: string;
   goalHours: number;
   loggedHours: number;
   remainingHours: number;
@@ -18,10 +22,10 @@ export interface ProgressAnalysisResult {
 }
 
 export class MinistryAssistant {
-  private static parseUserStats(userContext: any) {
+  private static parseUserStats(userContext: any, targetLang: SupportedLanguage) {
     const { stats = {}, entries = [], events = [], settings = {} } = userContext || {};
 
-    const publisherStatus = settings.publisherStatus || 'PUBLISHER';
+    const rawPublisherStatus = settings.publisherStatus || 'PUBLISHER';
     const customGoalHours = settings.customGoalHours || 0;
 
     const now = new Date();
@@ -55,13 +59,15 @@ export class MinistryAssistant {
     const expectedPaceHours = (goalHours / daysInMonth) * now.getDate();
     const isOnPace = loggedHours >= expectedPaceHours || isGoalReached;
 
-    const monthName = now.toLocaleString('en-US', { month: 'long' });
+    const monthName = LanguageService.getMonthName(currentMonth, targetLang);
+    const publisherStatusFormatted = LanguageService.getPublisherStatusDisplayName(rawPublisherStatus, targetLang);
 
     return {
       monthName,
       monthIndex: currentMonth,
       year: currentYear,
-      publisherStatus,
+      publisherStatus: rawPublisherStatus,
+      publisherStatusFormatted,
       goalHours,
       loggedHours,
       remainingHours,
@@ -83,15 +89,16 @@ export class MinistryAssistant {
   }
 
   /**
-   * Format localized progress report
+   * Format localized progress report in all 5 languages
    */
-  static getCurrentMinistryProgress(userContext: any, lang: string = 'en'): string {
-    const data = this.parseUserStats(userContext);
+  static getCurrentMinistryProgress(userContext: any, langStr: string = 'en'): string {
+    const lang = LanguageService.normalizeLanguage(langStr);
+    const data = this.parseUserStats(userContext, lang);
 
     switch (lang) {
       case 'hy':
         return `**Ամսական Առաջընթաց (${data.monthName} ${data.year})**
-• **Կարգավիճակ**: ${data.publisherStatus}
+• **Կարգավիճակ**: ${data.publisherStatusFormatted}
 • **Գրանցված ժամեր**: **${data.loggedHours}** ժամ
 • **Նպատակային ժամեր**: ${data.goalHours > 0 ? `${data.goalHours} ժամ` : 'Ազատ նպատակ'}
 • **Մնացած ժամեր**: **${data.remainingHours}** ժամ
@@ -103,7 +110,7 @@ ${data.isGoalReached ? '🎉 **Շնորհավորում ենք։ Դուք հաս
 
       case 'ru':
         return `**Прогресс Служения (${data.monthName} ${data.year})**
-• **Статус**: ${data.publisherStatus}
+• **Статус**: ${data.publisherStatusFormatted}
 • **Записано часов**: **${data.loggedHours}** ч.
 • **Цель на месяц**: ${data.goalHours > 0 ? `${data.goalHours} ч.` : 'Гибкая цель'}
 • **Осталось часов**: **${data.remainingHours}** ч.
@@ -115,7 +122,7 @@ ${data.isGoalReached ? '🎉 **Поздравляем! Вы достигли с�
 
       case 'hi':
         return `**मासिक प्रचार प्रगति (${data.monthName} ${data.year})**
-• **स्थिति**: ${data.publisherStatus}
+• **स्थिति**: ${data.publisherStatusFormatted}
 • **दर्ज घंटे**: **${data.loggedHours}** घंटे
 • **लक्ष्य**: ${data.goalHours > 0 ? `${data.goalHours} घंटे` : 'कोई निश्चित लक्ष्य नहीं'}
 • **शेष घंटे**: **${data.remainingHours}** घंटे
@@ -127,7 +134,7 @@ ${data.isGoalReached ? '🎉 **बधाई हो! आपने इस मह�
 
       case 'pa':
         return `**ਮਹੀਨਾਵਾਰ ਪ੍ਰਚਾਰ ਦੀ ਤਰੱਕੀ (${data.monthName} ${data.year})**
-• **ਸਥਿਤੀ**: ${data.publisherStatus}
+• **ਸਥਿਤੀ**: ${data.publisherStatusFormatted}
 • **ਦਰਜ ਕੀਤੇ ਘੰਟੇ**: **${data.loggedHours}** ਘੰਟੇ
 • **ਨਿਸ਼ਾਨਾ**: ${data.goalHours > 0 ? `${data.goalHours} ਘੰਟੇ` : 'ਕੋਈ ਪੱਕਾ ਨਿਸ਼ਾਨਾ ਨਹੀਂ'}
 • **ਬਾਕੀ ਘੰਟੇ**: **${data.remainingHours}** ਘੰਟੇ
@@ -139,7 +146,7 @@ ${data.isGoalReached ? '🎉 **ਮੁਬਾਰਕਾਂ! ਤੁਸੀਂ ਇਸ 
 
       default:
         return `**Current Ministry Progress (${data.monthName} ${data.year})**
-• **Status**: ${data.publisherStatus}
+• **Status**: ${data.publisherStatusFormatted}
 • **Logged Hours**: **${data.loggedHours}** hrs
 • **Monthly Goal**: ${data.goalHours > 0 ? `${data.goalHours} hrs` : 'Flexible / No fixed target'}
 • **Remaining Hours**: **${data.remainingHours}** hrs
@@ -154,8 +161,9 @@ ${data.isGoalReached ? '🎉 **Congratulations! You have reached your monthly go
   /**
    * Get Remaining Hours
    */
-  static getRemainingHours(userContext: any, lang: string = 'en'): string {
-    const data = this.parseUserStats(userContext);
+  static getRemainingHours(userContext: any, langStr: string = 'en'): string {
+    const lang = LanguageService.normalizeLanguage(langStr);
+    const data = this.parseUserStats(userContext, lang);
 
     if (data.goalHours <= 0) {
       return lang === 'hy' ? 'Դուք չունեք սահմանված ամսական նպատակ։ Կարող եք սահմանել այն Կարգավորումներում։'
@@ -190,24 +198,26 @@ ${data.isGoalReached ? '🎉 **Congratulations! You have reached your monthly go
   /**
    * Get Goal Information
    */
-  static getMinistryGoal(userContext: any, lang: string = 'en'): string {
-    const data = this.parseUserStats(userContext);
+  static getMinistryGoal(userContext: any, langStr: string = 'en'): string {
+    const lang = LanguageService.normalizeLanguage(langStr);
+    const data = this.parseUserStats(userContext, lang);
     return lang === 'hy'
-      ? `**Ձեր Ծառայողական Կարգավիճակը և Նպատակը**\n• **Կարգավիճակ**՝ ${data.publisherStatus}\n• **Ամսական Նպատակային Ժամեր**՝ ${data.goalHours > 0 ? `${data.goalHours} ժամ` : 'Ազատ նպատակ'}`
+      ? `**Ձեր Ծառայողական Կարգավիճակը և Նպատակը**\n• **Կարգավիճակ**՝ ${data.publisherStatusFormatted}\n• **Ամսական Նպատակային Ժամեր**՝ ${data.goalHours > 0 ? `${data.goalHours} ժամ` : 'Ազատ նպատակ'}`
       : lang === 'ru'
-      ? `**Ваш Статус и Цель в Служении**\n• **Статус**: ${data.publisherStatus}\n• **Цель на месяц**: ${data.goalHours > 0 ? `${data.goalHours} ч.` : 'Гибкая цель'}`
+      ? `**Ваш Статус и Цель в Служении**\n• **Статус**: ${data.publisherStatusFormatted}\n• **Цель на месяц**: ${data.goalHours > 0 ? `${data.goalHours} ч.` : 'Гибкая цель'}`
       : lang === 'hi'
-      ? `**आपकी प्रचार स्थिति और लक्ष्य**\n• **स्थिति**: ${data.publisherStatus}\n• **मासिक लक्ष्य**: ${data.goalHours > 0 ? `${data.goalHours} घंटे` : 'कोई निश्चित लक्ष्य नहीं'}`
+      ? `**आपकी प्रचार स्थिति और लक्ष्य**\n• **स्थिति**: ${data.publisherStatusFormatted}\n• **मासिक लक्ष्य**: ${data.goalHours > 0 ? `${data.goalHours} घंटे` : 'कोई निश्चित लक्ष्य नहीं'}`
       : lang === 'pa'
-      ? `**ਤੁਹਾਡੀ ਪ੍ਰਚਾਰ ਸਥਿਤੀ ਅਤੇ ਨਿਸ਼ਾਨਾ**\n• **ਸਥਿਤੀ**: ${data.publisherStatus}\n• **ਮਹੀਨਾਵਾਰ ਨਿਸ਼ਾਨਾ**: ${data.goalHours > 0 ? `${data.goalHours} ਘੰਟੇ` : 'ਕੋਈ ਪੱਕਾ ਨਿਸ਼ਾਨਾ ਨਹੀਂ'}`
-      : `**Your Ministry Status & Goal Settings**\n• **Status**: ${data.publisherStatus}\n• **Monthly Target Goal**: ${data.goalHours > 0 ? `${data.goalHours} hrs/month` : 'Flexible / Custom Goal'}`;
+      ? `**ਤੁਹਾਡੀ ਪ੍ਰਚਾਰ ਸਥਿਤੀ ਅਤੇ ਨਿਸ਼ਾਨਾ**\n• **ਸਥਿਤੀ**: ${data.publisherStatusFormatted}\n• **ਮਹੀਨਾਵਾਰ ਨਿਸ਼ਾਨਾ**: ${data.goalHours > 0 ? `${data.goalHours} ਘੰਟੇ` : 'ਕੋਈ ਪੱਕਾ ਨਿਸ਼ਾਨਾ ਨਹੀਂ'}`
+      : `**Your Ministry Status & Goal Settings**\n• **Status**: ${data.publisherStatusFormatted}\n• **Monthly Target Goal**: ${data.goalHours > 0 ? `${data.goalHours} hrs/month` : 'Flexible / Custom Goal'}`;
   }
 
   /**
    * Get Activity History
    */
-  static getActivityHistory(userContext: any, limit: number = 5, lang: string = 'en'): string {
-    const data = this.parseUserStats(userContext);
+  static getActivityHistory(userContext: any, limit: number = 5, langStr: string = 'en'): string {
+    const lang = LanguageService.normalizeLanguage(langStr);
+    const data = this.parseUserStats(userContext, lang);
     const entries = [...data.allEntries].sort((a: any, b: any) => (b.dateMillis || 0) - (a.dateMillis || 0)).slice(0, limit);
 
     if (entries.length === 0) {
@@ -219,19 +229,31 @@ ${data.isGoalReached ? '🎉 **Congratulations! You have reached your monthly go
     }
 
     const formatted = entries.map((e: any) => {
-      const dateStr = new Date(e.dateMillis).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const dateStr = new Date(e.dateMillis).toLocaleDateString(lang === 'hy' ? 'hy-AM' : lang === 'ru' ? 'ru-RU' : lang === 'hi' ? 'hi-IN' : lang === 'pa' ? 'pa-IN' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       const hrs = Number(((e.durationMinutes || 0) / 60).toFixed(1));
-      return `- **${dateStr}**: ${hrs}h (${e.ministryType || 'Ministry'}) | RVs: ${e.returnVisits || 0}, Studies: ${e.bibleStudies || 0}, Placements: ${e.placements || 0}${e.notes ? ` | *"<sup>${e.notes}</sup>"*` : ''}`;
+      
+      const rvLabel = lang === 'hy' ? 'Վերայց' : lang === 'ru' ? 'Повторные' : lang === 'hi' ? 'पुनः भेंट' : lang === 'pa' ? 'ਮੁੜ-ਮੁਲਾਕਾਤਾਂ' : 'RVs';
+      const stLabel = lang === 'hy' ? 'Ուսումնասիրություն' : lang === 'ru' ? 'Изучения' : lang === 'hi' ? 'अध्ययन' : lang === 'pa' ? 'ਸਟੱਡੀਆਂ' : 'Studies';
+      const plLabel = lang === 'hy' ? 'Գրականություն' : lang === 'ru' ? 'Публикации' : lang === 'hi' ? 'साहित्य' : lang === 'pa' ? 'ਸਾਹਿਤ' : 'Placements';
+
+      return `- **${dateStr}**: ${hrs}h (${e.ministryType || 'Ministry'}) | ${rvLabel}: ${e.returnVisits || 0}, ${stLabel}: ${e.bibleStudies || 0}, ${plLabel}: ${e.placements || 0}${e.notes ? ` | *"<sup>${e.notes}</sup>"*` : ''}`;
     }).join('\n');
 
-    return `**Recent Activity Records (${entries.length})**\n${formatted}`;
+    const header = lang === 'hy' ? `**Վերջին Ծառայության Գրանցումները (${entries.length})**`
+      : lang === 'ru' ? `**Недавние записи служения (${entries.length})**`
+      : lang === 'hi' ? `**हालिया प्रचार गतिविधियां (${entries.length})**`
+      : lang === 'pa' ? `**ਹਾਲੀਆ ਪ੍ਰਚਾਰ ਗਤੀਵਿਧੀਆਂ (${entries.length})**`
+      : `**Recent Activity Records (${entries.length})**`;
+
+    return `${header}\n${formatted}`;
   }
 
   /**
    * Get Ministry Schedule
    */
-  static getMinistrySchedule(userContext: any, lang: string = 'en'): string {
-    const data = this.parseUserStats(userContext);
+  static getMinistrySchedule(userContext: any, langStr: string = 'en'): string {
+    const lang = LanguageService.normalizeLanguage(langStr);
+    const data = this.parseUserStats(userContext, lang);
     const events = [...data.allEvents].filter((e: any) => e.dateMillis >= Date.now() - 86400000).sort((a: any, b: any) => (a.dateMillis || 0) - (b.dateMillis || 0));
 
     if (events.length === 0) {
@@ -242,30 +264,54 @@ ${data.isGoalReached ? '🎉 **Congratulations! You have reached your monthly go
         : 'No upcoming scheduled ministry arrangements found in your calendar.';
     }
 
+    const localeStr = lang === 'hy' ? 'hy-AM' : lang === 'ru' ? 'ru-RU' : lang === 'hi' ? 'hi-IN' : lang === 'pa' ? 'pa-IN' : 'en-US';
     const formatted = events.slice(0, 5).map((e: any) => {
-      const dateStr = new Date(e.dateMillis).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      return `- 📅 **${dateStr}**: **${e.title}** ${e.location ? `at ${e.location}` : ''}`;
+      const dateStr = new Date(e.dateMillis).toLocaleDateString(localeStr, { month: 'short', day: 'numeric', year: 'numeric' });
+      return `- 📅 **${dateStr}**: **${e.title}** ${e.location ? `(${e.location})` : ''}`;
     }).join('\n');
 
-    return `**Upcoming Scheduled Arrangements**\n${formatted}`;
+    const header = lang === 'hy' ? '**Առաջիկա Ծառայողական Պայմանավորվածություններ**'
+      : lang === 'ru' ? '**Предстоящие графики служения**'
+      : lang === 'hi' ? '**आगामी निर्धारित प्रचार व्यवस्थाएं**'
+      : lang === 'pa' ? '**ਆਉਣ ਵਾਲੇ ਪ੍ਰਚਾਰ ਪ੍ਰਬੰਧ**'
+      : '**Upcoming Scheduled Arrangements**';
+
+    return `${header}\n${formatted}`;
   }
 
   /**
    * Generate Ministry Practical Tips & Analysis
    */
-  static generateMinistryTips(userContext: any, lang: string = 'en'): string {
-    const data = this.parseUserStats(userContext);
+  static generateMinistryTips(userContext: any, langStr: string = 'en'): string {
+    const lang = LanguageService.normalizeLanguage(langStr);
+    const data = this.parseUserStats(userContext, lang);
 
     let tipText = '';
 
     if (data.goalHours <= 0) {
-      tipText = 'Consider setting a specific target hour goal in Settings to help track your monthly activity systematically.';
+      if (lang === 'hy') tipText = 'Դուք կարող եք սահմանել ամսական նպատակային ժամեր Կարգավորումներում՝ ձեր ծառայությունն ավելի կազմակերպված պլանավորելու համար։';
+      else if (lang === 'ru') tipText = 'Рекомендуется настроить цель по часам в Настройках для более удобного планирования служения.';
+      else if (lang === 'hi') tipText = 'अपनी प्रचार गतिविधियों को व्यवस्थित रूप से ट्रैक करने के लिए सेटिंग्स में एक लक्ष्य निर्धारित करें।';
+      else if (lang === 'pa') tipText = 'ਆਪਣੇ ਮਹੀਨਾਵਾਰ ਪ੍ਰਚਾਰ ਨੂੰ ਬਿਹਤਰ ਤਰੀਕੇ ਨਾਲ ਚਲਾਉਣ ਲਈ ਸੈਟਿੰਗਾਂ ਵਿੱਚ ਇੱਕ ਨਿਸ਼ਾਨਾ ਸੈੱਟ ਕਰੋ।';
+      else tipText = 'Consider setting a specific target hour goal in Settings to help track your monthly activity systematically.';
     } else if (data.isGoalReached) {
-      tipText = `Great job reaching your ${data.goalHours} hour goal! You can use remaining days in the month for informal witnessing, return visits, or assisting others.`;
+      if (lang === 'hy') tipText = `Գերազանց է։ Դուք հասել եք ձեր ${data.goalHours} ժամի նպատակին։ Ամսվա մնացած օրերը կարող եք օգտագործել վերայցելությունների և ուսումնասիրությունների համար։`;
+      else if (lang === 'ru') tipText = `Отличная работа! Вы достигли цели в ${data.goalHours} ч. Вы можете использовать оставшиеся дни месяца для повторных посещений и помощи другим.`;
+      else if (lang === 'hi') tipText = `बहुत बढ़िया! आपने अपने ${data.goalHours} घंटे का लक्ष्य पूरा कर लिया है। आप शेष दिनों का उपयोग पुनः भेटों और अध्ययन के लिए कर सकते हैं।`;
+      else if (lang === 'pa') tipText = `ਬਹੁਤ ਵਧੀਆ! ਤੁਸੀਂ ਆਪਣੇ ${data.goalHours} ਘੰਟੇ ਦਾ ਨਿਸ਼ਾਨਾ ਪੂਰਾ ਕਰ ਲਿਆ ਹੈ। ਤੁਸੀਂ ਬਾਕੀ ਦਿਨਾਂ ਦਾ ਉਪਯੋਗ ਮੁੜ-ਮੁਲਾਕਾਤਾਂ ਲਈ ਕਰ ਸਕਦੇ ਹੋ।`;
+      else tipText = `Great job reaching your ${data.goalHours} hour goal! You can use remaining days in the month for informal witnessing, return visits, or assisting others.`;
     } else if (data.isOnPace) {
-      tipText = `You are currently on pace to reach your ${data.goalHours} hour goal! Keep up your steady schedule of ~${data.weeklyAvgNeeded} hours per week.`;
+      if (lang === 'hy') tipText = `Դուք ճիշտ ընթացքի մեջ եք ${data.goalHours} ժամի նպատակին հասնելու համար։ Պահպանեք շաբաթական ~${data.weeklyAvgNeeded} ժամի ռիթմը։`;
+      else if (lang === 'ru') tipText = `Вы идете в отличном темпе к своей цели в ${data.goalHours} ч.! Поддерживайте регулярный график ~${data.weeklyAvgNeeded} ч./нед.`;
+      else if (lang === 'hi') tipText = `आप अपने ${data.goalHours} घंटे के लक्ष्य को पूरा करने के लिए सही गति से बढ़ रहे हैं! प्रति सप्ताह ~${data.weeklyAvgNeeded} घंटे का लक्ष्य रखें।`;
+      else if (lang === 'pa') tipText = `ਤੁਸੀਂ ਆਪਣੇ ${data.goalHours} ਘੰਟੇ ਦੇ ਨਿਸ਼ਾਨੇ ਨੂੰ ਪੂਰਾ ਕਰਨ ਲਈ ਸਹੀ ਰਫ਼ਤਾਰ 'ਤੇ ਹੋ! ਹਰ ਹਫ਼ਤੇ ~${data.weeklyAvgNeeded} ਘੰਟੇ ਦਾ ਨਿਸ਼ਾਨਾ ਰੱਖੋ।`;
+      else tipText = `You are currently on pace to reach your ${data.goalHours} hour goal! Keep up your steady schedule of ~${data.weeklyAvgNeeded} hours per week.`;
     } else {
-      tipText = `You have ${data.remainingHours} hours remaining with ${data.daysRemaining} days left in the month. Scheduling short 1-2 hour witnessing periods during weekends or evenings can help you reach your goal smoothly.`;
+      if (lang === 'hy') tipText = `Ձեզ մնացել է ${data.remainingHours} ժամ (${data.daysRemaining} օրում)։ Հանգստյան օրերին կամ երեկոյան 1-2 ժամով ծառայություն պլանավորելը կօգնի հեշտությամբ հասնել նպատակին։`;
+      else if (lang === 'ru') tipText = `Вам осталось ${data.remainingHours} ч. за ${data.daysRemaining} дн. Запланируйте небольшие выходы по 1-2 часа в выходные или вечерами.`;
+      else if (lang === 'hi') tipText = `आपको ${data.daysRemaining} दिनों में ${data.remainingHours} घंटे शेष हैं। सप्ताहांत या शाम को 1-2 घंटे का समय निकालने से मदद मिलेगी।`;
+      else if (lang === 'pa') tipText = `ਤੁਹਾਨੂੰ ${data.daysRemaining} ਦਿਨਾਂ ਵਿੱਚ ${data.remainingHours} ਘੰਟੇ ਬਾਕੀ ਹਨ। ਵੀਕਐਂਡ 'ਤੇ ਜਾਂ ਸ਼ਾਮ ਨੂੰ 1-2 ਘੰਟੇ ਪ੍ਰਚਾਰ ਕਰਨ ਨਾਲ ਮਦਦ ਮਿਲੇਗੀ।`;
+      else tipText = `You have ${data.remainingHours} hours remaining with ${data.daysRemaining} days left in the month. Scheduling short 1-2 hour witnessing periods during weekends or evenings can help you reach your goal smoothly.`;
     }
 
     switch (lang) {
