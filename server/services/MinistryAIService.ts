@@ -6,7 +6,7 @@ export class MinistryAIService {
    * Main entry point to process a Ministry Assistant request deterministically
    */
   static async processRequest(payload: MinistryAIRequestPayload): Promise<MinistryAIResponsePayload> {
-    const { message, userContext, language = 'en' } = payload;
+    const { message, userContext, language = 'en', conversationHistory = [] } = payload;
 
     if (!message || typeof message !== 'string' || !message.trim()) {
       throw new Error('Message is required.');
@@ -18,7 +18,8 @@ export class MinistryAIService {
     const { answer, sources, suggestedFollowUps } = await MinistryAssistantRouter.handleRequest(
       cleanMessage,
       userContext,
-      language
+      language,
+      conversationHistory
     );
 
     return {

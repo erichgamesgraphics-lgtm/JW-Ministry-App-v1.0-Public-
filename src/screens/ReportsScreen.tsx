@@ -77,7 +77,7 @@ export const ReportsScreen: React.FC = () => {
   const goalHours = getGoalHours();
   const goalPercentage = goalHours > 0 ? Math.min(100, Math.round((reportData.totalMinutes / 60 / goalHours) * 100)) : 0;
 
-  const rawSummaryText = storage.generateReportSummary(entries, settings, currentYear, currentMonth);
+  const rawSummaryText = storage.generateReportSummary(entries, settings, currentYear, currentMonth, language);
 
   const handleShareReport = async () => {
     if (navigator.share) {

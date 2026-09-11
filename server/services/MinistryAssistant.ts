@@ -254,9 +254,12 @@ ${data.isGoalReached ? '🎉 **Congratulations! You have reached your monthly go
   static getMinistrySchedule(userContext: any, langStr: string = 'en'): string {
     const lang = LanguageService.normalizeLanguage(langStr);
     const data = this.parseUserStats(userContext, lang);
-    const events = [...data.allEvents].filter((e: any) => e.dateMillis >= Date.now() - 86400000).sort((a: any, b: any) => (a.dateMillis || 0) - (b.dateMillis || 0));
 
-    if (events.length === 0) {
+    const upcomingList: any[] = (userContext?.upcomingArrangements && Array.isArray(userContext.upcomingArrangements) && userContext.upcomingArrangements.length > 0)
+      ? userContext.upcomingArrangements
+      : [...data.allEvents].filter((e: any) => (e.occurrenceStartTimeMillis || e.dateMillis || 0) >= Date.now() - 86400000).sort((a: any, b: any) => (a.occurrenceStartTimeMillis || a.dateMillis || 0) - (b.occurrenceStartTimeMillis || b.dateMillis || 0));
+
+    if (upcomingList.length === 0) {
       return lang === 'hy' ? 'Առաջիկա ծառայողական պայմանավորվածություններ չկան։'
         : lang === 'ru' ? 'Предстоящие графики и встречи для служения отсутствуют.'
         : lang === 'hi' ? 'कोई आगामी प्रचार व्यवस्था निर्धारित नहीं है।'
@@ -265,8 +268,9 @@ ${data.isGoalReached ? '🎉 **Congratulations! You have reached your monthly go
     }
 
     const localeStr = lang === 'hy' ? 'hy-AM' : lang === 'ru' ? 'ru-RU' : lang === 'hi' ? 'hi-IN' : lang === 'pa' ? 'pa-IN' : 'en-US';
-    const formatted = events.slice(0, 5).map((e: any) => {
-      const dateStr = new Date(e.dateMillis).toLocaleDateString(localeStr, { month: 'short', day: 'numeric', year: 'numeric' });
+    const formatted = upcomingList.slice(0, 5).map((e: any) => {
+      const eventTime = e.occurrenceStartTimeMillis || e.dateMillis;
+      const dateStr = new Date(eventTime).toLocaleDateString(localeStr, { month: 'short', day: 'numeric', year: 'numeric' });
       return `- 📅 **${dateStr}**: **${e.title}** ${e.location ? `(${e.location})` : ''}`;
     }).join('\n');
 

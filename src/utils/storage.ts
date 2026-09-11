@@ -236,9 +236,10 @@ export const storage = {
     return [headers.join(','), ...rows].join('\n');
   },
 
-  generateReportSummary(entries: MinistryEntry[], settings: UserSettings, year: number, month: number): string {
+  generateReportSummary(entries: MinistryEntry[], settings: UserSettings, year: number, month: number, lang: SupportedLanguage = 'en'): string {
     const monthDate = new Date(year, month, 1);
-    const monthName = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const localeCode = lang === 'hy' ? 'hy-AM' : lang === 'ru' ? 'ru-RU' : lang === 'hi' ? 'hi-IN' : lang === 'pa' ? 'pa-IN' : 'en-US';
+    const monthName = monthDate.toLocaleDateString(localeCode, { month: 'long', year: 'numeric' });
     
     const monthlyEntries = entries.filter(e => {
       const d = new Date(e.dateMillis);
@@ -258,11 +259,99 @@ export const storage = {
 
     const activityLines = monthlyEntries.map(entry => {
       const d = new Date(entry.dateMillis);
-      const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const dateStr = d.toLocaleDateString(localeCode, { month: 'short', day: 'numeric' });
       const h = Math.floor(entry.durationMinutes / 60);
       const m = entry.durationMinutes % 60;
       return `• ${dateStr} | ${h}h ${m}m | ${entry.ministryType} | RV: ${entry.returnVisits}, BS: ${entry.bibleStudies}, Placements: ${entry.placements}`;
     }).join('\n');
+
+    if (lang === 'ru') {
+      return `========================================
+   ОТЧЕТ О СЛУЖЕНИИ СВИДЕТЕЛЕЙ ИЕГОВЫ
+========================================
+Месяц: ${monthName}
+Статус: ${statusTitle}
+
+ИТОГОВАЯ СТАТИСТИКА
+----------------------------------------
+Всего часов:          ${totalHours} ч ${remainingMinutes} мин (${decimalHours} ч)
+Активных дней:        ${activeDays}
+Повторных посещений:  ${totalRV}
+Изучений Библии:      ${totalBS}
+Публикаций:           ${totalPlacements}
+
+ДЕТАЛИЗАЦИЯ ДНЕЙ
+----------------------------------------
+${activityLines || 'В этом месяце служение пока не зафиксировано.'}
+========================================
+JW Ministry App`;
+    }
+
+    if (lang === 'hy') {
+      return `========================================
+   ԵՀՈՎԱՅԻ ՎԿԱՆԵՐԻ ԾԱՌԱՅՈՒԹՅԱՆ ՀԱՇՎԵՏՎՈՒԹՅՈՒՆ
+========================================
+Ամիս՝ ${monthName}
+Կարգավիճակ՝ ${statusTitle}
+
+ԱՄՓՈՓ ՎԻՃԱԿԱԳՐՈՒԹՅՈՒՆ
+----------------------------------------
+Ընդհանուր ժամեր՝      ${totalHours} ժ ${remainingMinutes} ր (${decimalHours} ժ)
+Ակտիվ օրեր՝           ${activeDays}
+Վերայցելություններ՝  ${totalRV}
+Աստվածաշնչի ուսումնասիրություններ՝ ${totalBS}
+Տարածված գրականություն՝ ${totalPlacements}
+
+ՕՐԱԿԱՆ ՄԱՆՐԱՄԱՍՆԵՐ
+----------------------------------------
+${activityLines || 'Այս ամսվա համար գրառումներ չկան։'}
+========================================
+JW Ministry App`;
+    }
+
+    if (lang === 'hi') {
+      return `========================================
+   यहोवा के साक्षियों की प्रचार सेवा रिपोर्ट
+========================================
+महीना: ${monthName}
+स्थिति: ${statusTitle}
+
+कुल आंकड़े
+----------------------------------------
+कुल घंटे:       ${totalHours} घंटे ${remainingMinutes} मिनट (${decimalHours} घंटे)
+सक्रिय दिन:     ${activeDays}
+पुनर्भेंट:      ${totalRV}
+बाइबल अध्ययन:   ${totalBS}
+प्रकाशन:        ${totalPlacements}
+
+दैनिक विवरण
+----------------------------------------
+${activityLines || 'इस अवधि के लिए कोई गतिविधि दर्ज नहीं की गई।'}
+========================================
+JW Ministry App`;
+    }
+
+    if (lang === 'pa') {
+      return `========================================
+   ਯਹੋਵਾਹ ਦੇ ਗਵਾਹਾਂ ਦੀ ਪ੍ਰਚਾਰ ਸੇਵਾ ਰਿਪੋਰਟ
+========================================
+ਮਹੀਨਾ: ${monthName}
+ਦਰਜਾ: ${statusTitle}
+
+ਕੁੱਲ ਵੇਰਵਾ
+----------------------------------------
+ਕੁੱਲ ਘੰਟੇ:      ${totalHours} ਘੰਟੇ ${remainingMinutes} ਮਿੰਟ (${decimalHours} ਘੰਟੇ)
+ਸਰਗਰਮ ਦਿਨ:     ${activeDays}
+ਮੁੜ-ਮੁਲਾਕਾਤਾਂ:   ${totalRV}
+ਬਾਈਬਲ ਸਟੱਡੀਆਂ:   ${totalBS}
+ਪ੍ਰਕਾਸ਼ਨ:        ${totalPlacements}
+
+ਰੋਜ਼ਾਨਾ ਵੇਰਵਾ
+----------------------------------------
+${activityLines || 'ਇਸ ਮਹੀਨੇ ਲਈ ਕੋਈ ਰਿਕਾਰਡ ਦਰਜ ਨਹੀਂ ਹੈ।'}
+========================================
+JW Ministry App`;
+    }
 
     return `========================================
    JEHOVAH'S WITNESSES MINISTRY REPORT

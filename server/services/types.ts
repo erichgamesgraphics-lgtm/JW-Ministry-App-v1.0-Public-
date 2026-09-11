@@ -1,3 +1,26 @@
+export type CategoryType =
+  | 'MINISTRY_PROGRESS'
+  | 'MINISTRY_HOURS'
+  | 'MINISTRY_GOAL'
+  | 'MINISTRY_HISTORY'
+  | 'MINISTRY_SCHEDULE'
+  | 'MINISTRY_TIPS'
+  | 'JW_SEARCH'
+  | 'WOL_SEARCH'
+  | 'BIBLE_SEARCH'
+  | 'FOLLOW_UP'
+  | 'GENERAL_MINISTRY'
+  | 'COMBINED'
+  | 'GENERAL';
+
+export interface ScriptureMatch {
+  isScripture: boolean;
+  rawReference: string;
+  book: string;
+  chapter?: number;
+  verses?: string;
+}
+
 export interface SearchResult {
   id: string;
   title: string;
@@ -7,11 +30,20 @@ export interface SearchResult {
   publication?: string;
   bibleVerses?: string[];
   topicKeywords?: string[];
+  relevanceScore?: number;
+  matchReason?: string;
+}
+
+export interface ChatHistoryMessage {
+  role: 'user' | 'assistant' | 'model';
+  content: string;
+  sources?: SearchResult[];
+  timestamp?: number;
 }
 
 export interface MinistryAIRequestPayload {
   message: string;
-  conversationHistory?: Array<{ role: 'user' | 'model'; text: string }>;
+  conversationHistory?: ChatHistoryMessage[];
   userContext?: {
     stats?: any;
     entries?: any[];

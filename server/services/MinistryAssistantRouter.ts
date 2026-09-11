@@ -2,28 +2,21 @@ import { MinistryAssistant } from './MinistryAssistant.js';
 import { JWOrgService } from './JWOrgService.js';
 import { WOLService } from './WOLService.js';
 import { LanguageService } from './LanguageService.js';
-import { SearchResult } from './types.js';
+import type { CategoryType, ScriptureMatch, SearchResult, ChatHistoryMessage } from './types.js';
 import { SupportedLanguage } from '../../src/types.js';
 
-export type CategoryType =
-  | 'MINISTRY_PROGRESS'
-  | 'MINISTRY_HOURS'
-  | 'MINISTRY_GOAL'
-  | 'MINISTRY_HISTORY'
-  | 'MINISTRY_SCHEDULE'
-  | 'MINISTRY_TIPS'
-  | 'JW_SEARCH'
-  | 'WOL_SEARCH'
-  | 'JW_SOURCE'
-  | 'COMBINED'
-  | 'GENERAL';
+export type { CategoryType };
 
 export class MinistryAssistantRouter {
   /**
    * Classifies user prompt into specific intent categories using centralized LanguageService
    */
-  static classifyRequest(message: string, lang: SupportedLanguage): { primaryCategory: CategoryType; isCombined: boolean } {
-    return LanguageService.getLocalizedIntent(message, lang);
+  static classifyRequest(
+    message: string,
+    lang: SupportedLanguage,
+    hasPreviousResults: boolean = false
+  ): { primaryCategory: CategoryType; isCombined: boolean; searchQuery: string } {
+    return LanguageService.getLocalizedIntent(message, lang, hasPreviousResults);
   }
 
   /**
@@ -32,36 +25,159 @@ export class MinistryAssistantRouter {
   static async handleRequest(
     message: string,
     userContext: any,
-    requestedLanguage: string = 'en'
+    requestedLanguage: string = 'en',
+    conversationHistory: ChatHistoryMessage[] = []
   ): Promise<{ answer: string; sources: SearchResult[]; suggestedFollowUps: string[] }> {
     // 1. Centralized language detection & normalization
     const detected = LanguageService.detectLanguage(message, requestedLanguage);
     const targetLang: SupportedLanguage = detected !== 'en' ? detected : LanguageService.normalizeLanguage(requestedLanguage);
 
-    const { primaryCategory, isCombined } = this.classifyRequest(message, targetLang);
-    const cleanMsg = message.trim();
+    const hasPreviousResults = conversationHistory.some(m => m.sources && m.sources.length > 0);
+    const { primaryCategory, isCombined, searchQuery } = this.classifyRequest(message, targetLang, hasPreviousResults);
 
     let answerParts: string[] = [];
     let sources: SearchResult[] = [];
 
-    // Execute combined or category-specific logic
-    if (isCombined) {
+    // 2. Handle Follow-up questions referencing previous conversation
+    if (primaryCategory === 'FOLLOW_UP') {
+      const lastAssistantWithSources = [...conversationHistory].reverse().find(m => m.role === 'assistant' && m.sources && m.sources.length > 0);
+      const prevSources = lastAssistantWithSources?.sources || [];
+
+      if (prevSources.length > 0) {
+        const lower = message.toLowerCase();
+        // Check if user is asking about youth / young people
+        const isAskingYouth = lower.includes('young') || lower.includes('youth') || lower.includes('teen') || lower.includes('молодеж') || lower.includes('երիտասարդ') || lower.includes('युवा') || lower.includes('ਨੌਜਵਾਨ');
+        // Check if asking about the first article
+        const isAskingFirst = lower.includes('first') || lower.includes('перв') || lower.includes('առաջին') || lower.includes('पहला') || lower.includes('ਪਹਿਲਾ');
+
+        if (isAskingYouth) {
+          const youthArticle = prevSources.find(s =>
+            (s.topicKeywords && s.topicKeywords.some(k => k.includes('youth') || k.includes('young'))) ||
+            s.title.toLowerCase().includes('young') || s.title.toLowerCase().includes('youth') || s.title.toLowerCase().includes('молодеж')
+          ) || prevSources[0];
+
+          sources = [youthArticle];
+          const responseHeader =
+            targetLang === 'hy'
+              ? `Երիտասարդների համար հատկապես օգտակար է հետևյալ հոդվածը՝ **«${youthArticle.title}»**:\n\nԱյն քննարկում է գործնական հարցեր և առաջարկում աստվածաշնչյան առաջնորդություն։`
+              : targetLang === 'ru'
+              ? `Для молодежи и подростков особенно подойдет материал **«${youthArticle.title}»**:\n\nВ нем рассматриваются практические библейские советы для преодоления трудностей и укрепления веры.`
+              : targetLang === 'hi'
+              ? `युवाओं के लिए विशेष रूप से यह लेख सबसे उपयुक्त है: **«${youthArticle.title}»**:\n\nयह व्यावहारिक मार्गदर्शन और विश्वास को मजबूत करने वाले बाइबल सिद्धांत प्रस्तुत करता है।`
+              : targetLang === 'pa'
+              ? `ਨੌਜਵਾਨਾਂ ਲਈ ਵਿਸ਼ੇਸ਼ ਤੌਰ 'ਤੇ ਇਹ ਲੇਖ ਸਭ ਤੋਂ ਵਧੀਆ ਹੈ: **«${youthArticle.title}»**:\n\nਇਹ ਬਾਈਬਲ ਦੇ ਵਿਹਾਰਕ ਅਸੂਲਾਂ ਬਾਰੇ ਦੱਸਦਾ ਹੈ।`
+              : `For young people, the article **"${youthArticle.title}"** is especially well-suited:\n\nIt provides practical, Bible-based advice for addressing challenges and building a strong personal relationship with God.`;
+
+          answerParts.push(responseHeader);
+        } else if (isAskingFirst) {
+          const firstArticle = prevSources[0];
+          sources = [firstArticle];
+          const explanation =
+            targetLang === 'hy'
+              ? `Մանրամասներ առաջին հոդվածի մասին՝ **«${firstArticle.title}»**:\n\n${firstArticle.snippet}\n\nՀրատարակություն՝ *${firstArticle.publication || 'JW.ORG'}*`
+              : targetLang === 'ru'
+              ? `Подробнее о первой статье **«${firstArticle.title}»**:\n\n${firstArticle.snippet}\n\nПубликация: *${firstArticle.publication || 'JW.ORG'}*`
+              : targetLang === 'hi'
+              ? `पहले लेख के बारे में अधिक जानकारी: **«${firstArticle.title}»**:\n\n${firstArticle.snippet}\n\nप्रकाशन: *${firstArticle.publication || 'JW.ORG'}*`
+              : targetLang === 'pa'
+              ? `ਪਹਿਲੇ ਲੇਖ ਬਾਰੇ ਹੋਰ ਜਾਣਕਾਰੀ: **«${firstArticle.title}»**:\n\n${firstArticle.snippet}\n\nਪ੍ਰਕਾਸ਼ਨ: *${firstArticle.publication || 'JW.ORG'}*`
+              : `Here are more details about the first article, **"${firstArticle.title}"**:\n\n${firstArticle.snippet}\n\nPublished in: *${firstArticle.publication || 'JW.ORG'}*`;
+
+          answerParts.push(explanation);
+        } else {
+          // General follow-up comparison of previous sources
+          sources = prevSources;
+          const summary =
+            targetLang === 'hy'
+              ? `Նախորդ որոնման արդյունքներում ներառված հոդվածները համապարփակ լուսաբանում են այս թեման։ Կարող եք ընտրել այն, որն առավել համապատասխանում է ձեր ներկա կարիքին։`
+              : targetLang === 'ru'
+              ? `Материалы из предыдущего поиска всесторонне освещают эту тему. Вы можете выбрать наиболее подходящую статью для более глубокого рассмотрения.`
+              : targetLang === 'hi'
+              ? `पिछली खोज में मिले लेख इस विषय पर व्यापक प्रकाश डालते हैं। आप अपनी आवश्यकता के अनुसार उपयुक्त लेख चुन सकते हैं।`
+              : targetLang === 'pa'
+              ? `ਪਿਛਲੀ ਖੋਜ ਵਿੱਚ ਮਿਲੇ ਲੇਖ ਇਸ ਵਿਸ਼ੇ 'ਤੇ ਚੰਗੀ ਜਾਣਕਾਰੀ ਦਿੰਦੇ ਹਨ।`
+              : `The articles retrieved from your search address this topic thoroughly. You can review each source for deeper meditation and practical application in your personal study.`;
+
+          answerParts.push(summary);
+        }
+      } else {
+        // No previous sources found to follow up on, redirect to search
+        const fallbackResults = await JWOrgService.searchJWOrg(searchQuery, targetLang);
+        sources = fallbackResults;
+        if (sources.length > 0) {
+          answerParts.push(`**JW.ORG**:`);
+        } else {
+          answerParts.push(LanguageService.getNoResultsMessage(searchQuery, targetLang, 'JW.ORG'));
+        }
+      }
+    }
+
+    // 3. Handle Scripture / Bible Search
+    else if (primaryCategory === 'BIBLE_SEARCH') {
+      const scriptureMatch: ScriptureMatch | null = LanguageService.extractScriptureReference(message);
+      const scriptureRef = scriptureMatch ? scriptureMatch.rawReference : searchQuery;
+
+      // Online Bible URL on JW.ORG
+      const langPath = targetLang === 'hy' ? 'hy' : targetLang === 'ru' ? 'ru' : targetLang === 'hi' ? 'hi' : targetLang === 'pa' ? 'pa' : 'en';
+      const jwBibleUrl = `https://www.jw.org/${langPath}/library/bible/`;
+
+      const relatedArticles = await JWOrgService.searchJWOrg(scriptureRef, targetLang);
+      sources = [...relatedArticles];
+
+      if (sources.length === 0) {
+        const bibleTitle =
+          targetLang === 'ru'
+            ? `Священное Писание — Перевод нового мира (${scriptureRef})`
+            : targetLang === 'hy'
+            ? `Սուրբ Գրություններ. Նոր աշխարհ թարգմանություն (${scriptureRef})`
+            : targetLang === 'hi'
+            ? `पवित्र शास्त्र — नई दुनिया अनुवाद (${scriptureRef})`
+            : targetLang === 'pa'
+            ? `ਪਵਿੱਤਰ ਲਿਖਤਾਂ — ਨਵੀਂ ਦੁਨੀਆਂ ਅਨੁਵਾਦ (${scriptureRef})`
+            : `New World Translation of the Holy Scriptures (${scriptureRef})`;
+
+        sources.push({
+          id: `jw-bible-${Date.now()}`,
+          title: bibleTitle,
+          snippet: `Read ${scriptureRef} online with cross-references, study notes, and parallel Bible translations on JW.ORG.`,
+          url: jwBibleUrl,
+          source: 'JW.ORG',
+          publication: 'New World Translation',
+          relevanceScore: 1.0,
+        });
+      }
+
+      const bibleHeader =
+        targetLang === 'hy'
+          ? `📖 **Աստվածաշնչյան Համար՝ ${scriptureRef}**\n\nԴուք կարող եք կարդալ այս համարը և ուսումնասիրել դրա համատեքստը [JW.ORG Օնլայն Աստվածաշնչում](${jwBibleUrl})։`
+          : targetLang === 'ru'
+          ? `📖 **Стих из Библии: ${scriptureRef}**\n\nВы можете прочитать этот стих и контекст в [Онлайн-Библии на JW.ORG](${jwBibleUrl}), а также найти перекрестные ссылки и комментарии.`
+          : targetLang === 'hi'
+          ? `📖 **बाइबल वचन: ${scriptureRef}**\n\nआप इस वचन और इसके संदर्भ को [JW.ORG ऑनलाइन बाइबल](${jwBibleUrl}) में पढ़ सकते हैं।`
+          : targetLang === 'pa'
+          ? `📖 **ਬਾਈਬਲ ਹਵਾਲਾ: ${scriptureRef}**\n\nਤੁਸੀਂ ਇਸ ਹਵਾਲੇ ਨੂੰ [JW.ORG ਆਨਲਾਈਨ ਬਾਈਬਲ](${jwBibleUrl}) 'ਤੇ ਪੜ੍ਹ ਸਕਦੇ ਹੋ।`
+          : `📖 **Bible Scripture: ${scriptureRef}**\n\nYou can read this scripture and its surrounding context in the [JW.ORG Online Bible (New World Translation)](${jwBibleUrl}), along with cross-references and study notes.`;
+
+      answerParts.push(bibleHeader);
+    }
+
+    // 4. Combined Tracker + Research Request
+    else if (isCombined) {
       const progressText = MinistryAssistant.getCurrentMinistryProgress(userContext, targetLang);
       const tipsText = MinistryAssistant.generateMinistryTips(userContext, targetLang);
       answerParts.push(progressText);
       answerParts.push(tipsText);
 
-      // Perform research search
       const [jwRes, wolRes] = await Promise.all([
-        JWOrgService.searchJWOrg(cleanMsg, targetLang),
-        WOLService.searchWOL(cleanMsg, targetLang),
+        JWOrgService.searchJWOrg(searchQuery, targetLang),
+        WOLService.searchWOL(searchQuery, targetLang),
       ]);
       sources = [...jwRes, ...wolRes].slice(0, 4);
 
       if (sources.length > 0) {
         const researchHeader =
           targetLang === 'hy'
-            ? '📚 **Առաջարկվող Հոդվածներ JW.ORG / WOL-ից**:'
+            ? '📚 **Համապատասխան Հոդվածներ JW.ORG / WOL-ից**:'
             : targetLang === 'ru'
             ? '📚 **Рекомендуемые статьи с JW.ORG / WOL**:'
             : targetLang === 'hi'
@@ -71,7 +187,10 @@ export class MinistryAssistantRouter {
             : '📚 **Recommended JW.ORG & Watchtower Library Articles**:';
         answerParts.push(researchHeader);
       }
-    } else {
+    }
+
+    // 5. Categorical handling
+    else {
       switch (primaryCategory) {
         case 'MINISTRY_PROGRESS':
           answerParts.push(MinistryAssistant.getCurrentMinistryProgress(userContext, targetLang));
@@ -99,80 +218,64 @@ export class MinistryAssistantRouter {
           break;
 
         case 'JW_SEARCH': {
-          const jwResults = await JWOrgService.searchJWOrg(cleanMsg, targetLang);
+          const jwResults = await JWOrgService.searchJWOrg(searchQuery, targetLang);
           sources = jwResults;
+
           if (sources.length > 0) {
             const header =
               targetLang === 'hy'
-                ? `Գտնվել է **${sources.length}** հոդված JW.ORG-ում.`
+                ? `Գտնվել են հետևյալ պաշտոնական հոդվածները **JW.ORG** կայքում («**${searchQuery}**» թեմայով):`
                 : targetLang === 'ru'
-                ? `Найдено **${sources.length}** материалов на JW.ORG:`
+                ? `На официальном сайте **JW.ORG** найдены следующие материалы по теме «**${searchQuery}**»:`
                 : targetLang === 'hi'
-                ? `JW.ORG पर **${sources.length}** लेख मिले:`
+                ? `**JW.ORG** पर «**${searchQuery}**» से संबंधित निम्नलिखित लेख मिले:`
                 : targetLang === 'pa'
-                ? `JW.ORG 'ਤੇ **${sources.length}** ਲੇਖ ਮਿਲੇ:`
-                : `Found **${sources.length}** relevant articles on official JW.ORG:`;
+                ? `**JW.ORG** 'ਤੇ «**${searchQuery}**» ਸੰਬੰਧੀ ਹੇਠਾਂ ਦਿੱਤੇ ਲੇਖ ਮਿਲੇ:`
+                : `Found the following official publications and articles on **JW.ORG** for "**${searchQuery}**":`;
+
             answerParts.push(header);
+
+            // Add brief key takeaways from the top articles
+            const highlights = sources.map(s => {
+              const scriptureNote = s.bibleVerses && s.bibleVerses.length > 0 ? ` (📖 ${s.bibleVerses.join(', ')})` : '';
+              return `• **[${s.title}](${s.url})**${scriptureNote}\n  ${s.snippet}`;
+            }).join('\n\n');
+
+            answerParts.push(highlights);
           } else {
-            answerParts.push(
-              targetLang === 'hy'
-                ? 'JW.ORG-ում համապատասխան հոդվածներ չեն գտնվել:'
-                : targetLang === 'ru'
-                ? 'На JW.ORG не найдено соответствующих статей.'
-                : targetLang === 'hi'
-                ? 'JW.ORG पर कोई संबंधित लेख नहीं मिला।'
-                : targetLang === 'pa'
-                ? "JW.ORG 'ਤੇ ਕੋਈ ਲեխ ਨਹੀਂ ਮਿਲਿਆ।"
-                : 'No relevant JW.ORG results were found for this query.'
-            );
+            answerParts.push(LanguageService.getNoResultsMessage(searchQuery, targetLang, 'JW.ORG'));
           }
           break;
         }
 
         case 'WOL_SEARCH': {
-          const wolResults = await WOLService.searchWOL(cleanMsg, targetLang);
+          const wolResults = await WOLService.searchWOL(searchQuery, targetLang);
           sources = wolResults;
+
           if (sources.length > 0) {
             const header =
               targetLang === 'hy'
-                ? `Գտնվել է **${sources.length}** նյութ Դիտարանի Օնլայն Գրադարանում (WOL.JW.ORG):`
+                ? `Գտնվել են հետևյալ նյութերը **Դիտարանի Օնլայն Գրադարանում (WOL.JW.ORG)** («**${searchQuery}**» թեմայով):`
                 : targetLang === 'ru'
-                ? `Найдено **${sources.length}** материалов в Онлайн-библиотеке Сторожевой Башни (WOL.JW.ORG):`
+                ? `В **Онлайн-библиотеке Сторожевой Башни (WOL.JW.ORG)** найдены следующие материалы по запросу «**${searchQuery}**»:`
                 : targetLang === 'hi'
-                ? `वाचटावर ऑनलाइन लाइब्रेरी (WOL.JW.ORG) में **${sources.length}** परिणाम मिले:`
+                ? `**वाचटावर ऑनलाइन लाइब्रेरी (WOL.JW.ORG)** में «**${searchQuery}**» के लिए निम्नलिखित परिणाम मिले:`
                 : targetLang === 'pa'
-                ? `ਵਾਚਟਾਵਰ ਆਨਲਾਈਨ ਲਾਇਬ੍ਰੇਰੀ (WOL.JW.ORG) 'ਤੇ **${sources.length}** ਨਤੀਜੇ ਮਿਲੇ:`
-                : `Found **${sources.length}** research entries on Watchtower Online Library (WOL.JW.ORG):`;
+                ? `**ਵਾਚਟਾਵਰ ਆਨਲਾਈਨ ਲਾਇਬ੍ਰੇਰੀ (WOL.JW.ORG)** 'ਤੇ «**${searchQuery}**» ਲਈ ਹੇਠਾਂ ਦਿੱਤੀ ਜਾਣਕਾਰੀ ਮਿਲੀ:`
+                : `Watchtower Online Library (WOL.JW.ORG) research results for "**${searchQuery}**":`;
+
             answerParts.push(header);
+
+            const highlights = sources.map(s => {
+              return `• **[${s.title}](${s.url})**\n  ${s.snippet}`;
+            }).join('\n\n');
+
+            answerParts.push(highlights);
           } else {
-            answerParts.push(
-              targetLang === 'hy'
-                ? 'WOL.JW.ORG-ում համապատասխան նյութեր չեն գտնվել:'
-                : targetLang === 'ru'
-                ? 'В Онлайн-библиотеке WOL.JW.ORG ничего не найдено.'
-                : targetLang === 'hi'
-                ? 'वाचटावर ऑनलाइन लाइब्रेरी (WOL.JW.ORG) में कोई परिणाम नहीं मिला।'
-                : targetLang === 'pa'
-                ? "WOL.JW.ORG 'ਤੇ ਕੋਈ ਨਤੀਜੇ ਨਹੀਂ ਮਿਲੇ।"
-                : 'No relevant Watchtower Online Library (WOL.JW.ORG) results were found for this query.'
-            );
+            answerParts.push(LanguageService.getNoResultsMessage(searchQuery, targetLang, 'WOL.JW.ORG'));
           }
           break;
         }
-
-        case 'JW_SOURCE':
-          answerParts.push(
-            targetLang === 'hy'
-              ? 'Բացվում է JW.ORG պաշտոնական էջը։'
-              : targetLang === 'ru'
-              ? 'Открывается официальная страница публикаций JW.ORG.'
-              : targetLang === 'hi'
-              ? 'आधिकारिक JW.ORG पृष्ठ खोला जा रहा है।'
-              : targetLang === 'pa'
-              ? 'ਅਧਿਕਾਰਤ JW.ORG ਪੰਨਾ ਖੋਲ੍ਹਿਆ ਜਾ ਰਿਹਾ ਹੈ।'
-              : 'Opening official JW publication source page.'
-          );
-          break;
 
         default:
           answerParts.push(LanguageService.getGeneralGreeting(targetLang));
@@ -180,7 +283,7 @@ export class MinistryAssistantRouter {
       }
     }
 
-    // Dynamic suggestions based on LanguageService
+    // Dynamic suggestions based on context and language
     const suggestedFollowUps = LanguageService.getLocalizedSuggestions(targetLang, primaryCategory);
 
     return {

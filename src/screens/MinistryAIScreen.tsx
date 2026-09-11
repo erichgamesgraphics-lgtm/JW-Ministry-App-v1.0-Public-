@@ -34,7 +34,7 @@ export interface ChatMessage {
 }
 
 export const MinistryAIScreen: React.FC = () => {
-  const { entries, scheduledEvents, settings, dashboardStats, language, t } = useMinistry();
+  const { entries, events, upcomingArrangements, settings, dashboardStats, language, t } = useMinistry();
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
@@ -45,6 +45,7 @@ export const MinistryAIScreen: React.FC = () => {
     },
   ]);
 
+  const [dynamicSuggestions, setDynamicSuggestions] = useState<string[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,30 +78,37 @@ export const MinistryAIScreen: React.FC = () => {
     if (!textToSend.trim() || loading) return;
 
     const userMsgId = `user-${Date.now()}`;
-    const newHistory = [
-      ...messages,
-      {
-        id: userMsgId,
-        role: 'user' as const,
-        content: textToSend.trim(),
-        timestamp: Date.now(),
-      },
-    ];
+    const userMessage: ChatMessage = {
+      id: userMsgId,
+      role: 'user' as const,
+      content: textToSend.trim(),
+      timestamp: Date.now(),
+    };
 
+    const newHistory = [...messages, userMessage];
     setMessages(newHistory);
     if (!customText) setInput('');
     setLoading(true);
     setError(null);
 
+    const conversationHistory = newHistory.map(m => ({
+      role: m.role,
+      content: m.content,
+      sources: m.sources,
+      timestamp: m.timestamp,
+    }));
+
     const userContext = {
       stats: dashboardStats,
       entries,
-      events: scheduledEvents,
+      events,
+      upcomingArrangements,
       settings,
     };
 
     let answerText = '';
     let answerSources: SearchResultItem[] = [];
+    let followUps: string[] = [];
 
     try {
       // 1. Attempt API fetch
@@ -112,6 +120,7 @@ export const MinistryAIScreen: React.FC = () => {
         },
         body: JSON.stringify({
           message: textToSend.trim(),
+          conversationHistory,
           userContext,
           language,
         }),
@@ -130,6 +139,7 @@ export const MinistryAIScreen: React.FC = () => {
       if (response.ok && data && (data.answer || data.message)) {
         answerText = data.answer || data.message;
         answerSources = data.sources || [];
+        followUps = data.suggestedFollowUps || [];
       } else if (data && data.error) {
         throw new Error(data.error.message || data.error);
       } else {
@@ -138,10 +148,12 @@ export const MinistryAIScreen: React.FC = () => {
         const fallbackResult = await MinistryAssistantRouter.handleRequest(
           textToSend.trim(),
           userContext,
-          language
+          language,
+          conversationHistory
         );
         answerText = fallbackResult.answer;
         answerSources = fallbackResult.sources || [];
+        followUps = fallbackResult.suggestedFollowUps || [];
       }
 
       setMessages(prev => [
@@ -154,13 +166,17 @@ export const MinistryAIScreen: React.FC = () => {
           timestamp: Date.now(),
         },
       ]);
+      if (followUps && followUps.length > 0) {
+        setDynamicSuggestions(followUps);
+      }
     } catch (err: any) {
       console.warn('API Request Failed, executing local fallback:', err);
       try {
         const fallbackResult = await MinistryAssistantRouter.handleRequest(
           textToSend.trim(),
           userContext,
-          language
+          language,
+          conversationHistory
         );
         setMessages(prev => [
           ...prev,
@@ -172,6 +188,9 @@ export const MinistryAIScreen: React.FC = () => {
             timestamp: Date.now(),
           },
         ]);
+        if (fallbackResult.suggestedFollowUps && fallbackResult.suggestedFollowUps.length > 0) {
+          setDynamicSuggestions(fallbackResult.suggestedFollowUps);
+        }
       } catch (fallbackErr: any) {
         console.error('Local fallback failed:', fallbackErr);
         setError(LanguageService.getLocalizedError(language));
@@ -190,10 +209,13 @@ export const MinistryAIScreen: React.FC = () => {
         timestamp: Date.now(),
       },
     ]);
+    setDynamicSuggestions([]);
     setError(null);
   };
 
-  const suggestedQuestions = LanguageService.getLocalizedSuggestions(language);
+  const suggestedQuestions = dynamicSuggestions.length > 0
+    ? dynamicSuggestions
+    : LanguageService.getLocalizedSuggestions(language);
 
   return (
     <div className="flex flex-col h-[calc(100vh-8.5rem)] max-w-2xl mx-auto pb-2">
