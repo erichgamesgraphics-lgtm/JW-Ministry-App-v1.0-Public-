@@ -771,8 +771,8 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         });
       }
       return { success: true };
-    } catch {
-      return { success: false, message: 'This backup file is invalid or damaged.' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Failed to parse backup file.' };
     }
   }, [entries, events, settings]);
 
