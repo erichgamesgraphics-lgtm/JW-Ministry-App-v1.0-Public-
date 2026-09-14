@@ -54,15 +54,15 @@ export class LanguageService {
     // Conversational prefixes & filler patterns across languages
     const fillerPatterns: RegExp[] = [
       // English
-      /^(?:please\s+)?(?:can\s+you\s+)?(?:search\s+(?:for|jw\.org\s+for|wol\s+for)?|find\s+(?:information\s+(?:about|on)|articles?\s+(?:about|on)|something\s+(?:about|on)|material\s+(?:about|on))?|look\s+up|what\s+does\s+(?:jw\.org|the\s+bible|wol)\s+say\s+about|show\s+me\s+(?:articles?\s+(?:about|on)|information\s+(?:about|on))?|tell\s+me\s+about|do\s+you\s+have\s+articles?\s+(?:about|on)|what\s+are\s+some\s+articles?\s+(?:about|on)|give\s+me\s+(?:information|articles?)\s+(?:about|on)|search\s+jw\.org\s+for|search\s+wol\s+for)\s+/i,
+      /^(?:please\s+)?(?:can\s+you\s+)?(?:search\s+(?:for\s+)?(?:a\s+)?(?:publication|article|material|information|something|guidance|advice)?\s*(?:about|on|discussing)?|search\s+(?:jw\.org|wol)\s+for|find\s+(?:information\s+(?:about|on)|articles?\s+(?:about|on|discussing)|something\s+(?:about|on)|material\s+(?:about|on)|publications?\s+(?:about|on|for))?|look\s+up|what\s+(?:does\s+(?:jw\.org|the\s+bible|wol)\s+say\s+about|articles?\s+discuss(?:ing)?|publications?\s+(?:are\s+there\s+about|discuss(?:ing)?))|show\s+me\s+(?:articles?\s+(?:about|on)|information\s+(?:about|on)|publications?\s+(?:about|on))?|tell\s+me\s+about|do\s+you\s+have\s+articles?\s+(?:about|on)|what\s+are\s+some\s+articles?\s+(?:about|on)|give\s+me\s+(?:information|articles?)\s+(?:about|on)|search\s+jw\.org\s+for|search\s+wol\s+for)\s+/i,
       // Russian
-      /^(?:пожалуйста\s*,?\s*)?(?:найди\s+(?:статьи\s+о|информацию\s+о|материалы\s+о|что-нибудь\s+о)?|поищи\s+(?:статьи\s+о|информацию\s+о)?|что\s+(?:говорится\s+на\s+jw\.org|библия\s+говорит|говорит\s+библия)\s+о|покажи\s+(?:статьи\s+о|материалы\s+о)?|расскажи\s+о|поиск\s+(?:в\s+jw\.org|в\s+wol|по\s+теме)?|есть\s+ли\s+статьи\s+о)\s*/i,
+      /^(?:пожалуйста\s*,?\s*)?(?:найди\s+(?:статьи\s+(?:о|об|про)|информацию\s+(?:о|об|про)|материалы\s+(?:о|об|про)|что-нибудь\s+(?:о|об|про)|публикаци[юи]\s+(?:о|об|про))?|поищи\s+(?:статьи\s+(?:о|об|про)|информацию\s+(?:о|об|про))?|что\s+(?:говорится\s+на\s+jw\.org|библия\s+говорит|говорит\s+библия)\s+(?:о|об|про)|какие\s+статьи\s+обсуждают|покажи\s+(?:статьи\s+(?:о|об|про)|материалы\s+(?:о|об|про))?|расскажи\s+(?:о|об|про)|поиск\s+(?:в\s+jw\.org|в\s+wol|по\s+теме)?|есть\s+ли\s+статьи\s+(?:о|об|про))\s*/i,
       // Armenian
-      /^(?:խնդրում\s+եմ\s*,?\s*)?(?:գտիր\s+(?:հոդվածներ\s+|տեղեկություն\s+|նյութեր\s+)?|որոնիր\s+(?:հոդվածներ\s+|տեղեկություն\s+|նյութեր\s+)?|փնտրիր\s+(?:հոդվածներ\s+)?|ի՞նչ\s+է\s+ասում\s+(?:jw\.org-ը|աստվածաշունչը)\s+|ցույց\s+տուր\s+(?:հոդվածներ\s+)?|պատմիր\s+)\s*/i,
+      /^(?:խնդրում\s+եմ\s*,?\s*)?(?:գտիր\s+(?:հոդվածներ\s+|տեղեկություն\s+|նյութեր\s+|հրատարակություն\s+)?|որոնիր\s+(?:հոդվածներ\s+|տեղեկություն\s+|նյութեր\s+)?|փնտրիր\s+(?:հոդվածներ\s+)?|ի՞նչ\s+է\s+ասում\s+(?:jw\.org-ը|աստվածաշունչը)\s+|որ\s+հոդվածներն\s+են\s+քննարկում|ցույց\s+տուր\s+(?:հոդվածներ\s+)?|պատմիր\s+)\s*/i,
       // Hindi
-      /^(?:कृपया\s*)?(?:के\s+बारे\s+में\s+(?:खोजें|लेख\s+खोजें|जानकारी\s+खोजें|बताएं)|बाइबल\s+क्या\s+कहती\s+है|jw\.org\s+पर\s+खोजें|खोजें\s+|ढूंढें\s+|दिखाएं\s+)\s*/i,
+      /^(?:कृपया\s*)?(?:के\s+बारे\s+में\s+(?:खोजें|लेख\s+खोजें|जानकारी\s+खोजें|बताएं|सामग्री\s+खोजें)|बाइबल\s+क्या\s+कहती\s+है|jw\.org\s+पर\s+खोजें|कौन\s+से\s+लेख\s+|खोजें\s+|ढूंढें\s+|दिखाएं\s+)\s*/i,
       // Punjabi
-      /^(?:ਕਿਰਪਾ\s+ਕਰਕੇ\s*)?(?:ਬਾਰੇ\s+(?:ਜਾਣਕਾਰੀ\s+ਲੱਭੋ|ਲੇਖ\s+ਲੱਭੋ|ਦੱਸੋ)|ਬਾਈਬਲ\s+ਕੀ\s+ਕਹਿੰਦੀ\s+ਹੈ|jw\.org\s+'ਤੇ\s+ਖੋਜੋ|ਲੱਭੋ\s+|ਦਿਖਾਓ\s+)\s*/i,
+      /^(?:ਕਿਰਪਾ\s+ਕਰਕੇ\s*)?(?:ਬਾਰੇ\s+(?:ਜਾਣਕਾਰੀ\s+ਲੱਭੋ|ਲੇਖ\s+ਲੱਭੋ|ਦੱਸੋ)|ਬਾਈਬਲ\s+ਕੀ\s+ਕਹਿੰਦੀ\s+ਹੈ|jw\.org\s+'ਤੇ\s+ਖੋਜੋ|ਕਿਹੜੇ\s+ਲੇਖ\s+|ਲੱਭੋ\s+|ਦਿਖਾਓ\s+)\s*/i,
     ];
 
     for (const pattern of fillerPatterns) {
@@ -294,9 +294,20 @@ export class LanguageService {
     if (isTips) return { primaryCategory: 'MINISTRY_TIPS', isCombined: false, searchQuery: cleanSearchTerm };
     if (isProgress) return { primaryCategory: 'MINISTRY_PROGRESS', isCombined: false, searchQuery: cleanSearchTerm };
 
-    // If query has at least 2 words and is not just a greeting, treat as open-ended topic search!
+    // Clean check for greetings vs open-ended inquiries
     const wordCount = message.trim().split(/\s+/).length;
-    if (wordCount >= 2 && !lower.includes('hello') && !lower.includes('hi') && !lower.includes('привет') || wordCount >= 3) {
+    const isGreeting =
+      lower === 'hello' || lower === 'hi' || lower === 'hey' ||
+      lower.startsWith('hello') || lower.startsWith('привет') || lower.startsWith('здравствуй') ||
+      lower.startsWith('բարև') || lower.startsWith('ողջույն') ||
+      lower.startsWith('नमस्ते') || lower.startsWith('ਸਤਿ ਸ਼੍ਰੀ ਅਕਾਲ');
+
+    if (isGreeting && wordCount <= 3) {
+      return { primaryCategory: 'GENERAL', isCombined: false, searchQuery: cleanSearchTerm };
+    }
+
+    // Treat any informative prompt or inquiry as an open-ended research search
+    if (wordCount >= 2 || isExplicitSearch || isTopicSearch) {
       return { primaryCategory: 'JW_SEARCH', isCombined: false, searchQuery: cleanSearchTerm };
     }
 

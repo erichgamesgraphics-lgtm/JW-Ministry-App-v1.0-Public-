@@ -17,6 +17,8 @@ import {
   Globe,
   ChevronDown,
   X,
+  Sparkles,
+  RotateCcw,
 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { JWMinistryLogo } from '../components/JWMinistryLogo.tsx';
@@ -27,11 +29,38 @@ interface WelcomeScreenProps {
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onContinue }) => {
-  const { completeOnboarding, language, updateLanguage, t } = useMinistry();
+  const {
+    completeOnboarding,
+    language,
+    updateLanguage,
+    t,
+    discoveredBackup,
+    restoreDiscoveredBackup,
+    dismissDiscoveredBackup,
+  } = useMinistry();
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedGoal, setSelectedGoal] = useState<PublisherStatusType>('PUBLISHER');
   const [customHours, setCustomHours] = useState<number>(40);
   const [showLanguageModal, setShowLanguageModal] = useState<boolean>(false);
+  const [isRestoring, setIsRestoring] = useState<boolean>(false);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+
+  const handleRestoreDiscovered = async () => {
+    setIsRestoring(true);
+    setRestoreError(null);
+    try {
+      const success = await restoreDiscoveredBackup('replace');
+      if (success) {
+        onContinue();
+      } else {
+        setRestoreError(t.backup.restoreFailed || 'Unable to restore backup.');
+      }
+    } catch (err: any) {
+      setRestoreError(err?.message || 'Restore failed');
+    } finally {
+      setIsRestoring(false);
+    }
+  };
 
   const languageOptions: Array<{ code: SupportedLanguage; label: string; nativeLabel: string }> = [
     { code: 'en', label: 'English', nativeLabel: 'English' },
@@ -154,6 +183,76 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onContinue }) => {
             <p className="mt-2 text-xs sm:text-sm font-normal text-slate-600 dark:text-slate-300 leading-relaxed px-2">
               {t.welcome.subtitle}
             </p>
+
+            {/* Discovered Backup Restore Card (App Deletion / Reinstallation Flow) */}
+            {discoveredBackup && discoveredBackup.found && (
+              <div className="mt-4 text-left rounded-2xl border-2 border-emerald-500/40 bg-emerald-50/80 dark:bg-emerald-950/40 p-4 shadow-sm space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                    <Sparkles className="h-5 w-5 shrink-0" />
+                    <h3 className="text-xs sm:text-sm font-bold">
+                      {language === 'ru'
+                        ? 'С возвращением! Найдена резервная копия'
+                        : language === 'hy'
+                        ? 'Բարի վերադարձ։ Գտնվել է պահուստային պատճեն'
+                        : language === 'hi'
+                        ? 'वापसी पर स्वागत! पिछला बैकअप मिला'
+                        : language === 'pa'
+                        ? 'ਜੀ ਆਇਆਂ ਨੂੰ! ਪਿਛਲਾ ਬੈਕਅੱਪ ਮਿਲਿਆ'
+                        : 'Welcome Back! Previous Backup Found'}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={dismissDiscoveredBackup}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs p-1 cursor-pointer"
+                    title="Dismiss"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {language === 'ru'
+                    ? `Обнаружены сохранённые данные служения (${discoveredBackup.deviceName || 'Предыдущая установка'}): ${discoveredBackup.entriesCount || 0} записей, ${discoveredBackup.eventsCount || 0} событий (${discoveredBackup.totalHours || '0'} ч).`
+                    : language === 'hy'
+                    ? `Հայտնաբերվել են պահպանված տվյալներ (${discoveredBackup.deviceName || 'Նախորդ տեղադրում'}). ${discoveredBackup.entriesCount || 0} գրանցում, ${discoveredBackup.eventsCount || 0} միջոցառում (${discoveredBackup.totalHours || '0'} ժ)։`
+                    : language === 'hi'
+                    ? `इस डिवाइस का बैकअप मिला: ${discoveredBackup.entriesCount || 0} प्रविष्टियाँ, ${discoveredBackup.eventsCount || 0} कार्यक्रम (${discoveredBackup.totalHours || '0'} घंटे)।`
+                    : language === 'pa'
+                    ? `ਇਸ ਡਿਵਾਈਸ ਦਾ ਬੈਕਅੱਪ ਮਿਲਿਆ: ${discoveredBackup.entriesCount || 0} ਐਂਟਰੀਆਂ, ${discoveredBackup.eventsCount || 0} ਪ੍ਰੋਗਰਾਮ (${discoveredBackup.totalHours || '0'} ਘੰਟੇ)।`
+                    : `Encrypted backup detected from this device (${discoveredBackup.deviceName || 'Previous install'}): ${discoveredBackup.entriesCount || 0} entries, ${discoveredBackup.eventsCount || 0} scheduled events (${discoveredBackup.totalHours || '0'} hrs).`}
+                </p>
+
+                {restoreError && (
+                  <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">
+                    {restoreError}
+                  </p>
+                )}
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={isRestoring}
+                    onClick={handleRestoreDiscovered}
+                    className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-3 flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <RotateCcw className={`h-3.5 w-3.5 ${isRestoring ? 'animate-spin' : ''}`} />
+                    <span>
+                      {isRestoring
+                        ? (language === 'ru' ? 'Восстановление...' : 'Restoring...')
+                        : (language === 'ru' ? 'Восстановить данные' : language === 'hy' ? 'Վերականգնել տվյալները' : language === 'hi' ? 'डेटा पुनर्स्थापित करें' : language === 'pa' ? 'ਡੇਟਾ ਰੀਸਟੋਰ ਕਰੋ' : 'Restore My Ministry Data')}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={dismissDiscoveredBackup}
+                    className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-xs font-semibold py-2.5 px-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                  >
+                    {language === 'ru' ? 'Начать заново' : language === 'hy' ? 'Սկսել նորից' : language === 'hi' ? 'नया सेटअप' : language === 'pa' ? 'ਨਵਾਂ ਸ਼ੁਰੂ ਕਰੋ' : 'Start Fresh'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Feature Cards */}
             <div className="mt-5 space-y-2.5 text-left">

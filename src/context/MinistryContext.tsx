@@ -25,6 +25,16 @@ import {
   processDueNotifications,
   cancelNotificationsForEvent,
 } from '../utils/notifications.ts';
+import {
+  BackupManager,
+  BackupSyncStatus,
+  DiscoveredBackupInfo,
+} from '../utils/backupManager.ts';
+import {
+  getOrCreateInstallationIdentity,
+  mergeMinistryData,
+  DecryptedBackupPayload,
+} from '../utils/backupPackage.ts';
 
 interface InAppNotification {
   title: string;
@@ -82,7 +92,18 @@ interface MinistryContextType {
   updateTimerDraft: (updates: Partial<TimerState>) => void;
   currentTimerElapsedSeconds: number;
 
-  // Data Tools
+  // Data & Backup Tools
+  backupStatus: BackupSyncStatus;
+  lastBackupAt: number;
+  deviceRecoveryKey: string;
+  deviceName: string;
+  discoveredBackup: DiscoveredBackupInfo | null;
+  dismissDiscoveredBackup: () => void;
+  restoreDiscoveredBackup: (mergeMode?: 'replace' | 'merge') => Promise<boolean>;
+  restoreWithRecoveryKey: (key: string, mergeMode?: 'replace' | 'merge') => Promise<{ success: boolean; message?: string }>;
+  restoreFromMTBackupFile: (fileContent: string, mergeMode?: 'replace' | 'merge') => Promise<{ success: boolean; message?: string }>;
+  performManualBackupNow: () => Promise<boolean>;
+  downloadMTBackupFile: () => Promise<boolean>;
   exportCsv: () => string;
   createBackup: () => string;
   restoreBackup: (json: string) => boolean;
@@ -100,6 +121,38 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [timer, setTimer] = useState<TimerState>(() => storage.getTimer());
   const [timerTicker, setTimerTicker] = useState<number>(0);
   const [activeNotification, setActiveNotification] = useState<InAppNotification | null>(null);
+
+  const [backupStatus, setBackupStatus] = useState<BackupSyncStatus>('idle');
+  const [lastBackupAt, setLastBackupAt] = useState<number>(0);
+  const [discoveredBackup, setDiscoveredBackup] = useState<DiscoveredBackupInfo | null>(null);
+  const identity = useMemo(() => getOrCreateInstallationIdentity(), []);
+
+  // Listen to backup status changes
+  useEffect(() => {
+    const unsubscribe = BackupManager.subscribe((status, time) => {
+      setBackupStatus(status);
+      setLastBackupAt(time);
+    });
+    return unsubscribe;
+  }, []);
+
+  // On mount: if app has no entries/events or is first launch/not onboarded, check for existing backup to offer one-click restore
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (entries.length === 0 && events.length === 0) {
+      BackupManager.checkForExistingBackup().then(info => {
+        if (info && info.found) {
+          setDiscoveredBackup(info);
+        }
+      });
+    }
+  }, [isLoaded]);
+
+  // Debounced auto backup whenever user data changes
+  useEffect(() => {
+    if (!isLoaded) return;
+    BackupManager.triggerDebouncedBackup(entries, events, settings, 2500);
+  }, [entries, events, settings, isLoaded]);
 
   // Mark storage as securely initialized after component mounts
   useEffect(() => {
@@ -626,6 +679,119 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     storage.clearAll();
   }, []);
 
+  const dismissDiscoveredBackup = useCallback(() => {
+    setDiscoveredBackup(null);
+  }, []);
+
+  const restoreDiscoveredBackup = useCallback(async (mergeMode: 'replace' | 'merge' = 'merge'): Promise<boolean> => {
+    try {
+      const payload = await BackupManager.restoreFromCloud();
+      if (!payload) return false;
+
+      if (mergeMode === 'merge' && (entries.length > 0 || events.length > 0)) {
+        const merged = mergeMinistryData(entries, events, settings, payload);
+        setEntries(merged.entries);
+        setEvents(merged.events);
+        setSettings(merged.settings);
+      } else {
+        setEntries(payload.entries || []);
+        setEvents(payload.events || []);
+        setSettings({
+          ...settings,
+          ...payload.settings,
+          onboardingCompleted: true,
+          isFirstLaunch: false,
+          lastBackupDate: Date.now(),
+        });
+      }
+      setDiscoveredBackup(null);
+      return true;
+    } catch (err) {
+      console.error('Failed to restore discovered backup:', err);
+      return false;
+    }
+  }, [entries, events, settings]);
+
+  const restoreWithRecoveryKey = useCallback(async (
+    key: string,
+    mergeMode: 'replace' | 'merge' = 'merge'
+  ): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const payload = await BackupManager.restoreFromCloud(key.trim().toUpperCase());
+      if (!payload) {
+        return { success: false, message: 'Backup not found for this recovery key.' };
+      }
+
+      if (mergeMode === 'merge' && (entries.length > 0 || events.length > 0)) {
+        const merged = mergeMinistryData(entries, events, settings, payload);
+        setEntries(merged.entries);
+        setEvents(merged.events);
+        setSettings(merged.settings);
+      } else {
+        setEntries(payload.entries || []);
+        setEvents(payload.events || []);
+        setSettings({
+          ...settings,
+          ...payload.settings,
+          onboardingCompleted: true,
+          isFirstLaunch: false,
+          lastBackupDate: Date.now(),
+        });
+      }
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Restore failed' };
+    }
+  }, [entries, events, settings]);
+
+  const restoreFromMTBackupFile = useCallback(async (
+    fileContent: string,
+    mergeMode: 'replace' | 'merge' = 'merge'
+  ): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const payload = await BackupManager.restoreFromFile(fileContent);
+      if (!payload) {
+        return { success: false, message: 'Invalid or corrupted backup file.' };
+      }
+
+      if (mergeMode === 'merge' && (entries.length > 0 || events.length > 0)) {
+        const merged = mergeMinistryData(entries, events, settings, payload);
+        setEntries(merged.entries);
+        setEvents(merged.events);
+        setSettings(merged.settings);
+      } else {
+        setEntries(payload.entries || []);
+        setEvents(payload.events || []);
+        setSettings({
+          ...settings,
+          ...payload.settings,
+          onboardingCompleted: true,
+          isFirstLaunch: false,
+          lastBackupDate: Date.now(),
+        });
+      }
+      return { success: true };
+    } catch {
+      return { success: false, message: 'This backup file is invalid or damaged.' };
+    }
+  }, [entries, events, settings]);
+
+  const performManualBackupNow = useCallback(async (): Promise<boolean> => {
+    const res = await BackupManager.executeBackupNow(entries, events, settings);
+    if (res.success) {
+      setSettings(prev => ({ ...prev, lastBackupDate: res.lastBackupAt }));
+    }
+    return res.success;
+  }, [entries, events, settings]);
+
+  const downloadMTBackupFile = useCallback(async (): Promise<boolean> => {
+    const success = await BackupManager.downloadMTBackupFile(entries, events, settings);
+    if (success) {
+      setSettings(prev => ({ ...prev, lastBackupDate: Date.now() }));
+    }
+    return success;
+  }, [entries, events, settings]);
+
   // Dashboard Stats Computation
   const dashboardStats: DashboardStats = useMemo(() => {
     const now = new Date();
@@ -802,6 +968,17 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     resetTimer,
     updateTimerDraft,
     currentTimerElapsedSeconds,
+    backupStatus,
+    lastBackupAt,
+    deviceRecoveryKey: identity.recoveryKey,
+    deviceName: identity.deviceName,
+    discoveredBackup,
+    dismissDiscoveredBackup,
+    restoreDiscoveredBackup,
+    restoreWithRecoveryKey,
+    restoreFromMTBackupFile,
+    performManualBackupNow,
+    downloadMTBackupFile,
     exportCsv,
     createBackup,
     restoreBackup,

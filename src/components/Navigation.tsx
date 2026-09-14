@@ -1,5 +1,6 @@
 import React from 'react';
 import { Home, Clock, Sparkles, Calendar, BarChart2 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 
 export type TabType = 'home' | 'activity' | 'ministryAi' | 'calendar' | 'reports' | 'settings';
@@ -38,11 +39,13 @@ export const Navigation: React.FC<NavigationProps> = ({
           const isCenter = item.isCenter;
 
           return (
-            <button
+            <motion.button
               id={`nav-tab-${item.id}`}
               key={item.id}
+              whileTap={{ scale: 0.94 }}
+              transition={{ duration: 0.1 }}
               onClick={() => onSelectTab(item.id)}
-              className={`relative flex flex-1 flex-col items-center justify-center py-1 px-1 rounded-2xl transition-all cursor-pointer ${
+              className={`relative flex flex-1 flex-col items-center justify-center py-1 px-1 rounded-2xl transition-colors cursor-pointer ${
                 isActive
                   ? 'text-blue-600 dark:text-blue-400 font-semibold'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
@@ -73,7 +76,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               <span className={`mt-0.5 text-[10px] sm:text-[11px] leading-tight tracking-tight whitespace-nowrap ${isActive ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>
                 {item.label}
               </span>
-            </button>
+            </motion.button>
           );
         })}
       </div>

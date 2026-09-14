@@ -153,7 +153,7 @@ export const VERIFIED_JW_ARTICLES_CATALOG: MultilingualJWArticle[] = [
     url: 'https://www.jw.org/en/bible-teachings/peace-happiness/anxiety-stress/',
     source: 'JW.ORG',
     bibleVerses: ['Philippians 4:6, 7', '1 Peter 5:7', 'Matthew 6:34'],
-    topicKeywords: ['anxiety', 'stress', 'worry', 'worried', 'nervous', 'panic', 'fear', 'mental health', 'անհանգստություն', 'սթրես', 'վախ', 'тревога', 'тревоге', 'тревоги', 'стресс', 'беспокойство', 'беспокойствах', 'беспокойства', 'переживания', 'चिंता', 'तनाव', 'ਚਿੰਤਾ', 'ਤਣਾਅ'],
+    topicKeywords: ['anxiety', 'dealing with anxiety', 'information about dealing with anxiety', 'cope with anxiety', 'overcoming anxiety', 'stress', 'worry', 'worried', 'nervous', 'panic', 'fear', 'mental health', 'անհանգստություն', 'սթրես', 'վախ', 'тревога', 'тревоге', 'тревоги', 'борьба с тревогой', 'справляться с тревогой', 'стресс', 'беспокойство', 'беспокойствах', 'беспокойства', 'переживания', 'चिंता', 'तनाव', 'चिंता से निपटना', 'ਚਿੰਤਾ', 'ਤਣਾਅ'],
     localizations: {
       en: {
         title: 'How Can the Bible Help With Anxiety and Worry?',
@@ -187,7 +187,7 @@ export const VERIFIED_JW_ARTICLES_CATALOG: MultilingualJWArticle[] = [
     url: 'https://www.jw.org/en/library/magazines/w20140315/family-worship/',
     source: 'JW.ORG',
     bibleVerses: ['Deuteronomy 6:6, 7', 'Ephesians 6:4', 'Psalm 78:4'],
-    topicKeywords: ['family worship', 'family study', 'worship evening', 'spiritual habits', 'children', 'ընտանեկան երկրպագություն', 'семейное поклонение', 'семья', 'परिवारिक आराधना', 'ਪਰਿਵਾਰਕ ਭਗਤੀ'],
+    topicKeywords: ['family worship', 'family study', 'worship evening', 'spiritual habits', 'children', 'family worship ideas', 'what does jw.org say about family worship', 'ընտանեկան երկրպագություն', 'սեր ընտանիքում', 'семейное поклонение', 'семья', 'вечер семейного поклонения', 'статьи о семейном поклонении', 'परिवारिक आराधना', 'ਪਰਿਵਾਰਕ ਭਗਤੀ'],
     localizations: {
       en: {
         title: 'Family Worship — Practical Ideas and Encouragement',
@@ -221,7 +221,7 @@ export const VERIFIED_JW_ARTICLES_CATALOG: MultilingualJWArticle[] = [
     url: 'https://www.jw.org/en/bible-teachings/teenagers/',
     source: 'JW.ORG',
     bibleVerses: ['Ecclesiastes 12:1', '1 Timothy 4:12', 'Psalm 119:9'],
-    topicKeywords: ['young people', 'youth', 'teen', 'teenagers', 'school', 'peer pressure', 'երիտասարդ', 'молодежь', 'подростки', 'युवा', 'किशोर', 'ਨੌਜਵਾਨ'],
+    topicKeywords: ['young people', 'articles about young people', 'youth', 'teen', 'teenagers', 'school', 'peer pressure', 'երիտասարդ', 'молодежь', 'статьи для молодежи', 'подростки', 'юные', 'युवा', 'किशोर', 'ਨੌਜਵਾਨ'],
     localizations: {
       en: {
         title: 'Questions Young People Ask — Answers That Work',
@@ -255,7 +255,7 @@ export const VERIFIED_JW_ARTICLES_CATALOG: MultilingualJWArticle[] = [
     url: 'https://www.jw.org/en/library/magazines/w20120915/patience-endurance/',
     source: 'JW.ORG',
     bibleVerses: ['Galatians 5:22', 'James 5:7, 8', 'Colossians 3:12'],
-    topicKeywords: ['patience', 'patient', 'endurance', 'waiting', 'self-control', 'համբերություն', 'տոկունություն', 'терпение', 'стойкость', 'धैर्य', 'धीरज'],
+    topicKeywords: ['patience', 'patient', 'find something about patience', 'endurance', 'waiting', 'self-control', 'long-suffering', 'համբերություն', 'տոկունություն', 'терпение', 'стойкость', 'долготерпение', 'учиться терпению', 'धैर्य', 'धीरज'],
     localizations: {
       en: {
         title: 'Developing True Patience and Endurance',
@@ -289,7 +289,7 @@ export const VERIFIED_JW_ARTICLES_CATALOG: MultilingualJWArticle[] = [
     url: 'https://www.jw.org/en/library/jw-meeting-workbook/ministry-skills/',
     source: 'JW.ORG',
     bibleVerses: ['Matthew 28:19, 20', 'Romans 10:13-15', '2 Timothy 4:2'],
-    topicKeywords: ['preaching', 'ministry', 'encouragement', 'evangelizing', 'field service', 'zeal', 'door to door', 'cart', 'քարոզչություն', 'քարոզչության', 'ծառայություն', 'խրախուսանք', 'քաջալերանք', 'проповедь', 'служение', 'ободрение', 'проповеднического', 'проповедническое', 'проповедническом', 'प्रचार', 'सेवा', 'प्रोत्साहन', 'ਉਤਸ਼ਾਹ', 'ਪ੍ਰਚਾਰ', 'ਹੌਸਲਾ', 'ਹੌਸਲਾ-ਅਫ਼ਜ਼ਾਈ'],
+    topicKeywords: ['preaching', 'ministry', 'encouragement', 'encouragement about preaching', 'encouragement in preaching', 'evangelizing', 'field service', 'zeal', 'door to door', 'cart', 'discouragement in ministry', 'քարոզչություն', 'քարոզչության', 'ծառայություն', 'խրախուսանք', 'քաջալերանք', 'քարոզչության խրախուսանք', 'проповедь', 'служение', 'ободрение', 'ободрение в служении', 'проповеднического', 'проповедническое', 'проповедническом', 'प्रचार', 'सेवा', 'प्रोत्साहन', 'प्रचार के बारे में प्रोत्साहन', 'ਉਤਸ਼ਾਹ', 'ਪ੍ਰਚਾਰ', 'ਹੌਸਲਾ', 'ਹੌਸਲਾ-ਅਫ਼ਜ਼ਾਈ'],
     localizations: {
       en: {
         title: 'Encouragement and Joy in the Christian Ministry',
@@ -315,6 +315,74 @@ export const VERIFIED_JW_ARTICLES_CATALOG: MultilingualJWArticle[] = [
         title: 'ਪ੍ਰਚਾਰ ਸੇਵਾ ਵਿੱਚ ਉਤਸ਼ਾਹ ਅਤੇ ਖ਼ੁਸ਼ੀ',
         snippet: 'ਆਪਣੀ ਪ੍ਰਚਾਰ ਸੇਵਾ ਵਿੱਚ ਜੋਸ਼ ਅਤੇ ਖ਼ੁਸ਼ੀ ਕਿਵੇਂ ਬਣਾਈ ਰੱਖੀਏ। ਗੱਲਬਾਤ ਸ਼ੁਰੂ ਕਰਨ ਦੇ ਵਿਹਾਰਕ ਨੁਕਤੇ।',
         publication: 'ਸਾਡੀ ਮਸੀਹੀ ਜ਼ਿੰਦਗੀ ਅਤੇ ਸੇਵਾ',
+      },
+    },
+  },
+  {
+    id: 'jw-improving-ministry-1',
+    url: 'https://www.jw.org/en/library/jw-meeting-workbook/ministry-skills/',
+    source: 'JW.ORG',
+    bibleVerses: ['Colossians 4:6', 'Proverbs 25:11', '1 Corinthians 9:22'],
+    topicKeywords: ['improving our ministry', 'improving ministry', 'improve our ministry', 'improve ministry', 'ministry skills', 'improving preaching', 'conversations in preaching', 'effective return visits', 'բարելավել ծառայությունը', 'ծառայության հմտություններ', 'улучшать служение', 'улучшение служения', 'навыки служения', 'разговоры в служении', 'प्रचार सेवा में सुधार', 'सिखाने की कला', 'ਸੇਵਾ ਵਿੱਚ ਸੁਧਾਰ', 'ਪ੍ਰਚਾਰ ਦੇ ਹੁਨਰ'],
+    localizations: {
+      en: {
+        title: 'Improving Our Skills in the Ministry — Meaningful Conversations',
+        snippet: 'Workbook articles on refining our preaching skills: greeting householders with warmth, asking thought-provoking viewpoint questions, and laying the groundwork for return visits.',
+        publication: 'Our Christian Life and Ministry Meeting Workbook',
+      },
+      hy: {
+        title: 'Բարելավենք Մեր Հմտությունները Ծառայության Մեջ — Իմաստալից Զրույցներ',
+        snippet: 'Ինչպես սկսել ջերմ զրույցներ, տալ տեղին հարցեր, օգտագործել Աստվածաշունչը և հիմք դնել հաջորդ այցելության համար։',
+        publication: '«Մեր Քրիստոնեական Կյանքը և Ծառայությունը» աշխատանքային տետր',
+      },
+      ru: {
+        title: 'Улучшаем навыки в служении — содержательные разговоры',
+        snippet: 'Статьи из рабочей тетради: как дружелюбно начинать беседы, тактично задавать вопросы о мнении и подготавливать почву для повторных посещений.',
+        publication: 'Рабочая тетрадь «Христианская жизнь и служение»',
+      },
+      hi: {
+        title: 'प्रचार सेवा में अपने कौशल में सुधार — सार्थक बातचीत',
+        snippet: 'अभ्यास पुस्तिका के लेख: गर्मजोशी से बातचीत शुरू करना, विचारोत्तेजक प्रश्न पूछना और पुनः भेंट की नींव रखना।',
+        publication: 'हमारी मसीही ज़िंदगी और सेवा — अभ्यास पुस्तिका',
+      },
+      pa: {
+        title: 'ਪ੍ਰਚਾਰ ਵਿੱਚ ਆਪਣੇ ਹੁਨਰ ਸੁਧਾਰੋ — ਚੰਗੀ ਗੱਲਬਾਤ',
+        snippet: 'ਅਭਿਆਸ ਪੁਸਤਿਕਾ ਵਿੱਚੋਂ ਸੁਝਾਅ: ਦੋਸਤਾਨਾ ਢੰਗ ਨਾਲ ਗੱਲਬਾਤ ਸ਼ੁਰੂ ਕਰਨਾ ਅਤੇ ਦਿਲਚਸਪ ਸਵਾਲ ਪੁੱਛਣੇ।',
+        publication: 'ਸਾਡੀ ਮਸੀਹੀ ਜ਼ਿੰਦਗੀ ਅਤੇ ਸੇਵਾ — ਅਭਿਆਸ ਪੁਸਤਿਕਾ',
+      },
+    },
+  },
+  {
+    id: 'jw-enjoy-life-forever-1',
+    url: 'https://www.jw.org/en/library/books/enjoy-life-forever/',
+    source: 'JW.ORG',
+    bibleVerses: ['John 17:3', 'Psalm 37:29', 'Revelation 21:3, 4'],
+    topicKeywords: ['publication about bible study', 'publication about study', 'bible study publication', 'bible study book', 'enjoy life forever', 'interactive bible course', 'study course', 'հրատարակություն աստվածաշնչի ուսումնասիրության մասին', 'վայելիր կյանքը հավիտյան', 'публикация для изучения библии', 'книга для изучения библии', 'радуйтесь жизни сейчас и вечно', 'интерактивный библейский курс', 'बाइबल अध्ययन की किताब', 'सदा के लिए ज़िंदगी का आनंद लें', 'ਬਾਈਬਲ ਸਟੱਡੀ ਦੀ ਕਿਤਾਬ', 'ਹਮੇਸ਼ਾ ਲਈ ਜ਼ਿੰਦਗੀ ਦਾ ਆਨੰਦ ਮਾਣੋ'],
+    localizations: {
+      en: {
+        title: 'Enjoy Life Forever! — An Interactive Bible Course',
+        snippet: 'The primary interactive Bible study publication designed to help individuals learn what the Bible teaches about God, Jesus, the future, and how to enjoy a purposeful life.',
+        publication: 'Enjoy Life Forever! (Book & Brochure)',
+      },
+      hy: {
+        title: '«Վայելիր Կյանքը Հավիտյան» — Աստվածաշնչի Ինտերակտիվ Դասընթաց',
+        snippet: 'Հիմնական ինտերակտիվ հրատարակությունը՝ նախատեսված Աստվածաշունչ ուսումնասիրելու համար։ Այն օգնում է իմանալ, թե ինչ է սովորեցնում Աստծու Խոսքը։',
+        publication: '«Վայելիր կյանքը հավիտյան» գիրք',
+      },
+      ru: {
+        title: '«Радуйтесь жизни сейчас и вечно!» — интерактивный библейский курс',
+        snippet: 'Основная интерактивная публикация для изучения Библии. Помогает шаг за шагом исследовать Священное Писание с видеороликами и практическими вопросами.',
+        publication: 'Книга «Радуйтесь жизни сейчас и вечно!»',
+      },
+      hi: {
+        title: '«सदा के लिए ज़िंदगी का आनंद लें!» — एक इंटरैक्टिव बाइबल कोर्स',
+        snippet: 'बाइबल अध्ययन के लिए मुख्य इंटरैक्टिव प्रकाशन जो सिखाता है कि बाइबल परमेश्वर, यीशु और भविष्य के बारे में क्या सिखाती है।',
+        publication: '«सदा के लिए ज़िंदगी का आनंद लें!» पुस्तक',
+      },
+      pa: {
+        title: '«ਹਮੇਸ਼ਾ ਲਈ ਜ਼ਿੰਦਗੀ ਦਾ ਆਨੰਦ ਮਾਣੋ!» — ਇੱਕ ਇੰਟਰਐਕਟਿਵ ਬਾਈਬਲ ਕੋਰਸ',
+        snippet: 'ਬਾਈਬਲ ਸਟੱਡੀ ਕਰਾਉਣ ਲਈ ਮੁੱਖ ਪ੍ਰਕਾਸ਼ਨ ਜੋ ਪਰਮੇਸ਼ੁਰ ਦੇ ਬਚਨ ਦੀਆਂ ਸਿੱਖਿਆਵਾਂ ਨੂੰ ਸੌਖੇ ਢੰਗ ਨਾਲ ਸਮਝਾਉਂਦਾ ਹੈ।',
+        publication: '«ਹਮੇਸ਼ਾ ਲਈ ਜ਼ਿੰਦਗੀ ਦਾ ਆਨੰਦ ਮਾਣੋ!» ਕਿਤਾਬ',
       },
     },
   },
@@ -650,7 +718,35 @@ export class JWOrgService {
       }
     }
 
-    // Return the top relevant articles (max 4). If no articles met the relevance threshold, return empty!
+    // If no articles met the relevance threshold, provide direct JW.ORG search link card so the user never hits a dead end
+    if (results.length === 0 && cleanQuery) {
+      const jwDirectSearchUrl = `https://www.jw.org/${jwLang}/search/results/?q=${encodeURIComponent(cleanQuery)}`;
+      const directTitle =
+        lang === 'ru' ? `Поиск на JW.ORG: «${cleanQuery}»` :
+        lang === 'hy' ? `Որոնում JW.ORG-ում. «${cleanQuery}»` :
+        lang === 'hi' ? `JW.ORG पर खोज: «${cleanQuery}»` :
+        lang === 'pa' ? `JW.ORG 'ਤੇ ਖੋਜ: «${cleanQuery}»` :
+        `JW.ORG Search: "${cleanQuery}"`;
+
+      const directSnippet =
+        lang === 'ru' ? `Перейти к официальным публикациям, видео и статьям на сайте JW.ORG по запросу «${cleanQuery}».` :
+        lang === 'hy' ? `Ուսումնասիրեք JW.ORG պաշտոնական կայքի հոդվածները, տեսանյութերը և հրատարակությունները «${cleanQuery}» թեմայով։` :
+        lang === 'hi' ? `«${cleanQuery}» के लिए JW.ORG आधिकारिक वेबसाइट पर उपलब्ध प्रकाशन और लेख देखें।` :
+        lang === 'pa' ? `«${cleanQuery}» ਲਈ JW.ORG ਅਧਿਕਾਰਤ ਵੈੱਬਸਾਈਟ 'ਤੇ ਪ੍ਰਕਾਸ਼ਨ ਅਤੇ ਲੇਖ ਦੇਖੋ।` :
+        `Explore official published articles, study materials, and answers on JW.ORG for "${cleanQuery}".`;
+
+      results.push({
+        id: `jw-direct-search-${Date.now()}`,
+        title: directTitle,
+        snippet: directSnippet,
+        url: jwDirectSearchUrl,
+        source: 'JW.ORG',
+        publication: 'JW.ORG Search',
+        relevanceScore: 0.8,
+      });
+    }
+
+    // Return the top relevant articles (max 4)
     return results.slice(0, 4);
   }
 }
