@@ -231,9 +231,9 @@ export const MinistryAIScreen: React.FC = () => {
                 <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
                   {t.ministryAi?.title || 'Ministry AI'}
                 </h1>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/10 dark:bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                  Native Engine
+                <span className="inline-flex items-center gap-1 rounded-full bg-indigo-600/10 dark:bg-indigo-400/10 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/50">
+                  <CheckCircle2 className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />
+                  Hybrid AI Engine
                 </span>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-0.5">
