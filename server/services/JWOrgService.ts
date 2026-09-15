@@ -558,6 +558,49 @@ export const VERIFIED_JW_ARTICLES_CATALOG: MultilingualJWArticle[] = [
   },
 ];
 
+let cachedJWT: { token: string; expiresAt: number } | null = null;
+const searchCache = new Map<string, { timestamp: number; results: SearchResult[] }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache
+
+async function getJWOrgJWT(): Promise<string | null> {
+  const now = Date.now();
+  if (cachedJWT && cachedJWT.expiresAt > now) {
+    return cachedJWT.token;
+  }
+  try {
+    const res = await fetch('https://b.jw-cdn.org/tokens/jworg.jwt', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) MinistryTrackerApp/1.0',
+      },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (res.ok) {
+      const token = (await res.text()).trim();
+      if (token) {
+        cachedJWT = { token, expiresAt: now + 3600000 }; // 1 hour validity
+        return token;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to fetch JW.ORG JWT:', err);
+  }
+  return null;
+}
+
+function cleanHTMLText(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export class JWOrgService {
   /**
    * Calculates a relevance score (0.0 to 1.0) for an article against search terms
@@ -595,7 +638,6 @@ export class JWOrgService {
     if (queryTokens.length > 0) {
       let matchedTokens = 0;
       for (const token of queryTokens) {
-        // Calculate root stem for inflected languages (Russian, Armenian, Punjabi, Hindi)
         const stem = token.length >= 5 ? token.slice(0, token.length - 2) : (token.length >= 4 ? token.slice(0, token.length - 1) : token);
         const matchesTitle = title.includes(token) || (stem.length >= 3 && title.includes(stem));
         const matchesKw = keywords.some(k => k.includes(token) || token.includes(k) || (stem.length >= 3 && (k.includes(stem) || stem.includes(k))));
@@ -622,15 +664,23 @@ export class JWOrgService {
   }
 
   /**
-   * Searches official JW.ORG articles with live fetching and curated multilingual catalog
-   * with strict relevance filtering (irrelevant results are discarded).
+   * Searches official JW.ORG using the official search API with JWT authentication
+   * across all 5 supported languages (English, Armenian, Russian, Hindi, Punjabi).
    */
-  static async searchJWOrg(rawQuery: string, langStr: string = 'en'): Promise<SearchResult[]> {
+  static async searchJWOrg(rawQuery: string, langStr: string = 'en', page: number = 1): Promise<SearchResult[]> {
     const lang = LanguageService.normalizeLanguage(langStr);
     const cleanQuery = LanguageService.cleanSearchQuery(rawQuery, lang);
+    if (!cleanQuery) return [];
+
+    const cacheKey = `${lang}:${page}:${cleanQuery.toLowerCase()}`;
+    const cached = searchCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+      return cached.results;
+    }
+
     const results: SearchResult[] = [];
 
-    // Map language to JW.ORG path and wtlocale
+    // Map language to JW.ORG path and official wtlocale
     const langPathMap: Record<SupportedLanguage, { path: string; wtlocale: string }> = {
       en: { path: 'en', wtlocale: 'E' },
       ru: { path: 'ru', wtlocale: 'U' },
@@ -641,112 +691,104 @@ export class JWOrgService {
 
     const { path: jwLang, wtlocale } = langPathMap[lang] || langPathMap['en'];
 
-    // 1. Attempt Live JW.ORG JSON search API
+    // 1. Fetch live search results from official JW.ORG Search API
     try {
-      const searchUrl = `https://www.jw.org/${jwLang}/search/results/json?q=${encodeURIComponent(cleanQuery)}&wtlocale=${wtlocale}`;
-      const response = await fetch(searchUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) MinistryTrackerApp/1.0',
-          'Accept': 'application/json',
-        },
-        signal: AbortSignal.timeout(3500),
-      });
+      const jwt = await getJWOrgJWT();
+      if (jwt) {
+        const offset = (page - 1) * 20;
+        const searchUrl = `https://b.jw-cdn.org/apis/search/results/${wtlocale}/all?q=${encodeURIComponent(cleanQuery)}&limit=20&offset=${offset}`;
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data && Array.isArray(data.results)) {
-          for (let i = 0; i < Math.min(5, data.results.length); i++) {
-            const item = data.results[i];
-            if (item.title && item.url) {
-              const fullUrl = item.url.startsWith('http')
-                ? item.url
-                : `https://www.jw.org${item.url}`;
-              
-              const titleClean = item.title.replace(/<[^>]+>/g, '').trim();
-              const snippetClean = (item.snippet || item.caption || '').replace(/<[^>]+>/g, '').trim();
+        const response = await fetch(searchUrl, {
+          headers: {
+            'Authorization': `Bearer ${jwt}`,
+            'Accept': 'application/json; charset=utf-8',
+            'X-Client-ID': 'jworg-web',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) MinistryTrackerApp/1.0',
+          },
+          signal: AbortSignal.timeout(7000),
+        });
 
-              // Check basic relevance for live results
-              const queryTokens = cleanQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-              const hasOverlap = queryTokens.length === 0 || queryTokens.some(tok =>
-                titleClean.toLowerCase().includes(tok) || snippetClean.toLowerCase().includes(tok)
-              );
+        if (response.ok) {
+          const data = await response.json();
+          const items: any[] = [];
 
-              if (hasOverlap) {
-                results.push({
-                  id: `jw-live-${i}-${Date.now()}`,
-                  title: titleClean,
-                  snippet: snippetClean || 'Official JW.ORG published article.',
-                  url: fullUrl,
-                  source: 'JW.ORG',
-                  publication: item.pubName || 'JW.ORG Publication',
-                  relevanceScore: 0.85,
-                });
+          const extractItems = (arr: any[]) => {
+            if (!Array.isArray(arr)) return;
+            for (const item of arr) {
+              if (item.type === 'item') items.push(item);
+              if (item.type === 'group' && Array.isArray(item.results)) extractItems(item.results);
+            }
+          };
+
+          extractItems(data.results || []);
+
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const titleClean = cleanHTMLText(item.title || '');
+            const snippetClean = cleanHTMLText(item.snippet || item.context || item.caption || '');
+
+            if (titleClean) {
+              let url = item.links?.['jw.org'] || item.links?.wol || item.url;
+              if (!url) {
+                url = `https://www.jw.org/${jwLang}/search/?q=${encodeURIComponent(cleanQuery)}`;
+              } else if (url.startsWith('/')) {
+                url = `https://www.jw.org${url}`;
               }
+
+              const pubName = item.context || item.pubName || item.publicationName || 'JW.ORG';
+
+              results.push({
+                id: `jw-api-${i}-${Date.now()}`,
+                title: titleClean,
+                snippet: snippetClean || 'Official JW.ORG article.',
+                url,
+                source: 'JW.ORG',
+                publication: pubName,
+                relevanceScore: Math.max(0.6, 1.0 - (i * 0.05)),
+              });
             }
           }
         }
       }
-    } catch {
-      // Live search timeout or blocked; proceeds to verified catalog
+    } catch (err) {
+      console.warn('Live JW.ORG search API call warning:', err);
     }
 
-    // 2. Verified Curated Multi-Language Catalog with Relevance Scoring
-    const scoredCatalog = VERIFIED_JW_ARTICLES_CATALOG.map(article => ({
-      article,
-      score: this.scoreArticleRelevance(article, cleanQuery, lang),
-    }))
-      .filter(item => item.score >= 0.25) // Minimum relevance threshold: discard irrelevant articles
-      .sort((a, b) => b.score - a.score);
+    // 2. Fallback to Curated Multi-Language Catalog if API returned no items
+    if (results.length === 0) {
+      const scoredCatalog = VERIFIED_JW_ARTICLES_CATALOG.map(article => ({
+        article,
+        score: this.scoreArticleRelevance(article, cleanQuery, lang),
+      }))
+        .filter(item => item.score >= 0.25)
+        .sort((a, b) => b.score - a.score);
 
-    // Merge and deduplicate by URL
-    const existingUrls = new Set(results.map(r => r.url));
-    for (const item of scoredCatalog) {
-      if (!existingUrls.has(item.article.url)) {
-        const loc = item.article.localizations[lang] || item.article.localizations['en'];
-        results.push({
-          id: item.article.id,
-          title: loc.title,
-          snippet: loc.snippet,
-          url: item.article.url,
-          source: item.article.source,
-          publication: loc.publication,
-          bibleVerses: item.article.bibleVerses,
-          topicKeywords: item.article.topicKeywords,
-          relevanceScore: Number(item.score.toFixed(2)),
-        });
-        existingUrls.add(item.article.url);
+      const existingUrls = new Set(results.map(r => r.url));
+      for (const item of scoredCatalog) {
+        if (!existingUrls.has(item.article.url)) {
+          const loc = item.article.localizations[lang] || item.article.localizations['en'];
+          results.push({
+            id: item.article.id,
+            title: loc.title,
+            snippet: loc.snippet,
+            url: item.article.url,
+            source: item.article.source,
+            publication: loc.publication,
+            bibleVerses: item.article.bibleVerses,
+            topicKeywords: item.article.topicKeywords,
+            relevanceScore: Number(item.score.toFixed(2)),
+          });
+          existingUrls.add(item.article.url);
+        }
       }
     }
 
-    // If no articles met the relevance threshold, provide direct JW.ORG search link card so the user never hits a dead end
-    if (results.length === 0 && cleanQuery) {
-      const jwDirectSearchUrl = `https://www.jw.org/${jwLang}/search/results/?q=${encodeURIComponent(cleanQuery)}`;
-      const directTitle =
-        lang === 'ru' ? `Поиск на JW.ORG: «${cleanQuery}»` :
-        lang === 'hy' ? `Որոնում JW.ORG-ում. «${cleanQuery}»` :
-        lang === 'hi' ? `JW.ORG पर खोज: «${cleanQuery}»` :
-        lang === 'pa' ? `JW.ORG 'ਤੇ ਖੋਜ: «${cleanQuery}»` :
-        `JW.ORG Search: "${cleanQuery}"`;
-
-      const directSnippet =
-        lang === 'ru' ? `Перейти к официальным публикациям, видео и статьям на сайте JW.ORG по запросу «${cleanQuery}».` :
-        lang === 'hy' ? `Ուսումնասիրեք JW.ORG պաշտոնական կայքի հոդվածները, տեսանյութերը և հրատարակությունները «${cleanQuery}» թեմայով։` :
-        lang === 'hi' ? `«${cleanQuery}» के लिए JW.ORG आधिकारिक वेबसाइट पर उपलब्ध प्रकाशन और लेख देखें।` :
-        lang === 'pa' ? `«${cleanQuery}» ਲਈ JW.ORG ਅਧਿਕਾਰਤ ਵੈੱਬਸਾਈਟ 'ਤੇ ਪ੍ਰਕਾਸ਼ਨ ਅਤੇ ਲੇਖ ਦੇਖੋ।` :
-        `Explore official published articles, study materials, and answers on JW.ORG for "${cleanQuery}".`;
-
-      results.push({
-        id: `jw-direct-search-${Date.now()}`,
-        title: directTitle,
-        snippet: directSnippet,
-        url: jwDirectSearchUrl,
-        source: 'JW.ORG',
-        publication: 'JW.ORG Search',
-        relevanceScore: 0.8,
-      });
+    const finalSlice = results.slice(0, 5);
+    if (finalSlice.length > 0) {
+      searchCache.set(cacheKey, { timestamp: Date.now(), results: finalSlice });
     }
 
-    // Return the top relevant articles (max 4)
-    return results.slice(0, 4);
+    return finalSlice;
   }
 }
+

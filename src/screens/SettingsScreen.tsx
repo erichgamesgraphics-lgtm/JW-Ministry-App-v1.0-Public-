@@ -18,6 +18,7 @@ import {
   Target,
   FileSpreadsheet,
   Globe,
+  CheckCircle2,
 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { PublisherStatusType, SupportedLanguage } from '../types.ts';
@@ -33,10 +34,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
     updatePublisherStatus,
     updateTheme,
     updateLanguage,
-    createBackup,
-    restoreBackup,
     exportCsv,
     clearAllData,
+    backupStatus,
+    lastBackupAt,
+    downloadMTBackupFile,
+    restoreFromMTBackupFile,
     language,
     t,
   } = useMinistry();
@@ -96,20 +99,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
     }
   };
 
-  const handleDownloadBackup = () => {
+  const handleDownloadBackup = async () => {
     try {
-      const json = createBackup();
-      const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `ministry_backup_${new Date().toISOString().slice(0, 10)}.json`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      showNotification(t.settings.backupSuccess);
+      const success = await downloadMTBackupFile();
+      if (success) {
+        showNotification(t.settings.backupSuccess || 'Backup file created successfully');
+      } else {
+        showError(t.settings.backupFailed || 'Failed to create backup file');
+      }
     } catch {
-      showError(t.settings.backupFailed);
+      showError(t.settings.backupFailed || 'Failed to create backup file');
     }
   };
 
@@ -118,17 +117,17 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const content = event.target?.result as string;
-        const success = restoreBackup(content);
-        if (success) {
-          showNotification(t.settings.restoreSuccess);
+        const result = await restoreFromMTBackupFile(content, 'merge');
+        if (result.success) {
+          showNotification(t.settings.restoreBackupSuccess || 'Backup data restored successfully!');
         } else {
-          showError(t.settings.restoreCorrupted);
+          showError(result.message || t.settings.restoreCorrupted || 'This backup could not be restored because the file is damaged or incompatible.');
         }
       } catch {
-        showError(t.settings.restoreInvalid);
+        showError(t.settings.restoreCorrupted || 'This backup could not be restored because the file is damaged or incompatible.');
       }
     };
     reader.readAsText(file);
@@ -364,12 +363,95 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
       {/* ========================================================================= */}
       {/* SECTION 4: DATA & BACKUP                                                  */}
       {/* ========================================================================= */}
-      <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-5 shadow-xs space-y-3">
+      <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-5 shadow-xs space-y-4">
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           {t.settings.sectionDataBackup}
         </h2>
 
+        {/* AUTOMATIC BACKUP CARD */}
+        <div className="rounded-2xl border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/70 dark:bg-emerald-950/30 p-4 text-emerald-900 dark:text-emerald-100 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-300">
+                <CheckCircle2 className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                  {t.settings.autoBackupTitle || 'Automatic Backup'}
+                </h3>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
+                  {backupStatus === 'backing_up'
+                    ? (t.settings.autoBackupBackingUp || 'Backing up…')
+                    : backupStatus === 'offline'
+                    ? (t.settings.autoBackupPendingOffline || 'Backup pending (offline)')
+                    : (t.settings.autoBackupUpToDate || '✓ Backup up to date')}
+                </p>
+              </div>
+            </div>
+
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Active
+            </span>
+          </div>
+
+          <div className="pt-2 border-t border-emerald-100/80 dark:border-emerald-900/40 text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
+            <p>
+              <strong className="text-slate-700 dark:text-slate-200">{t.settings.lastBackupLabel || 'Last backup:'}</strong>{' '}
+              {lastBackupAt > 0 ? new Date(lastBackupAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Just now'}
+            </p>
+            <p className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-normal">
+              Ministry Tracker automatically creates and updates a backup file in device storage whenever your service hours, activities, or arrangements change.
+            </p>
+          </div>
+        </div>
+
         <div className="space-y-2">
+          {/* Create Backup File (.mtbackup) */}
+          <button
+            onClick={handleDownloadBackup}
+            className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+                <Download className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                  {t.settings.downloadMtBackupTitle || 'Create Backup File'}
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {t.settings.downloadMtBackupDesc || 'Save a protected .mtbackup file to your device storage or cloud drive'}
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
+          </button>
+
+          {/* Restore Backup File (.mtbackup) */}
+          <label className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400">
+                <Upload className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                  {t.settings.restoreMtBackupTitle || 'Restore Backup File'}
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {t.settings.restoreMtBackupDesc || 'Select and restore an existing .mtbackup file'}
+                </p>
+              </div>
+            </div>
+            <input
+              type="file"
+              accept=".mtbackup,.ministrybackup"
+              onChange={handleRestoreFile}
+              className="hidden"
+            />
+            <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
+          </label>
+
           {/* Export to CSV */}
           <button
             onClick={handleExportCsv}
@@ -390,51 +472,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
             </div>
             <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
           </button>
-
-          {/* Download JSON Backup */}
-          <button
-            onClick={handleDownloadBackup}
-            className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
-                <Download className="h-4 w-4" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                  {t.settings.exportJsonTitle}
-                </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {t.settings.exportJsonDesc}
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
-          </button>
-
-          {/* Restore JSON Backup */}
-          <label className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400">
-                <Upload className="h-4 w-4" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                  {t.settings.restoreJsonTitle}
-                </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {t.settings.restoreJsonDesc}
-                </p>
-              </div>
-            </div>
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleRestoreFile}
-              className="hidden"
-            />
-            <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
-          </label>
 
           {/* Clear All Records */}
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800">

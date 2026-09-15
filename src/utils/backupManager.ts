@@ -278,7 +278,7 @@ class BackupManagerService {
     try {
       const encryptedStr = await createEncryptedMTBackup(entries, events, settings);
       const dateStr = new Date().toISOString().split('T')[0];
-      const filename = `Ministry_Tracker_Backup_${dateStr}.mtbackup`;
+      const filename = `MinistryTracker_Backup_${dateStr}.mtbackup`;
 
       const blob = new Blob([encryptedStr], { type: 'application/x-ministry-tracker-backup;charset=utf-8;' });
       const url = URL.createObjectURL(blob);

@@ -31,27 +31,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     entries,
     language,
     t,
-    discoveredBackup,
-    restoreDiscoveredBackup,
-    dismissDiscoveredBackup,
   } = useMinistry();
-  const [isRestoring, setIsRestoring] = useState(false);
-  const [restoreError, setRestoreError] = useState<string | null>(null);
-
-  const handleRestoreDiscovered = async () => {
-    setIsRestoring(true);
-    setRestoreError(null);
-    try {
-      const success = await restoreDiscoveredBackup('replace');
-      if (!success) {
-        setRestoreError(t.backup.restoreFailed || 'Unable to restore backup.');
-      }
-    } catch (err: any) {
-      setRestoreError(err?.message || 'Restore failed');
-    } finally {
-      setIsRestoring(false);
-    }
-  };
 
   // Time of day greeting
   const greeting = useMemo(() => {
@@ -166,76 +146,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Discovered Backup Restore Banner (After App Reinstallation) */}
-      {discoveredBackup && discoveredBackup.found && entries.length === 0 && (
-        <div className="rounded-2xl border-2 border-emerald-500/40 bg-emerald-50/90 dark:bg-emerald-950/40 p-4 shadow-sm space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-              <Sparkles className="h-5 w-5 shrink-0" />
-              <h3 className="text-xs sm:text-sm font-bold">
-                {language === 'ru'
-                  ? 'Найдена резервная копия служения'
-                  : language === 'hy'
-                  ? 'Գտնվել է ծառայության պահուստային պատճեն'
-                  : language === 'hi'
-                  ? 'सेवकाई बैकअप मिला'
-                  : language === 'pa'
-                  ? 'ਸੇਵਕਾਈ ਬੈਕਅੱਪ ਮਿਲਿਆ'
-                  : 'Previous Ministry Backup Found'}
-              </h3>
-            </div>
-            <button
-              onClick={dismissDiscoveredBackup}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs p-1 cursor-pointer"
-              title="Dismiss"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-            {language === 'ru'
-              ? `Обнаружены сохранённые данные (${discoveredBackup.deviceName || 'Устройство'}): ${discoveredBackup.entriesCount || 0} записей, ${discoveredBackup.eventsCount || 0} событий (${discoveredBackup.totalHours || '0'} ч).`
-              : language === 'hy'
-              ? `Հայտնաբերվել են պահպանված տվյալներ (${discoveredBackup.deviceName || 'Սարք'}). ${discoveredBackup.entriesCount || 0} գրանցում, ${discoveredBackup.eventsCount || 0} միջոցառում (${discoveredBackup.totalHours || '0'} ժ)։`
-              : language === 'hi'
-              ? `बैकअप मिला: ${discoveredBackup.entriesCount || 0} प्रविष्टियाँ, ${discoveredBackup.eventsCount || 0} कार्यक्रम (${discoveredBackup.totalHours || '0'} घंटे)।`
-              : language === 'pa'
-              ? `ਬੈਕਅੱਪ ਮਿਲਿਆ: ${discoveredBackup.entriesCount || 0} ਐਂਟਰੀਆਂ, ${discoveredBackup.eventsCount || 0} ਪ੍ਰੋਗਰਾਮ (${discoveredBackup.totalHours || '0'} ਘੰਟੇ)।`
-              : `Found encrypted backup (${discoveredBackup.deviceName || 'Device'}): ${discoveredBackup.entriesCount || 0} entries, ${discoveredBackup.eventsCount || 0} events (${discoveredBackup.totalHours || '0'} hrs).`}
-          </p>
-
-          {restoreError && (
-            <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">
-              {restoreError}
-            </p>
-          )}
-
-          <div className="flex items-center gap-2 pt-1">
-            <button
-              type="button"
-              disabled={isRestoring}
-              onClick={handleRestoreDiscovered}
-              className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-3 flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50"
-            >
-              <RotateCcw className={`h-3.5 w-3.5 ${isRestoring ? 'animate-spin' : ''}`} />
-              <span>
-                {isRestoring
-                  ? (language === 'ru' ? 'Восстановление...' : 'Restoring...')
-                  : (language === 'ru' ? 'Восстановить данные' : language === 'hy' ? 'Վերականգնել տվյալները' : language === 'hi' ? 'डेटा पुनर्स्थापित करें' : language === 'pa' ? 'ਡੇਟਾ ਰੀਸਟੋਰ ਕਰੋ' : 'Restore My Ministry Data')}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={dismissDiscoveredBackup}
-              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-xs font-semibold py-2.5 px-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer"
-            >
-              {language === 'ru' ? 'Пропустить' : language === 'hy' ? 'Բաց թողնել' : language === 'hi' ? 'छोड़ें' : language === 'pa' ? 'ਛੱਡੋ' : 'Dismiss'}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Monthly Goal Progress Card */}
       <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-3.5 sm:p-4 shadow-xs">

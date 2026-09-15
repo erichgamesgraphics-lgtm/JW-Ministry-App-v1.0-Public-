@@ -337,6 +337,16 @@ export async function unpackMTBackup(
   // Legacy JSON Support: Never crash if a user imports a legacy .json file
   try {
     const parsed = JSON.parse(trimmed);
+    const hasEntries = Array.isArray(parsed.ministryEntries) || Array.isArray(parsed.entries);
+    const hasEvents = Array.isArray(parsed.scheduledEvents) || Array.isArray(parsed.events);
+    const hasSettings = typeof parsed.settings === 'object' && parsed.settings !== null;
+    const hasPublisherStatus = typeof parsed.publisherStatus === 'string';
+    const isMTJson = parsed.app === 'Ministry Tracker' || parsed.format === 'MTBACKUP';
+
+    if (!hasEntries && !hasEvents && !hasSettings && !hasPublisherStatus && !isMTJson) {
+      throw new Error('Unrecognized or corrupted Ministry Tracker backup format.');
+    }
+
     let entries: MinistryEntry[] = [];
     if (Array.isArray(parsed.ministryEntries)) entries = parsed.ministryEntries;
     else if (Array.isArray(parsed.entries)) entries = parsed.entries;
