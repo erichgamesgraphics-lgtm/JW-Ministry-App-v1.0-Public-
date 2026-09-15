@@ -364,6 +364,7 @@ class MinistryViewModel(application: Application) : AndroidViewModel(application
                 ministryRepo.update(entry)
                 _userMessage.emit("Ministry entry updated successfully")
             }
+            com.example.widget.MinistryWidgetProvider.updateAllWidgets(getApplication())
         }
     }
 
@@ -371,6 +372,7 @@ class MinistryViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch(Dispatchers.IO) {
             ministryRepo.delete(entry)
             _userMessage.emit("Ministry entry deleted")
+            com.example.widget.MinistryWidgetProvider.updateAllWidgets(getApplication())
         }
     }
 
@@ -433,6 +435,7 @@ class MinistryViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             settingsRepo.updatePublisherStatus(status, customGoal)
             _userMessage.emit("Publisher status updated to ${status.displayName}")
+            com.example.widget.MinistryWidgetProvider.updateAllWidgets(getApplication())
         }
     }
 

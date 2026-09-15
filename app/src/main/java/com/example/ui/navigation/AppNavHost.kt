@@ -69,6 +69,7 @@ import kotlinx.coroutines.flow.collectLatest
 @Composable
 fun AppNavHost(
     viewModel: MinistryViewModel,
+    initialRouteOverride: String? = null,
     modifier: Modifier = Modifier
 ) {
     val navController = rememberNavController()

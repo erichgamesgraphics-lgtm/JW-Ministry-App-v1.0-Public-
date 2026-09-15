@@ -19,6 +19,7 @@ import {
   FileSpreadsheet,
   Globe,
   CheckCircle2,
+  LayoutGrid,
 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { PublisherStatusType, SupportedLanguage } from '../types.ts';
@@ -42,10 +43,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
     restoreFromMTBackupFile,
     language,
     t,
+    stats,
   } = useMinistry();
 
   const [showGoalModal, setShowGoalModal] = useState<boolean>(false);
   const [showLanguageModal, setShowLanguageModal] = useState<boolean>(false);
+  const [showWidgetModal, setShowWidgetModal] = useState<boolean>(false);
   const [selectedGoal, setSelectedGoal] = useState<PublisherStatusType>(settings.publisherStatus);
   const [customGoalInput, setCustomGoalInput] = useState<number>(settings.customGoalHours || 50);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -327,7 +330,41 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION 3: APPEARANCE                                                     */}
+      {/* SECTION 3: HOME SCREEN WIDGETS                                            */}
+      {/* ========================================================================= */}
+      <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-5 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <LayoutGrid className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Home Screen Widgets
+            </h2>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowWidgetModal(true)}
+          className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 p-3.5 hover:bg-slate-100/70 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400">
+              <LayoutGrid className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Add Home Screen Widget
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Pin Small, Medium, or Large widgets to track hours & ask AI
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-slate-400" />
+        </button>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SECTION 4: APPEARANCE                                                     */}
       {/* ========================================================================= */}
       <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-5 shadow-xs space-y-3">
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -730,6 +767,153 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
                 className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors cursor-pointer"
               >
                 {t.settings.clearConfirmButton}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ========================================================================= */}
+      {/* HOME SCREEN WIDGET SELECTION & INSTRUCTIONS MODAL                         */}
+      {/* ========================================================================= */}
+      {showWidgetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-[#131D31] shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <LayoutGrid className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Ministry Tracker Widgets
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowWidgetModal(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              Add a real-time Ministry Tracker widget to your device home screen to keep track of your hours, goals, and return visits at a glance.
+            </p>
+
+            {/* Widget Previews */}
+            <div className="space-y-4">
+              {/* Small Widget (2x2) Preview */}
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-900 p-3.5 text-white shadow-xs space-y-2">
+                <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold">
+                  <span>Small Widget (2x2)</span>
+                  <span className="text-blue-400">Live Preview</span>
+                </div>
+                <div className="flex items-baseline justify-between pt-1">
+                  <span className="text-lg font-extrabold text-white">
+                    {(stats.monthMinutes / 60).toFixed(1)} / {stats.goalHours || 10}h
+                  </span>
+                  <span className="text-xs text-sky-400 font-semibold">
+                    {Math.max(0, (stats.goalHours || 10) - stats.monthMinutes / 60).toFixed(1)}h remaining
+                  </span>
+                </div>
+                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="bg-blue-500 h-1.5 rounded-full"
+                    style={{ width: `${Math.min(100, Math.round(((stats.monthMinutes / 60) / (stats.goalHours || 10)) * 100))}%` }}
+                  />
+                </div>
+                <div className="pt-2">
+                  <div className="w-full py-1.5 bg-blue-600 rounded-xl text-center text-xs font-bold text-white">
+                    Ask AI
+                  </div>
+                </div>
+              </div>
+
+              {/* Medium Widget (4x2) Preview */}
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-900 p-4 text-white shadow-xs space-y-2.5">
+                <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
+                  <span>Medium Widget (4x2)</span>
+                  <span className="text-sky-400 font-semibold">{new Date().toLocaleString('default', { month: 'long' })}</span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xl font-extrabold text-white">
+                    {(stats.monthMinutes / 60).toFixed(1)} / {stats.goalHours || 10} hours
+                  </span>
+                  <span className="text-xs text-sky-400 font-semibold">
+                    {Math.max(0, (stats.goalHours || 10) - stats.monthMinutes / 60).toFixed(1)} hours remaining
+                  </span>
+                </div>
+                <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-blue-500 h-2 rounded-full"
+                    style={{ width: `${Math.min(100, Math.round(((stats.monthMinutes / 60) / (stats.goalHours || 10)) * 100))}%` }}
+                  />
+                </div>
+                <div className="pt-1">
+                  <div className="w-full py-2 bg-blue-600 rounded-xl text-center text-xs font-bold text-white">
+                    Ask Ministry AI
+                  </div>
+                </div>
+              </div>
+
+              {/* Large Widget (4x4) Preview */}
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-900 p-4 text-white shadow-xs space-y-3">
+                <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
+                  <span>Large Widget (4x4)</span>
+                  <span className="text-sky-400 font-semibold">{new Date().toLocaleString('default', { month: 'long' })}</span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-2xl font-extrabold text-white">
+                    {(stats.monthMinutes / 60).toFixed(1)} / {stats.goalHours || 10} hours
+                  </span>
+                  <span className="text-xs text-sky-400 font-semibold">
+                    {Math.max(0, (stats.goalHours || 10) - stats.monthMinutes / 60).toFixed(1)} hours remaining
+                  </span>
+                </div>
+                <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-blue-500 h-2.5 rounded-full"
+                    style={{ width: `${Math.min(100, Math.round(((stats.monthMinutes / 60) / (stats.goalHours || 10)) * 100))}%` }}
+                  />
+                </div>
+
+                <div className="border-t border-slate-800 pt-3 space-y-1.5 text-xs">
+                  <div className="flex justify-between text-slate-300">
+                    <span>Return Visits</span>
+                    <strong className="text-white">{stats.monthReturnVisits}</strong>
+                  </div>
+                  <div className="flex justify-between text-slate-300">
+                    <span>Bible Studies</span>
+                    <strong className="text-white">{stats.monthBibleStudies}</strong>
+                  </div>
+                  <div className="flex justify-between text-slate-300">
+                    <span>Placements</span>
+                    <strong className="text-white">{stats.monthPlacements}</strong>
+                  </div>
+                </div>
+
+                <div className="pt-1">
+                  <div className="w-full py-2 bg-blue-600 rounded-xl text-center text-xs font-bold text-white">
+                    Ask Ministry AI
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* How to add instructions */}
+            <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-4 space-y-2 text-xs text-slate-700 dark:text-slate-300">
+              <h4 className="font-bold text-slate-900 dark:text-white">How to add to your Home Screen:</h4>
+              <ol className="list-decimal list-inside space-y-1 text-[11.5px] leading-relaxed text-slate-600 dark:text-slate-300">
+                <li>Touch and hold an empty area on your device home screen.</li>
+                <li>Tap <strong>Widgets</strong> in the pop-up menu.</li>
+                <li>Search or scroll down to find <strong>JW Ministry App</strong>.</li>
+                <li>Drag your preferred size (2x2 Small, 4x2 Medium, or 4x4 Large) onto your home screen.</li>
+              </ol>
+            </div>
+
+            <div className="pt-1">
+              <button
+                onClick={() => setShowWidgetModal(false)}
+                className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                Close
               </button>
             </div>
           </div>

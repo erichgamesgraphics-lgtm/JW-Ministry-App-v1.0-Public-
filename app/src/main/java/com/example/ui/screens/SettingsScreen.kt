@@ -69,7 +69,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.model.PublisherStatus
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
+import androidx.compose.material.icons.filled.Widgets
+import com.example.widget.MinistryLargeWidgetProvider
+import com.example.widget.MinistryMediumWidgetProvider
+import com.example.widget.MinistrySmallWidgetProvider
 import com.example.ui.viewmodel.MinistryViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -104,6 +109,7 @@ fun SettingsScreen(
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showTermsDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+    var showWidgetModal by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier
@@ -288,7 +294,29 @@ fun SettingsScreen(
             }
         }
 
-        // Section 4: Data Management & Sync
+        // Section 4: Home Screen Widgets
+        item {
+            SettingsSectionHeader(title = "Home Screen Widgets")
+        }
+
+        item {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth().testTag("settings_widgets_card"),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    SettingsActionRow(
+                        title = "Add Home Screen Widget",
+                        subtitle = "Track monthly ministry hours & ask AI directly from your home screen",
+                        icon = Icons.Default.Widgets,
+                        onClick = { showWidgetModal = true }
+                    )
+                }
+            }
+        }
+
+        // Section 5: Data Management & Sync
         item {
             SettingsSectionHeader(title = "Data Management & Cloud Sync")
         }
@@ -674,6 +702,108 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showWebClientIdDialog = false }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Home Screen Widget Selection Dialog
+    if (showWidgetModal) {
+        AlertDialog(
+            onDismissRequest = { showWidgetModal = false },
+            title = { Text("Ministry Tracker Widgets") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text(
+                        text = "Choose a widget size to pin to your Android home screen:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    // Small Widget (2x2)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            val appWidgetManager = AppWidgetManager.getInstance(context)
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && appWidgetManager.isRequestPinAppWidgetSupported) {
+                                val provider = ComponentName(context, MinistrySmallWidgetProvider::class.java)
+                                appWidgetManager.requestPinAppWidget(provider, null, null)
+                            }
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("Small Widget (2x2)", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                Text("Compact monthly progress & Ask AI button", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text("Pin", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    // Medium Widget (4x2)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            val appWidgetManager = AppWidgetManager.getInstance(context)
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && appWidgetManager.isRequestPinAppWidgetSupported) {
+                                val provider = ComponentName(context, MinistryMediumWidgetProvider::class.java)
+                                appWidgetManager.requestPinAppWidget(provider, null, null)
+                            }
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("Medium Widget (4x2)", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                Text("Full progress bar, month badge & Ask AI button", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text("Pin", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    // Large Widget (4x4)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            val appWidgetManager = AppWidgetManager.getInstance(context)
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && appWidgetManager.isRequestPinAppWidgetSupported) {
+                                val provider = ComponentName(context, MinistryLargeWidgetProvider::class.java)
+                                appWidgetManager.requestPinAppWidget(provider, null, null)
+                            }
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("Large Widget (4x4)", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                                Text("Full breakdown: RVs, Bible Studies, Placements", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text("Pin", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Text(
+                        text = "Or touch and hold any empty space on your home screen, tap 'Widgets', and select JW Ministry App.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = { showWidgetModal = false }) {
+                    Text("Done")
                 }
             }
         )
