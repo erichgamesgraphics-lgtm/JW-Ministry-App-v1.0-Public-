@@ -19,8 +19,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val navigateTo = intent?.getStringExtra("EXTRA_NAVIGATE_TO")
-
         setContent {
             val userSettings by viewModel.userSettings.collectAsState()
             val systemDark = isSystemInDarkTheme()
@@ -32,10 +30,7 @@ class MainActivity : ComponentActivity() {
             }
 
             MyApplicationTheme(darkTheme = isDark) {
-                AppNavHost(
-                    viewModel = viewModel,
-                    initialRouteOverride = if (navigateTo == "MINISTRY_AI") "home" else null
-                )
+                AppNavHost(viewModel = viewModel)
             }
         }
     }

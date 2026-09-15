@@ -21,44 +21,6 @@
         <receiver
             android:name=".notifications.ReminderNotificationReceiver"
             android:exported="false" />
-
-        <!-- Ministry Tracker Home Screen Widgets -->
-        <receiver
-            android:name="com.example.widget.MinistrySmallWidgetProvider"
-            android:exported="true"
-            android:label="Ministry Tracker (Small 2x2)">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_info_small" />
-        </receiver>
-
-        <receiver
-            android:name="com.example.widget.MinistryMediumWidgetProvider"
-            android:exported="true"
-            android:label="Ministry Tracker (Medium 4x2)">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_info_medium" />
-        </receiver>
-
-        <receiver
-            android:name="com.example.widget.MinistryLargeWidgetProvider"
-            android:exported="true"
-            android:label="Ministry Tracker (Large 4x4)">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_info_large" />
-        </receiver>
-
         <activity
             android:name=".MainActivity"
             android:exported="true"
