@@ -31,7 +31,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md safe-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md pb-[env(safe-area-inset-bottom,0px)]">
       <div className="mx-auto flex max-w-lg items-center justify-between px-2.5 py-1.5 sm:py-2">
         {navItems.map(item => {
           const Icon = item.icon;

@@ -218,7 +218,7 @@ export const MinistryAIScreen: React.FC = () => {
     : LanguageService.getLocalizedSuggestions(language);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8.5rem)] max-w-2xl mx-auto pb-2">
+    <div className="flex flex-col h-[calc(100dvh-13.5rem)] sm:h-[calc(100dvh-14rem)] max-w-2xl mx-auto pb-2">
       {/* Header Banner */}
       <div className="shrink-0 mb-3 rounded-2xl border border-blue-100 dark:border-blue-900/60 bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-sky-50/90 dark:from-blue-950/50 dark:via-indigo-950/30 dark:to-sky-950/40 p-3 sm:p-4 shadow-xs">
         <div className="flex items-center justify-between">
@@ -253,7 +253,7 @@ export const MinistryAIScreen: React.FC = () => {
       </div>
 
       {/* Chat Conversation Scroll Area */}
-      <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 text-sm">
+      <div className="flex-1 overflow-y-auto min-h-0 space-y-3.5 pr-1 text-sm">
         {messages.map(msg => (
           <div
             key={msg.id}
@@ -408,7 +408,7 @@ export const MinistryAIScreen: React.FC = () => {
       </div>
 
       {/* Input Field Bar */}
-      <div className="shrink-0 pt-1">
+      <div className="shrink-0 pt-1 pb-2">
         <form
           onSubmit={e => {
             e.preventDefault();

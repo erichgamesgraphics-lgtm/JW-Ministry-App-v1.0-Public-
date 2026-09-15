@@ -181,7 +181,7 @@ const AppContent: React.FC = () => {
       />
 
       {/* Main Screen Content with Native-feel Tab Transition */}
-      <main className="flex-1 mx-auto w-full max-w-5xl px-4 py-5 sm:px-6 overflow-x-hidden">
+      <main className="flex-1 mx-auto w-full max-w-5xl px-4 pt-4 pb-20 sm:px-6 sm:pt-5 sm:pb-24 overflow-x-hidden">
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
             key={activeTab}
