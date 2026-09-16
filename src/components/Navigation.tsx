@@ -1,8 +1,7 @@
 import React from 'react';
 import { Home, Clock, Sparkles, Calendar, BarChart2 } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion } from 'motion/react';
 import { useMinistry } from '../context/MinistryContext.tsx';
-import { liquidSpring, interactiveSpring } from '../utils/liquidGlass.ts';
 
 export type TabType = 'home' | 'activity' | 'ministryAi' | 'calendar' | 'reports' | 'settings';
 
@@ -17,7 +16,6 @@ export const Navigation: React.FC<NavigationProps> = ({
   onSelectTab,
 }) => {
   const { timer, t } = useMinistry();
-  const shouldReduceMotion = useReducedMotion();
 
   const navItems = [
     { id: 'home' as TabType, label: t.navigation.home, icon: Home },
@@ -33,8 +31,8 @@ export const Navigation: React.FC<NavigationProps> = ({
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/50 dark:border-white/10 bg-white/85 dark:bg-[#0B1120]/85 backdrop-blur-xl shadow-[0_-8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_-8px_32px_rgba(0,0,0,0.4)] pb-[env(safe-area-inset-bottom,0px)]">
-      <div className="mx-auto flex max-w-lg items-center justify-between px-2.5 py-1.5 sm:py-2 relative">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md pb-[env(safe-area-inset-bottom,0px)]">
+      <div className="mx-auto flex max-w-lg items-center justify-between px-2.5 py-1.5 sm:py-2">
         {navItems.map(item => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -44,51 +42,29 @@ export const Navigation: React.FC<NavigationProps> = ({
             <motion.button
               id={`nav-tab-${item.id}`}
               key={item.id}
-              whileTap={!shouldReduceMotion ? { scale: isCenter ? 0.90 : 0.94 } : undefined}
-              transition={interactiveSpring}
+              whileTap={{ scale: 0.94 }}
+              transition={{ duration: 0.1 }}
               onClick={() => onSelectTab(item.id)}
-              className={`relative flex flex-1 flex-col items-center justify-center py-1 px-1 rounded-2xl transition-colors cursor-pointer select-none ${
+              className={`relative flex flex-1 flex-col items-center justify-center py-1 px-1 rounded-2xl transition-colors cursor-pointer ${
                 isActive
                   ? 'text-blue-600 dark:text-blue-400 font-semibold'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
               }`}
             >
               <div className="relative flex items-center justify-center">
-                {/* Smooth Gliding Liquid Glass Indicator */}
-                {isActive && !isCenter && (
-                  <motion.div
-                    layoutId={shouldReduceMotion ? undefined : 'liquidNavIndicator'}
-                    transition={liquidSpring}
-                    className="absolute inset-0 -m-1 rounded-2xl bg-blue-500/10 dark:bg-blue-400/15 border border-blue-500/20 dark:border-blue-400/20 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.4)]"
-                  />
-                )}
-
                 {/* Active or Center pill styling */}
                 <div
-                  className={`relative flex items-center justify-center rounded-2xl transition-all ${
+                  className={`flex items-center justify-center rounded-2xl transition-all ${
                     isCenter
                       ? isActive
-                        ? 'h-10 w-10 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/35 ring-2 ring-blue-400/40 border border-white/30'
-                        : 'h-10 w-10 bg-blue-50/90 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-800/80 shadow-xs hover:border-blue-300'
+                        ? 'h-10 w-10 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30 ring-2 ring-blue-400/30'
+                        : 'h-10 w-10 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
                       : isActive
                       ? 'h-9 w-9 bg-blue-600 text-white shadow-xs shadow-blue-500/30'
                       : 'h-9 w-9 text-slate-600 dark:text-slate-400'
                   }`}
                 >
-                  <motion.div
-                    animate={
-                      isCenter && isActive && !shouldReduceMotion
-                        ? { rotate: [0, -6, 6, 0] }
-                        : { rotate: 0 }
-                    }
-                    transition={{ duration: 0.5, ease: 'easeInOut' }}
-                  >
-                    <Icon
-                      className={`${
-                        isCenter ? 'h-5 w-5 stroke-[2.2]' : 'h-5 w-5'
-                      } ${isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'}`}
-                    />
-                  </motion.div>
+                  <Icon className={`${isCenter ? 'h-5 w-5 stroke-[2.2]' : 'h-5 w-5'} ${isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />
                 </div>
                 {item.badge && (
                   <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
@@ -97,13 +73,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                   </span>
                 )}
               </div>
-              <span
-                className={`relative z-10 mt-0.5 text-[10px] sm:text-[11px] leading-tight tracking-tight whitespace-nowrap transition-colors ${
-                  isActive
-                    ? 'font-bold text-blue-600 dark:text-blue-400'
-                    : 'text-slate-500 dark:text-slate-400'
-                }`}
-              >
+              <span className={`mt-0.5 text-[10px] sm:text-[11px] leading-tight tracking-tight whitespace-nowrap ${isActive ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>
                 {item.label}
               </span>
             </motion.button>
@@ -113,4 +83,3 @@ export const Navigation: React.FC<NavigationProps> = ({
     </nav>
   );
 };
-

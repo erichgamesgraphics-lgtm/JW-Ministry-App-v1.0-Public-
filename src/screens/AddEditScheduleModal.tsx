@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar as CalendarIcon, Clock, MapPin, Bell, Repeat, FileText, Trash2, Check } from 'lucide-react';
-import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ScheduledEvent, ExpandedCalendarEvent, ReminderOptionType, RepeatOptionType, REMINDER_OPTIONS } from '../types.ts';
 import { useMinistry } from '../context/MinistryContext.tsx';
-import {
-  interactiveSpring,
-  liquidModalBackdropVariants,
-  liquidModalCardVariants,
-} from '../utils/liquidGlass.ts';
 
 interface AddEditScheduleModalProps {
   isOpen: boolean;
@@ -148,8 +142,6 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
     { id: 'DAY_1', label: t.scheduleModal.reminders.day1 },
   ];
 
-  const shouldReduceMotion = useReducedMotion();
-
   const repeatOptionsList: Array<{ id: RepeatOptionType; label: string }> = [
     { id: 'NONE', label: t.scheduleModal.repeats.none },
     { id: 'DAILY', label: t.scheduleModal.repeats.daily },
@@ -159,49 +151,25 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
   ];
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          {/* Liquid Glass Backdrop */}
-          <motion.div
-            key="schedule-modal-backdrop"
-            variants={liquidModalBackdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            onClick={onClose}
-            className="fixed inset-0 bg-black/60 dark:bg-black/75 backdrop-blur-xs"
-          />
-
-          {/* Modal Panel with Glass Physics */}
-          <motion.div
-            key="schedule-modal-panel"
-            variants={shouldReduceMotion ? undefined : liquidModalCardVariants}
-            initial={shouldReduceMotion ? { opacity: 0 } : 'hidden'}
-            animate={shouldReduceMotion ? { opacity: 1 } : 'visible'}
-            exit={shouldReduceMotion ? { opacity: 0 } : 'exit'}
-            className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-slate-50/95 dark:bg-[#0B1120]/95 backdrop-blur-xl shadow-[0_20px_50px_-8px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.6)] dark:shadow-[0_20px_50px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.08)] border border-white/60 dark:border-white/10 p-6 z-10"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shadow-xs">
-                  <CalendarIcon className="h-5 w-5" />
-                </div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                  {eventToEdit ? t.scheduleModal.titleEdit : t.scheduleModal.titleAdd}
-                </h2>
-              </div>
-              <motion.button
-                whileHover={!shouldReduceMotion ? { scale: 1.1 } : undefined}
-                whileTap={!shouldReduceMotion ? { scale: 0.9 } : undefined}
-                transition={interactiveSpring}
-                onClick={onClose}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer select-none"
-              >
-                <X className="h-5 w-5" />
-              </motion.button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-[#131D31] shadow-2xl border border-slate-200 dark:border-slate-800 p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+              <CalendarIcon className="h-5 w-5" />
             </div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+              {eventToEdit ? t.scheduleModal.titleEdit : t.scheduleModal.titleAdd}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
         <form onSubmit={handleFormSubmit} className="mt-5 space-y-4">
           {/* Title */}
@@ -465,10 +433,8 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
             </div>
           </div>
         )}
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+      </div>
+    </div>
   );
 };
 

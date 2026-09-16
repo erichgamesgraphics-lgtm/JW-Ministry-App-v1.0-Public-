@@ -9,17 +9,14 @@ import {
   Flame,
   Check,
 } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { StatCard } from '../components/StatCard.tsx';
 import { SimpleBarChart } from '../components/SimpleBarChart.tsx';
 import { storage } from '../utils/storage.ts';
 import { formatDurationLocalized, formatMonthYearLocalized } from '../translations/index.ts';
-import { interactiveSpring, liquidSpring } from '../utils/liquidGlass.ts';
 
 export const ReportsScreen: React.FC = () => {
   const { entries, settings, getReportsForPeriod, language, t } = useMinistry();
-  const shouldReduceMotion = useReducedMotion();
 
   const [periodIndex, setPeriodIndex] = useState<number>(0); // 0: Month, 1: Year, 2: All Time
   const [copiedReport, setCopiedReport] = useState(false);
@@ -116,17 +113,14 @@ export const ReportsScreen: React.FC = () => {
           </p>
         </div>
 
-        <motion.button
-          whileHover={!shouldReduceMotion ? { scale: 1.05 } : undefined}
-          whileTap={!shouldReduceMotion ? { scale: 0.94 } : undefined}
-          transition={interactiveSpring}
+        <button
           onClick={handleShareReport}
-          className="flex items-center gap-1.5 rounded-2xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md px-3.5 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer select-none"
+          className="flex items-center gap-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#131D31] px-3.5 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer"
         >
           {copiedReport ? (
             <>
               <Check className="h-3.5 w-3.5 text-emerald-600" />
-              <span className="text-emerald-600 font-bold">{t.reports.copied}</span>
+              <span className="text-emerald-600">{t.reports.copied}</span>
             </>
           ) : (
             <>
@@ -134,11 +128,11 @@ export const ReportsScreen: React.FC = () => {
               <span>{t.reports.share}</span>
             </>
           )}
-        </motion.button>
+        </button>
       </div>
 
-      {/* Period Selection Tabs: Month | Year | All Time with Liquid Sliding Highlight */}
-      <div className="relative flex rounded-2xl p-1 bg-slate-200/50 dark:bg-slate-800/60 backdrop-blur-md border border-white/40 dark:border-white/5">
+      {/* Period Selection Tabs: Month | Year | All Time */}
+      <div className="flex border-b border-slate-200/80 dark:border-slate-800">
         {[
           { id: 0, label: t.reports.tabMonth },
           { id: 1, label: t.reports.tabYear },
@@ -147,30 +141,22 @@ export const ReportsScreen: React.FC = () => {
           <button
             key={tab.id}
             onClick={() => setPeriodIndex(tab.id)}
-            className={`relative flex-1 py-2 text-center text-xs sm:text-sm font-semibold transition-colors cursor-pointer select-none z-10 ${
+            className={`flex-1 py-2.5 text-center text-sm font-semibold transition-all relative cursor-pointer ${
               periodIndex === tab.id
-                ? 'text-blue-600 dark:text-blue-400 font-bold'
+                ? 'text-blue-600 dark:text-blue-400'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}
           >
-            {periodIndex === tab.id && (
-              <motion.div
-                layoutId="reports-tab-glider"
-                transition={liquidSpring}
-                className="absolute inset-0 rounded-xl bg-white dark:bg-[#131D31] shadow-xs border border-white/60 dark:border-white/10 -z-10"
-              />
-            )}
             {tab.label}
+            {periodIndex === tab.id && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+            )}
           </button>
         ))}
       </div>
 
       {/* Top Goal Progress Card */}
-      <motion.div
-        whileHover={!shouldReduceMotion ? { y: -2 } : undefined}
-        transition={interactiveSpring}
-        className="rounded-3xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)]"
-      >
+      <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-5 shadow-xs">
         <div className="flex items-center justify-between">
           <span className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
             {getStatusDisplayName()} {t.common.goal}
@@ -180,16 +166,17 @@ export const ReportsScreen: React.FC = () => {
           </span>
         </div>
 
-        {/* Progress Bar with Liquid Motion */}
-        <div className="relative my-3 h-2.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-inner">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${goalPercentage}%` }}
-            transition={shouldReduceMotion ? { duration: 0.2 } : liquidSpring}
-            className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 shadow-xs"
+        {/* Progress Bar with dot */}
+        <div className="relative my-3 h-2.5 w-full rounded-full bg-slate-100 dark:bg-slate-800">
+          <div
+            style={{ width: `${goalPercentage}%` }}
+            className="h-full rounded-full bg-blue-600 transition-all duration-500"
           />
+          {goalHours > 0 && goalPercentage < 100 && (
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-blue-600" />
+          )}
         </div>
-      </motion.div>
+      </div>
 
       {/* Section: Summary Statistics */}
       <div className="space-y-3 pt-1">
@@ -256,11 +243,7 @@ export const ReportsScreen: React.FC = () => {
         </h2>
 
         {/* Bar Chart Breakdown */}
-        <motion.div
-          whileHover={!shouldReduceMotion ? { y: -2 } : undefined}
-          transition={interactiveSpring}
-          className="rounded-3xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)]"
-        >
+        <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-5 shadow-xs">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3">
             {periodIndex === 0 ? t.reports.weeklyDistribution : t.reports.monthlyTrend}
           </h3>
@@ -268,7 +251,7 @@ export const ReportsScreen: React.FC = () => {
             data={periodIndex === 0 ? reportData.weeklyHoursBreakdown : reportData.monthlyHoursBreakdown}
             unit="h"
           />
-        </motion.div>
+        </div>
       </div>
     </div>
   );

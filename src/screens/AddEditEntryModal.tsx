@@ -10,15 +10,9 @@ import {
   FileText,
   Trash2
 } from 'lucide-react';
-import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { MinistryEntry, MinistryTypeCategory } from '../types.ts';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { formatDateLocalized, formatDurationLocalized } from '../translations/index.ts';
-import {
-  interactiveSpring,
-  liquidModalBackdropVariants,
-  liquidModalCardVariants,
-} from '../utils/liquidGlass.ts';
 
 interface AddEditEntryModalProps {
   isOpen: boolean;
@@ -134,8 +128,6 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
     }
   };
 
-  const shouldReduceMotion = useReducedMotion();
-
   const ministryTypeKeys: Array<{ key: MinistryTypeCategory; label: string }> = [
     { key: 'HOUSE_TO_HOUSE', label: t.ministryTypes.houseToHouse },
     { key: 'PUBLIC_WITNESSING', label: t.ministryTypes.publicWitnessing },
@@ -147,62 +139,35 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
   ];
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          {/* Liquid Glass Backdrop */}
-          <motion.div
-            key="entry-modal-backdrop"
-            variants={liquidModalBackdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+      <div className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl bg-slate-50 dark:bg-[#0B1120] shadow-2xl border border-slate-200 dark:border-slate-800 p-5">
+        {/* Top App Bar with Back Arrow */}
+        <div className="flex items-center justify-between pb-3">
+          <button
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 dark:bg-black/75 backdrop-blur-xs"
-          />
-
-          {/* Modal Panel with Glass Physics */}
-          <motion.div
-            key="entry-modal-panel"
-            variants={shouldReduceMotion ? undefined : liquidModalCardVariants}
-            initial={shouldReduceMotion ? { opacity: 0 } : 'hidden'}
-            animate={shouldReduceMotion ? { opacity: 1 } : 'visible'}
-            exit={shouldReduceMotion ? { opacity: 0 } : 'exit'}
-            className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl bg-slate-50/95 dark:bg-[#0B1120]/95 backdrop-blur-xl shadow-[0_20px_50px_-8px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.6)] dark:shadow-[0_20px_50px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.08)] border border-white/60 dark:border-white/10 p-5 z-10"
+            className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white dark:bg-[#131D31] border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200 shadow-xs hover:bg-slate-50 cursor-pointer"
+            title={t.common.back}
           >
-            {/* Top App Bar with Back Arrow */}
-            <div className="flex items-center justify-between pb-3">
-              <motion.button
-                whileHover={!shouldReduceMotion ? { scale: 1.05 } : undefined}
-                whileTap={!shouldReduceMotion ? { scale: 0.92 } : undefined}
-                transition={interactiveSpring}
-                onClick={onClose}
-                className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/80 dark:bg-[#131D31]/80 border border-white/60 dark:border-white/10 text-slate-700 dark:text-slate-200 shadow-xs hover:bg-white cursor-pointer select-none"
-                title={t.common.back}
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </motion.button>
+            <ArrowLeft className="h-5 w-5" />
+          </button>
 
-              <h1 className="text-lg font-bold text-slate-900 dark:text-white">
-                {entryToEdit ? t.entryModal.titleEdit : t.entryModal.titleAdd}
-              </h1>
+          <h1 className="text-lg font-bold text-slate-900 dark:text-white">
+            {entryToEdit ? t.entryModal.titleEdit : t.entryModal.titleAdd}
+          </h1>
 
-              {entryToEdit ? (
-                <motion.button
-                  type="button"
-                  whileHover={!shouldReduceMotion ? { scale: 1.05 } : undefined}
-                  whileTap={!shouldReduceMotion ? { scale: 0.92 } : undefined}
-                  transition={interactiveSpring}
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="p-2 text-red-600 hover:text-red-700 cursor-pointer"
-                  title={t.common.delete}
-                >
-                  <Trash2 className="h-5 w-5" />
-                </motion.button>
-              ) : (
-                <div className="w-10" />
-              )}
-            </div>
+          {entryToEdit ? (
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="p-2 text-red-600 hover:text-red-700 cursor-pointer"
+              title={t.common.delete}
+            >
+              <Trash2 className="h-5 w-5" />
+            </button>
+          ) : (
+            <div className="w-10" />
+          )}
+        </div>
 
         <form onSubmit={handleSave} className="space-y-4 mt-2">
           {/* Section: Date */}
@@ -493,22 +458,19 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
 
           {/* Bottom Save Button */}
           <div className="pt-2">
-            <motion.button
+            <button
               type="submit"
-              whileHover={!shouldReduceMotion ? { scale: 1.01 } : undefined}
-              whileTap={!shouldReduceMotion ? { scale: 0.98 } : undefined}
-              transition={interactiveSpring}
-              className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 py-3.5 sm:py-4 px-6 text-base font-semibold text-white shadow-xs shadow-blue-500/25 border border-blue-400/30 transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
+              className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] py-3.5 sm:py-4 px-6 text-base font-semibold text-white shadow-xs shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Check className="h-5 w-5 stroke-[2.5]" />
               <span>{entryToEdit ? t.entryModal.updateEntry : t.entryModal.saveEntry}</span>
-            </motion.button>
+            </button>
           </div>
         </form>
 
         {/* Delete Confirmation Alert */}
         {showDeleteConfirm && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center rounded-3xl bg-white/95 dark:bg-[#131D31]/95 p-6 backdrop-blur-md">
+          <div className="absolute inset-0 z-20 flex items-center justify-center rounded-3xl bg-white/95 dark:bg-[#131D31]/95 p-6 backdrop-blur-xs">
             <div className="text-center max-w-xs">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40 text-red-600">
                 <Trash2 className="h-6 w-6" />
@@ -520,29 +482,25 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
                 {t.entryModal.deleteConfirmDesc}
               </p>
               <div className="mt-4 flex gap-2 justify-center">
-                <motion.button
+                <button
                   type="button"
-                  whileTap={!shouldReduceMotion ? { scale: 0.94 } : undefined}
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer"
+                  className="rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300"
                 >
                   {t.common.cancel}
-                </motion.button>
-                <motion.button
+                </button>
+                <button
                   type="button"
-                  whileTap={!shouldReduceMotion ? { scale: 0.94 } : undefined}
                   onClick={handleDelete}
-                  className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 cursor-pointer"
+                  className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700"
                 >
                   {t.common.delete}
-                </motion.button>
+                </button>
               </div>
             </div>
           </div>
         )}
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+      </div>
+    </div>
   );
 };
