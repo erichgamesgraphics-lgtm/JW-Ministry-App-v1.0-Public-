@@ -1,7 +1,9 @@
 import React from 'react';
 import { Sun, Moon, Sparkles, ShieldCheck, Settings } from 'lucide-react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { JWMinistryLogo } from './JWMinistryLogo.tsx';
+import { interactiveSpring } from '../utils/liquidGlass.ts';
 
 interface HeaderProps {
   onOpenNewEntry?: () => void;
@@ -10,6 +12,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
   const { settings, updateTheme, t } = useMinistry();
+  const shouldReduceMotion = useReducedMotion();
 
   const handleToggleTheme = () => {
     if (settings.themeMode === 'LIGHT') {
@@ -43,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b border-white/50 dark:border-white/10 bg-white/85 dark:bg-[#0B1120]/85 backdrop-blur-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.3)] transition-colors">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2.5 sm:px-6">
         {/* Left: App Logo & Name */}
         <div className="flex items-center gap-2.5">
@@ -67,34 +70,50 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Theme Switcher */}
-          <button
+          {/* Theme Switcher with Fluid Motion */}
+          <motion.button
             id="theme-toggle-btn"
             onClick={handleToggleTheme}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            whileHover={!shouldReduceMotion ? { scale: 1.05 } : undefined}
+            whileTap={!shouldReduceMotion ? { scale: 0.92 } : undefined}
+            transition={interactiveSpring}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 backdrop-blur-md hover:bg-white dark:hover:bg-slate-800 shadow-xs cursor-pointer overflow-hidden select-none"
             title={`${t.header.toggleTheme}: ${settings.themeMode === 'DARK' ? t.header.themeDark : settings.themeMode === 'LIGHT' ? t.header.themeLight : t.header.themeSystem}`}
             aria-label={t.header.toggleTheme}
           >
-            {settings.themeMode === 'DARK' ? (
-              <Moon className="h-4 w-4 text-blue-400" />
-            ) : settings.themeMode === 'LIGHT' ? (
-              <Sun className="h-4 w-4 text-amber-500" />
-            ) : (
-              <Sparkles className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-            )}
-          </button>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={settings.themeMode}
+                initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, rotate: -20, scale: 0.8 }}
+                animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, rotate: 0, scale: 1 }}
+                exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, rotate: 20, scale: 0.8 }}
+                transition={{ duration: 0.18 }}
+              >
+                {settings.themeMode === 'DARK' ? (
+                  <Moon className="h-4 w-4 text-blue-400" />
+                ) : settings.themeMode === 'LIGHT' ? (
+                  <Sun className="h-4 w-4 text-amber-500" />
+                ) : (
+                  <Sparkles className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </motion.button>
 
           {/* Settings Button (Top Right Header) */}
           {onOpenSettings && (
-            <button
+            <motion.button
               id="header-settings-btn"
               onClick={onOpenSettings}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              whileHover={!shouldReduceMotion ? { scale: 1.05 } : undefined}
+              whileTap={!shouldReduceMotion ? { scale: 0.92 } : undefined}
+              transition={interactiveSpring}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 backdrop-blur-md hover:bg-white dark:hover:bg-slate-800 shadow-xs cursor-pointer select-none"
               title={t.navigation.settings}
               aria-label={t.navigation.settings}
             >
               <Settings className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-            </button>
+            </motion.button>
           )}
         </div>
       </div>
