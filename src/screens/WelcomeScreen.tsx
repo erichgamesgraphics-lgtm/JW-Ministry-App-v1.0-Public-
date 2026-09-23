@@ -311,6 +311,32 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onContinue }) => {
                   </p>
                 </div>
               </div>
+
+              {/* Ministry AI Information Section */}
+              <div className="welcome-ai-entrance flex items-start gap-3 rounded-2xl border border-indigo-200/90 dark:border-indigo-800/80 bg-gradient-to-r from-indigo-50/70 via-white to-blue-50/50 dark:from-[#131D31] dark:via-[#162138] dark:to-indigo-950/30 p-3.5 shadow-xs relative overflow-hidden">
+                {/* AI Icon with subtle glass highlight */}
+                <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 via-blue-500/15 to-violet-500/25 dark:from-indigo-400/25 dark:via-blue-400/20 dark:to-violet-400/30 border border-indigo-200/80 dark:border-indigo-700/60 shadow-xs backdrop-blur-xs overflow-hidden">
+                  {/* Glass specular highlight overlay */}
+                  <div
+                    className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-white/40 via-white/10 to-transparent dark:from-white/20 dark:via-white/5 dark:to-transparent rounded-xl"
+                    aria-hidden="true"
+                  />
+                  <Sparkles className="relative z-10 h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                      {t.welcome.featureAiTitle}
+                    </h2>
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100/90 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
+                      {t.welcome.featureAiBadge || 'AI Assistant'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                    {t.welcome.featureAiDesc}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 

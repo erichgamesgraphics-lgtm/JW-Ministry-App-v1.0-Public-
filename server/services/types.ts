@@ -1,3 +1,5 @@
+import type { ResearchSession } from './research/types.js';
+
 export type CategoryType =
   | 'MINISTRY_PROGRESS'
   | 'MINISTRY_HOURS'
@@ -32,6 +34,8 @@ export interface SearchResult {
   topicKeywords?: string[];
   relevanceScore?: number;
   matchReason?: string;
+  contentType?: 'Article' | 'Video' | 'Publication' | 'Bible' | 'News' | 'Other';
+  thumbnail?: string;
 }
 
 export interface ChatHistoryMessage {
@@ -51,10 +55,12 @@ export interface MinistryAIRequestPayload {
     settings?: any;
   };
   language?: string;
+  researchSession?: ResearchSession;
 }
 
 export interface MinistryAIResponsePayload {
   answer: string;
   sources: SearchResult[];
   suggestedFollowUps?: string[];
+  researchSession?: ResearchSession;
 }

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   Clock,
   Users,
@@ -7,14 +7,13 @@ import {
   Calendar,
   Plus,
   User,
-  Sparkles,
-  RotateCcw,
-  X,
 } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { StatCard } from '../components/StatCard.tsx';
 import { MinistryEntry } from '../types.ts';
 import { formatDurationLocalized, formatMonthYearLocalized } from '../translations/index.ts';
+import { interactiveSpring, liquidSpring } from '../utils/liquidGlass.ts';
 
 interface HomeScreenProps {
   onOpenNewEntry: () => void;
@@ -32,6 +31,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     language,
     t,
   } = useMinistry();
+  const shouldReduceMotion = useReducedMotion();
 
   // Time of day greeting
   const greeting = useMemo(() => {
@@ -148,7 +148,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       </div>
 
       {/* Monthly Goal Progress Card */}
-      <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-3.5 sm:p-4 shadow-xs">
+      <motion.div
+        whileHover={!shouldReduceMotion ? { y: -2, scale: 1.005 } : undefined}
+        transition={interactiveSpring}
+        className="rounded-2xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md p-3.5 sm:p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)] transition-all"
+      >
         <div className="flex items-center justify-between">
           <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
             {t.home.thisMonthSummary}
@@ -158,11 +162,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </span>
         </div>
 
-        {/* Progress Bar with End Dot */}
-        <div className="relative my-2.5 sm:my-3 h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800/80 overflow-hidden">
-          <div
-            style={{ width: `${goalPercentage}%` }}
-            className="h-full rounded-full bg-blue-600 transition-all duration-500"
+        {/* Progress Bar with Liquid Fluid Motion */}
+        <div className="relative my-2.5 sm:my-3 h-2.5 w-full rounded-full bg-slate-100 dark:bg-slate-800/80 overflow-hidden shadow-inner">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${goalPercentage}%` }}
+            transition={shouldReduceMotion ? { duration: 0.2 } : liquidSpring}
+            className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 shadow-xs"
           />
         </div>
 
@@ -174,17 +180,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             {goalHours > 0 ? remainingFormatted : `${monthTotalFormatted}`}
           </span>
         </div>
-      </div>
+      </motion.div>
 
       {/* Primary Action Button: + Add Ministry Entry (Compact Mobile Touch Target) */}
       <div>
-        <button
+        <motion.button
+          whileHover={!shouldReduceMotion ? { scale: 1.01 } : undefined}
+          whileTap={!shouldReduceMotion ? { scale: 0.98 } : undefined}
+          transition={interactiveSpring}
           onClick={onOpenNewEntry}
-          className="w-full rounded-xl sm:rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] py-3 sm:py-3.5 px-4 text-sm sm:text-base font-semibold text-white shadow-xs shadow-blue-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full rounded-xl sm:rounded-2xl bg-blue-600 hover:bg-blue-700 py-3 sm:py-3.5 px-4 text-sm sm:text-base font-semibold text-white shadow-xs shadow-blue-500/25 border border-blue-400/30 transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
         >
           <Plus className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.5]" />
           <span>{t.home.logService}</span>
-        </button>
+        </motion.button>
       </div>
 
       {/* Section: Ministry Statistics */}

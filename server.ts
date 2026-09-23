@@ -53,6 +53,7 @@ async function startServer() {
         answer: response.answer,
         sources: response.sources || [],
         suggestedFollowUps: response.suggestedFollowUps || [],
+        researchSession: response.researchSession,
       });
     } catch (err: any) {
       console.error('API /api/ministry-ai Error:', err);

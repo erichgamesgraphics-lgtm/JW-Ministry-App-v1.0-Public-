@@ -11,9 +11,11 @@ import {
   Edit2,
   Repeat,
 } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { ScheduledEvent, ExpandedCalendarEvent, MinistryEntry } from '../types.ts';
 import { formatDurationLocalized, formatDateLocalized, formatMonthYearLocalized } from '../translations/index.ts';
+import { interactiveSpring } from '../utils/liquidGlass.ts';
 
 interface CalendarScreenProps {
   onOpenNewSchedule: (date?: Date) => void;
@@ -38,6 +40,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
     language,
     t,
   } = useMinistry();
+  const shouldReduceMotion = useReducedMotion();
 
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -170,29 +173,39 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
         </h1>
       </div>
 
-      {/* Main Calendar Card */}
-      <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-5 shadow-xs">
+      {/* Main Calendar Card with Liquid Glass */}
+      <motion.div
+        whileHover={!shouldReduceMotion ? { y: -2 } : undefined}
+        transition={interactiveSpring}
+        className="rounded-3xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)]"
+      >
         {/* Month Selector */}
         <div className="flex items-center justify-between px-1 mb-4">
-          <button
+          <motion.button
+            whileHover={!shouldReduceMotion ? { scale: 1.15 } : undefined}
+            whileTap={!shouldReduceMotion ? { scale: 0.9 } : undefined}
+            transition={interactiveSpring}
             onClick={prevMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer select-none"
             title={t.calendar.prevMonth}
           >
             <ChevronLeft className="h-5 w-5" />
-          </button>
+          </motion.button>
 
-          <span className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+          <span className="text-base sm:text-lg font-bold text-slate-900 dark:text-white select-none">
             {monthName}
           </span>
 
-          <button
+          <motion.button
+            whileHover={!shouldReduceMotion ? { scale: 1.15 } : undefined}
+            whileTap={!shouldReduceMotion ? { scale: 0.9 } : undefined}
+            transition={interactiveSpring}
             onClick={nextMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer select-none"
             title={t.calendar.nextMonth}
           >
             <ChevronRight className="h-5 w-5" />
-          </button>
+          </motion.button>
         </div>
 
         {/* Days of Week Header */}
@@ -221,16 +234,18 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
 
             return (
               <div key={`day-${day}`} className="flex flex-col items-center justify-center">
-                <button
+                <motion.button
+                  whileTap={!shouldReduceMotion ? { scale: 0.88 } : undefined}
+                  transition={interactiveSpring}
                   onClick={() => setSelectedDate(new Date(year, month, day))}
-                  className={`relative flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-all cursor-pointer ${
+                  className={`relative flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-all cursor-pointer select-none ${
                     selected
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
                 >
                   {day}
-                </button>
+                </motion.button>
 
                 {/* Dots indicator */}
                 <div className="flex items-center gap-1 h-1.5 mt-0.5">
@@ -257,25 +272,31 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
             <span>{t.calendar.legendArrangement}</span>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Action Buttons Row */}
+      {/* Action Buttons Row with Spring Feedback */}
       <div className="grid grid-cols-2 gap-3">
-        <button
+        <motion.button
+          whileHover={!shouldReduceMotion ? { scale: 1.02 } : undefined}
+          whileTap={!shouldReduceMotion ? { scale: 0.96 } : undefined}
+          transition={interactiveSpring}
           onClick={() => onOpenNewSchedule(selectedDate)}
-          className="flex items-center justify-center gap-2 rounded-2xl bg-[#2A3B4C] dark:bg-slate-800 hover:bg-slate-800 text-white font-semibold py-3.5 px-4 text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
+          className="flex items-center justify-center gap-2 rounded-2xl bg-[#2A3B4C] dark:bg-slate-800 hover:bg-slate-800 text-white font-semibold py-3.5 px-4 text-xs sm:text-sm shadow-xs transition-all cursor-pointer select-none"
         >
           <CalendarIcon className="h-4 w-4" />
           <span>{t.calendar.scheduleMinistry}</span>
-        </button>
+        </motion.button>
 
-        <button
+        <motion.button
+          whileHover={!shouldReduceMotion ? { scale: 1.02 } : undefined}
+          whileTap={!shouldReduceMotion ? { scale: 0.96 } : undefined}
+          transition={interactiveSpring}
           onClick={() => onOpenNewEntry ? onOpenNewEntry(selectedDate) : onOpenNewSchedule(selectedDate)}
-          className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#131D31] hover:bg-slate-50 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400 font-semibold py-3.5 px-4 text-xs sm:text-sm transition-all cursor-pointer"
+          className="flex items-center justify-center gap-2 rounded-2xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 hover:bg-slate-50 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400 font-semibold py-3.5 px-4 text-xs sm:text-sm backdrop-blur-md transition-all cursor-pointer select-none"
         >
           <Plus className="h-4 w-4 stroke-[2.5]" />
           <span>{t.calendar.recordEntry}</span>
-        </button>
+        </motion.button>
       </div>
 
       {/* Selected Date Details */}

@@ -74,6 +74,9 @@ export interface TranslationSchema {
     feature3Desc: string;
     feature4Title: string;
     feature4Desc: string;
+    featureAiTitle: string;
+    featureAiDesc: string;
+    featureAiBadge?: string;
     nextButton: string;
     step2Title: string;
     step2Subtitle: string;

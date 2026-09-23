@@ -9,10 +9,13 @@ import {
   AlertCircle,
   Search,
   CheckCircle2,
+  Compass,
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useMinistry } from '../context/MinistryContext.tsx';
-import { MinistryAssistantRouter } from '../../server/services/MinistryAssistantRouter.js';
+import { IntentRouter } from '../../server/services/IntentRouter.js';
+import { MinistryTrackerDataTools } from '../../server/services/MinistryTrackerDataTools.js';
+import { ResearchOrchestrator } from '../../server/services/ResearchOrchestrator.js';
 import { LanguageService } from '../../server/services/LanguageService.js';
 
 export interface SearchResultItem {
@@ -106,6 +109,45 @@ export const MinistryAIScreen: React.FC = () => {
       settings,
     };
 
+    // 1. Top-Level IntentRouter semantic evaluation
+    const evaluation = IntentRouter.evaluateIntent(textToSend.trim(), language, conversationHistory);
+
+    // 2. Prioritize Personal Data Requests (Hours, Goals, Schedule, History, Progress)
+    // Routes strictly to Ministry Tracker Data Tools WITHOUT triggering research!
+    if (evaluation.route === 'MINISTRY_TRACKER_DATA_TOOLS' && evaluation.trackerCategory) {
+      try {
+        const toolResult = MinistryTrackerDataTools.executeTool(
+          evaluation.trackerCategory,
+          userContext,
+          language
+        );
+
+        const followUps = LanguageService.getLocalizedSuggestions(language, 'MINISTRY_HOURS');
+
+        setMessages(prev => [
+          ...prev,
+          {
+            id: `ai-${Date.now()}`,
+            role: 'assistant',
+            content: toolResult.answer,
+            sources: [],
+            timestamp: Date.now(),
+          },
+        ]);
+
+        if (followUps && followUps.length > 0) {
+          setDynamicSuggestions(followUps);
+        }
+      } catch (err: any) {
+        console.error('Ministry Tracker Tool Execution Error:', err);
+        setError(LanguageService.getLocalizedError(language));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // 3. General Informational Inquiries or Hybrid Requests: Route to Research Orchestrator
     let answerText = '';
     let answerSources: SearchResultItem[] = [];
     let followUps: string[] = [];
@@ -143,9 +185,9 @@ export const MinistryAIScreen: React.FC = () => {
       } else if (data && data.error) {
         throw new Error(data.error.message || data.error);
       } else {
-        // Fallback: If Vercel/proxy returns HTML 404/500, execute native router locally
-        console.warn('Backend API endpoint returned non-JSON HTML or 404. Using client-side native Ministry Assistant router fallback.');
-        const fallbackResult = await MinistryAssistantRouter.handleRequest(
+        // Fallback: Execute Research Orchestrator locally
+        console.warn('Backend API endpoint returned non-JSON HTML or 404. Using client-side Research Orchestrator fallback.');
+        const fallbackResult = await ResearchOrchestrator.orchestrateResearch(
           textToSend.trim(),
           userContext,
           language,
@@ -170,9 +212,9 @@ export const MinistryAIScreen: React.FC = () => {
         setDynamicSuggestions(followUps);
       }
     } catch (err: any) {
-      console.warn('API Request Failed, executing local fallback:', err);
+      console.warn('API Request Failed, executing local Research Orchestrator fallback:', err);
       try {
-        const fallbackResult = await MinistryAssistantRouter.handleRequest(
+        const fallbackResult = await ResearchOrchestrator.orchestrateResearch(
           textToSend.trim(),
           userContext,
           language,
@@ -192,7 +234,7 @@ export const MinistryAIScreen: React.FC = () => {
           setDynamicSuggestions(fallbackResult.suggestedFollowUps);
         }
       } catch (fallbackErr: any) {
-        console.error('Local fallback failed:', fallbackErr);
+        console.error('Local Research Orchestrator fallback failed:', fallbackErr);
         setError(LanguageService.getLocalizedError(language));
       }
     } finally {
@@ -233,7 +275,7 @@ export const MinistryAIScreen: React.FC = () => {
                 </h1>
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/10 dark:bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50">
                   <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                  Native Engine
+                  Intent Router
                 </span>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-0.5">
