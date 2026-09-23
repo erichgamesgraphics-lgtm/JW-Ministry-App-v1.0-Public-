@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Share2,
   Clock,
@@ -24,7 +24,10 @@ export const ReportsScreen: React.FC = () => {
   const [periodIndex, setPeriodIndex] = useState<number>(0); // 0: Month, 1: Year, 2: All Time
   const [copiedReport, setCopiedReport] = useState(false);
 
-  const reportData = getReportsForPeriod(periodIndex);
+  // Memoize report calculation to guarantee smooth 60 FPS transitions
+  const reportData = useMemo(() => {
+    return getReportsForPeriod(periodIndex);
+  }, [getReportsForPeriod, periodIndex]);
 
   const now = new Date();
   const currentYear = now.getFullYear();

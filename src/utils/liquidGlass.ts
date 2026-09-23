@@ -51,26 +51,24 @@ export const glassTapScale = {
 };
 
 /**
- * Screen Page Transition Variants (Liquid Glass depth + subtle glide)
+ * Screen Page Transition Variants (Optimized 60 FPS Liquid Glass depth & glide)
+ * Uses transform and opacity only to prevent layout recalculations & GPU fill-rate spikes on mobile.
  */
 export const liquidPageVariants = {
   enter: (dir: number) => ({
-    x: dir > 0 ? 16 : -16,
+    x: dir > 0 ? 12 : -12,
     opacity: 0,
-    scale: 0.992,
-    filter: 'blur(3px)',
+    scale: 0.994,
   }),
   center: {
     x: 0,
     opacity: 1,
     scale: 1,
-    filter: 'blur(0px)',
   },
   exit: (dir: number) => ({
-    x: dir > 0 ? -16 : 16,
+    x: dir > 0 ? -12 : 12,
     opacity: 0,
-    scale: 0.992,
-    filter: 'blur(3px)',
+    scale: 0.994,
   }),
 };
 

@@ -331,4 +331,60 @@ ${data.isGoalReached ? '🎉 **Congratulations! You have reached your monthly go
         return `**Practical Ministry Tips & Progress Analysis**\n• ${tipText}`;
     }
   }
+
+  /**
+   * Tool: Specific Bible Studies Report
+   */
+  static getBibleStudiesReport(userContext: any, langStr: string = 'en'): string {
+    const lang = LanguageService.normalizeLanguage(langStr);
+    const data = this.parseUserStats(userContext, lang);
+    const count = data.bibleStudies;
+
+    switch (lang) {
+      case 'hy':
+        return `Ըստ ձեր ծառայության գրանցումների այս ամիս (${data.monthName} ${data.year}) ունեք **${count}** Աստվածաշնչի ուսումնասիրություն։`;
+      case 'ru':
+        return `Согласно вашим записям в приложении, в этом месяце (${data.monthName} ${data.year}) у вас зафиксировано **${count}** ${
+          count === 1 ? 'изучение' : count >= 2 && count <= 4 ? 'изучения' : 'изучений'
+        } Библии.`;
+      case 'hi':
+        return `इस महीने (${data.monthName} ${data.year}) आपके सेवकाई ट्रैकर रिकॉर्ड के अनुसार, आपके पास **${count}** बाइबल अध्ययन दर्ज हैं।`;
+      case 'pa':
+        return `ਇਸ ਮਹੀਨੇ (${data.monthName} ${data.year}) ਤੁਹਾਡੇ ਸੇਵਕਾਈ ਟਰੈਕਰ ਰਿਕਾਰਡ ਅਨੁਸਾਰ, ਤੁਹਾਡੇ ਕੋਲ **${count}** ਬਾਈਬਲ ਅਧਿਐਨ ਦਰਜ ਹਨ।`;
+      default:
+        return `According to your Ministry Tracker records for this month (${data.monthName} ${data.year}), you have **${count}** Bible ${count === 1 ? 'study' : 'studies'} recorded.`;
+    }
+  }
+
+  /**
+   * Tool: Specific Return Visits Report
+   */
+  static getReturnVisitsReport(userContext: any, langStr: string = 'en'): string {
+    const lang = LanguageService.normalizeLanguage(langStr);
+    const data = this.parseUserStats(userContext, lang);
+    const count = data.returnVisits;
+
+    switch (lang) {
+      case 'hy':
+        return `Այս ամիս (${data.monthName} ${data.year}) ձեր գրանցումներում առկա է **${count}** վերայցելություն։`;
+      case 'ru':
+        return `В этом месяце (${data.monthName} ${data.year}) в ваших записях учтено **${count}** ${
+          count === 1 ? 'повторное посещение' : count >= 2 && count <= 4 ? 'повторных посещения' : 'повторных посещений'
+        }.`;
+      case 'hi':
+        return `इस महीने (${data.monthName} ${data.year}) आपने **${count}** पुनः भेंटें दर्ज की हैं।`;
+      case 'pa':
+        return `ਇਸ ਮਹੀਨੇ (${data.monthName} ${data.year}) ਤੁਸੀਂ **${count}** ਮੁੜ-ਮੁਲਾਕਾਤਾਂ ਦਰਜ ਕੀਤੀਆਂ ਹਨ।`;
+      default:
+        return `According to your Ministry Tracker records for this month (${data.monthName} ${data.year}), you have **${count}** return ${count === 1 ? 'visit' : 'visits'} recorded.`;
+    }
+  }
+
+  /**
+   * Export parsed user stats for General AI reasoning and hybrid planning
+   */
+  static getParsedStats(userContext: any, langStr: string = 'en') {
+    const lang = LanguageService.normalizeLanguage(langStr);
+    return this.parseUserStats(userContext, lang);
+  }
 }

@@ -213,20 +213,42 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Initial check
     checkNotifications();
 
-    const intervalId = setInterval(checkNotifications, 25000);
+    let intervalId: NodeJS.Timeout | null = null;
+    const startInterval = () => {
+      if (!intervalId) {
+        intervalId = setInterval(checkNotifications, 45000);
+      }
+    };
+    const stopInterval = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    if (document.visibilityState === 'visible') {
+      startInterval();
+    }
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         checkNotifications();
+        startInterval();
+      } else {
+        stopInterval();
       }
     };
-    const handleWindowFocus = () => checkNotifications();
+    const handleWindowFocus = () => {
+      checkNotifications();
+      startInterval();
+    };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleWindowFocus);
     window.addEventListener('pageshow', handleWindowFocus);
 
     return () => {
-      clearInterval(intervalId);
+      stopInterval();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleWindowFocus);
       window.removeEventListener('pageshow', handleWindowFocus);

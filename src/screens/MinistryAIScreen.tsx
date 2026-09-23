@@ -185,16 +185,15 @@ export const MinistryAIScreen: React.FC = () => {
       } else if (data && data.error) {
         throw new Error(data.error.message || data.error);
       } else {
-        // Fallback: Execute Research Orchestrator locally
-        console.warn('Backend API endpoint returned non-JSON HTML or 404. Using client-side Research Orchestrator fallback.');
-        const fallbackResult = await ResearchOrchestrator.orchestrateResearch(
+        // Fallback: Execute local IntentRouter fallback
+        const fallbackResult = await IntentRouter.processMessage(
           textToSend.trim(),
           userContext,
           language,
           conversationHistory
         );
         answerText = fallbackResult.answer;
-        answerSources = fallbackResult.sources || [];
+        answerSources = (fallbackResult.sources || []) as SearchResultItem[];
         followUps = fallbackResult.suggestedFollowUps || [];
       }
 
@@ -212,9 +211,9 @@ export const MinistryAIScreen: React.FC = () => {
         setDynamicSuggestions(followUps);
       }
     } catch (err: any) {
-      console.warn('API Request Failed, executing local Research Orchestrator fallback:', err);
+      console.warn('API Request Failed, executing local IntentRouter fallback:', err);
       try {
-        const fallbackResult = await ResearchOrchestrator.orchestrateResearch(
+        const fallbackResult = await IntentRouter.processMessage(
           textToSend.trim(),
           userContext,
           language,
@@ -226,7 +225,7 @@ export const MinistryAIScreen: React.FC = () => {
             id: `ai-${Date.now()}`,
             role: 'assistant',
             content: fallbackResult.answer,
-            sources: fallbackResult.sources || [],
+            sources: (fallbackResult.sources || []) as SearchResultItem[],
             timestamp: Date.now(),
           },
         ]);
@@ -234,7 +233,7 @@ export const MinistryAIScreen: React.FC = () => {
           setDynamicSuggestions(fallbackResult.suggestedFollowUps);
         }
       } catch (fallbackErr: any) {
-        console.error('Local Research Orchestrator fallback failed:', fallbackErr);
+        console.error('Local IntentRouter fallback failed:', fallbackErr);
         setError(LanguageService.getLocalizedError(language));
       }
     } finally {
@@ -295,7 +294,7 @@ export const MinistryAIScreen: React.FC = () => {
       </div>
 
       {/* Chat Conversation Scroll Area */}
-      <div className="flex-1 overflow-y-auto min-h-0 space-y-3.5 pr-1 text-sm">
+      <div className="flex-1 overflow-y-auto min-h-0 space-y-3.5 pr-1 text-sm screen-scroll-container">
         {messages.map(msg => (
           <div
             key={msg.id}

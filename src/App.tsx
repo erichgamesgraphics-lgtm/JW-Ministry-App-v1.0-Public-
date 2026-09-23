@@ -190,7 +190,7 @@ const AppContent: React.FC = () => {
       />
 
       {/* Main Screen Content with Liquid Glass Transition */}
-      <main className="flex-1 mx-auto w-full max-w-5xl px-4 pt-4 pb-20 sm:px-6 sm:pt-5 sm:pb-24 overflow-x-hidden">
+      <main className="flex-1 mx-auto w-full max-w-5xl px-4 pt-4 pb-20 sm:px-6 sm:pt-5 sm:pb-24 overflow-x-hidden screen-scroll-container">
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
             key={activeTab}
@@ -200,10 +200,10 @@ const AppContent: React.FC = () => {
             animate="center"
             exit="exit"
             transition={{
-              duration: shouldReduceMotion ? 0.12 : 0.22,
+              duration: shouldReduceMotion ? 0.1 : 0.18,
               ease: glassBezier,
             }}
-            className="w-full"
+            className="w-full gpu-layer"
           >
             {activeTab === 'home' && (
               <HomeScreen

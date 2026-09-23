@@ -285,6 +285,46 @@ export const VERIFIED_JW_ARTICLES_CATALOG: MultilingualJWArticle[] = [
     },
   },
   {
+    id: 'jw-courage-video-1',
+    url: 'https://www.jw.org/en/library/videos/#en/mediaitems/VODMinistryTools/pub-jwbcov_201805_1_VIDEO',
+    source: 'JW.ORG',
+    bibleVerses: ['Joshua 1:9', 'Psalm 27:14', '1 Chronicles 28:20'],
+    topicKeywords: [
+      'courage', 'video', 'video about courage', 'find me a video about courage', 'courageous', 'boldness', 'fear', 'be courageous', 'brave',
+      'խիզախություն', 'քաջություն', 'տեսանյութ', 'տեսանյութ քաջության մասին', 'գտիր տեսանյութ քաջության մասին',
+      'мужество', 'смелость', 'видео', 'видео о мужестве', 'найди видео о мужестве', 'храбрость',
+      'साहस', 'हिम्मत', 'साहस पर वीडियो', 'ਸਾਹਸ',
+      'ਹੌਸਲਾ', 'ਦਲੇਰੀ', 'ਦਲੇਰੀ ਬਾਰੇ ਵੀਡੀਓ'
+    ],
+    localizations: {
+      en: {
+        title: 'Be Courageous and Strong! (Video)',
+        snippet: 'Watch this encouraging video presentation on how trusting in Jehovah gives Christians the courage to face trials and speak boldly in the ministry.',
+        publication: 'JW.ORG Video Feature',
+      },
+      hy: {
+        title: 'Եղիր քաջ և զորավոր (Տեսանյութ)',
+        snippet: 'Դիտեք այս քաջալերող տեսանյութը այն մասին, թե ինչպես Եհովայի վրա հույս դնելն օգնում է դրսևորել քաջություն և հավատ ծառայության մեջ:',
+        publication: 'JW.ORG Տեսանյութ',
+      },
+      ru: {
+        title: 'Будьте мужественны и сильны! (Видео)',
+        snippet: 'Посмотрите вдохновляющее видео о том, как упование на Иегову помогает христианам проявлять смелость и стойкость в служении и испытаниях.',
+        publication: 'JW.ORG Видео',
+      },
+      hi: {
+        title: 'साहसी और मजबूत बनो! (वीडियो)',
+        snippet: 'यह उत्साहवर्धक वीडियो देखें कि कैसे यहोवा पर भरोसा रखने से हमें अपने जीवन और सेवा में साहस दिखाने में मदद मिलती है।',
+        publication: 'JW.ORG वीडियो',
+      },
+      pa: {
+        title: 'ਦਲੇਰ ਅਤੇ ਤਕੜੇ ਬਣੋ! (ਵੀਡੀਓ)',
+        snippet: 'ਇਹ ਹੌਸਲਾ ਵਧਾਉਣ ਵਾਲੀ ਵੀਡੀਓ ਦੇਖੋ ਕਿ ਕਿਵੇਂ ਯਹੋਵਾਹ ਤੇ ਭਰੋਸਾ ਰੱਖਣ ਨਾਲ ਸਾਨੂੰ ਆਪਣੀ ਜ਼ਿੰਦਗੀ ਅਤੇ ਸੇਵਕਾਈ ਵਿੱਚ ਦਲੇਰੀ ਦਿਖਾਉਣ ਵਿੱਚ ਮਦਦ ਮਿਲਦੀ ਹੈ।',
+        publication: 'JW.ORG ਵੀਡੀਓ',
+      },
+    },
+  },
+  {
     id: 'jw-preaching-encouragement-1',
     url: 'https://www.jw.org/en/library/jw-meeting-workbook/ministry-skills/',
     source: 'JW.ORG',

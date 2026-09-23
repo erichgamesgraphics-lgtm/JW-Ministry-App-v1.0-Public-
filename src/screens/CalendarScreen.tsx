@@ -78,15 +78,23 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
     return getEventsForMonth(year, month);
   }, [getEventsForMonth, year, month]);
 
-  // Get events & entries for calendar day dots
-  const getDayMeta = (day: number) => {
-    const dayEvents = monthOccurrencesMap.get(day) || [];
-    const hasEvents = dayEvents.length > 0;
-
-    const hasEntries = entries.some(e => {
+  // Pre-calculate days in this month that have ministry entries into a Set for instant O(1) dot lookups
+  const daysWithEntriesSet = useMemo(() => {
+    const set = new Set<number>();
+    for (const e of entries) {
       const d = new Date(e.dateMillis);
-      return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
-    });
+      if (d.getFullYear() === year && d.getMonth() === month) {
+        set.add(d.getDate());
+      }
+    }
+    return set;
+  }, [entries, year, month]);
+
+  // Get events & entries for calendar day dots (O(1) lookup per day)
+  const getDayMeta = (day: number) => {
+    const dayEvents = monthOccurrencesMap.get(day);
+    const hasEvents = Boolean(dayEvents && dayEvents.length > 0);
+    const hasEntries = daysWithEntriesSet.has(day);
 
     return { hasEvents, hasEntries };
   };

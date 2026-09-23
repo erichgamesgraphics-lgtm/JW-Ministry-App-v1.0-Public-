@@ -77,13 +77,15 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Radio className={`h-4 w-4 ${timer.isRunning ? 'text-emerald-500 animate-pulse' : 'text-slate-400'}`} />
+            <Radio className={`h-4 w-4 ${timer.isRunning ? (shouldReduceMotion ? 'text-emerald-500' : 'text-emerald-500 animate-pulse') : 'text-slate-400'}`} />
             <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
               {t.activity.liveTimerTitle}
             </h2>
           </div>
           {timer.isRunning && (
-            <span className="rounded-full bg-emerald-50/90 dark:bg-emerald-950/70 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/80 animate-pulse shadow-xs">
+            <span className={`rounded-full bg-emerald-50/90 dark:bg-emerald-950/70 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/80 shadow-xs ${
+              shouldReduceMotion ? '' : 'animate-pulse'
+            }`}>
               {t.activity.timerRunning}
             </span>
           )}

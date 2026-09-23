@@ -422,7 +422,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
             </div>
 
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className={`h-1.5 w-1.5 rounded-full bg-emerald-500 ${shouldReduceMotion ? '' : 'animate-pulse'}`} />
               Active
             </span>
           </div>

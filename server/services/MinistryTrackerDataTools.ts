@@ -7,7 +7,9 @@ export type TrackerToolCategory =
   | 'PERSONAL_SCHEDULE'
   | 'PERSONAL_PROGRESS'
   | 'PERSONAL_HISTORY'
-  | 'PERSONAL_TIPS';
+  | 'PERSONAL_TIPS'
+  | 'PERSONAL_STUDIES'
+  | 'PERSONAL_VISITS';
 
 export class MinistryTrackerDataTools {
   /**
@@ -59,6 +61,27 @@ export class MinistryTrackerDataTools {
   }
 
   /**
+   * Tool 7: Get Actual Bible Studies Count & Info
+   */
+  static getBibleStudies(userContext: any, lang: SupportedLanguage): string {
+    return MinistryAssistant.getBibleStudiesReport(userContext, lang);
+  }
+
+  /**
+   * Tool 8: Get Actual Return Visits Count & Info
+   */
+  static getReturnVisits(userContext: any, lang: SupportedLanguage): string {
+    return MinistryAssistant.getReturnVisitsReport(userContext, lang);
+  }
+
+  /**
+   * Get Raw Metrics for reasoning
+   */
+  static getRawMetrics(userContext: any, lang: SupportedLanguage) {
+    return MinistryAssistant.getParsedStats(userContext, lang);
+  }
+
+  /**
    * Dispatcher method to execute requested Ministry Tracker data tool
    */
   static executeTool(
@@ -96,6 +119,16 @@ export class MinistryTrackerDataTools {
         return {
           answer: this.getTips(userContext, lang),
           toolUsed: 'Ministry Tracker: Practical Tips',
+        };
+      case 'PERSONAL_STUDIES':
+        return {
+          answer: this.getBibleStudies(userContext, lang),
+          toolUsed: 'Ministry Tracker: Bible Studies Counter',
+        };
+      case 'PERSONAL_VISITS':
+        return {
+          answer: this.getReturnVisits(userContext, lang),
+          toolUsed: 'Ministry Tracker: Return Visits Counter',
         };
       default:
         return {
