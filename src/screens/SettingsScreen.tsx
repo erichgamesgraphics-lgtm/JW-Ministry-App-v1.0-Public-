@@ -20,15 +20,9 @@ import {
   Globe,
   CheckCircle2,
 } from 'lucide-react';
-import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { PublisherStatusType, SupportedLanguage } from '../types.ts';
 import { JWMinistryLogo } from '../components/JWMinistryLogo.tsx';
-import {
-  interactiveSpring,
-  liquidModalBackdropVariants,
-  liquidModalCardVariants,
-} from '../utils/liquidGlass.ts';
 
 interface SettingsScreenProps {
   onShowWelcome?: () => void;
@@ -49,7 +43,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
     language,
     t,
   } = useMinistry();
-  const shouldReduceMotion = useReducedMotion();
 
   const [showGoalModal, setShowGoalModal] = useState<boolean>(false);
   const [showLanguageModal, setShowLanguageModal] = useState<boolean>(false);
@@ -258,9 +251,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
       {/* ========================================================================= */}
       {/* SECTION 1: LANGUAGE (AT THE TOP AS REQUESTED)                             */}
       {/* ========================================================================= */}
-      <motion.div
-        whileHover={!shouldReduceMotion ? { y: -2 } : undefined}
-        transition={interactiveSpring}
+      <div
         className="rounded-3xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-3"
       >
         <div className="flex items-center justify-between">
@@ -272,12 +263,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
           </div>
         </div>
 
-        <motion.button
-          whileHover={!shouldReduceMotion ? { scale: 1.01 } : undefined}
-          whileTap={!shouldReduceMotion ? { scale: 0.98 } : undefined}
-          transition={interactiveSpring}
+        <button
           onClick={() => setShowLanguageModal(true)}
-          className="flex w-full items-center justify-between rounded-2xl border border-white/40 dark:border-white/5 bg-slate-50/70 dark:bg-slate-800/50 p-3.5 hover:bg-slate-100/70 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left select-none"
+          className="flex w-full items-center justify-between rounded-2xl border border-white/40 dark:border-white/5 bg-slate-50/70 dark:bg-slate-800/50 p-3.5 hover:bg-slate-100/70 dark:hover:bg-slate-800 active:scale-[0.99] transition-all cursor-pointer text-left select-none"
         >
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400">
@@ -296,15 +284,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
             <span>{currentLanguageObj.nativeLabel}</span>
             <ChevronRight className="h-4 w-4 text-slate-400" />
           </div>
-        </motion.button>
-      </motion.div>
+        </button>
+      </div>
 
       {/* ========================================================================= */}
       {/* SECTION 2: MINISTRY GOALS                                                 */}
       {/* ========================================================================= */}
-      <motion.div
-        whileHover={!shouldReduceMotion ? { y: -2 } : undefined}
-        transition={interactiveSpring}
+      <div
         className="rounded-3xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-3"
       >
         <div className="flex items-center justify-between">
@@ -316,12 +302,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
           </div>
         </div>
 
-        <motion.div
-          whileHover={!shouldReduceMotion ? { scale: 1.01 } : undefined}
-          whileTap={!shouldReduceMotion ? { scale: 0.98 } : undefined}
-          transition={interactiveSpring}
+        <div
           onClick={handleOpenGoalModal}
-          className="flex items-center justify-between rounded-2xl border border-white/40 dark:border-white/5 bg-slate-50/70 dark:bg-slate-800/50 p-3.5 hover:bg-slate-100/70 dark:hover:bg-slate-800 transition-colors cursor-pointer select-none"
+          className="flex items-center justify-between rounded-2xl border border-white/40 dark:border-white/5 bg-slate-50/70 dark:bg-slate-800/50 p-3.5 hover:bg-slate-100/70 dark:hover:bg-slate-800 active:scale-[0.99] transition-all cursor-pointer select-none"
         >
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400">
@@ -344,15 +327,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
             </div>
           </div>
           <ChevronRight className="h-4 w-4 text-slate-400" />
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
 
       {/* ========================================================================= */}
       {/* SECTION 3: APPEARANCE                                                     */}
       {/* ========================================================================= */}
-      <motion.div
-        whileHover={!shouldReduceMotion ? { y: -2 } : undefined}
-        transition={interactiveSpring}
+      <div
         className="rounded-3xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-3"
       >
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -368,13 +349,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
             const Icon = themeOpt.icon;
             const isSelected = settings.themeMode === themeOpt.id;
             return (
-              <motion.button
+              <button
                 key={themeOpt.id}
-                whileHover={!shouldReduceMotion ? { scale: 1.04 } : undefined}
-                whileTap={!shouldReduceMotion ? { scale: 0.94 } : undefined}
-                transition={interactiveSpring}
                 onClick={() => updateTheme(themeOpt.id)}
-                className={`flex flex-col items-center justify-center rounded-2xl border p-3 transition-all cursor-pointer select-none ${
+                className={`flex flex-col items-center justify-center rounded-2xl border p-3 active:scale-95 transition-all cursor-pointer select-none ${
                   isSelected
                     ? 'border-blue-600 bg-blue-50/60 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold shadow-xs'
                     : 'border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:border-slate-300'
@@ -382,18 +360,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
               >
                 <Icon className="h-4 w-4 mb-1.5" />
                 <span className="text-xs">{themeOpt.label}</span>
-              </motion.button>
+              </button>
             );
           })}
         </div>
-      </motion.div>
+      </div>
 
       {/* ========================================================================= */}
       {/* SECTION 4: DATA & BACKUP                                                  */}
       {/* ========================================================================= */}
-      <motion.div
-        whileHover={!shouldReduceMotion ? { y: -2 } : undefined}
-        transition={interactiveSpring}
+      <div
         className="rounded-3xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-4"
       >
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -412,9 +388,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
                   {t.settings.autoBackupTitle || 'Automatic Backup'}
                 </h3>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
-                  {backupStatus === 'backing_up'
-                    ? (t.settings.autoBackupBackingUp || 'Backing up…')
-                    : backupStatus === 'offline'
+                  {backupStatus === 'pending_offline'
                     ? (t.settings.autoBackupPendingOffline || 'Backup pending (offline)')
                     : (t.settings.autoBackupUpToDate || '✓ Backup up to date')}
                 </p>
@@ -422,7 +396,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
             </div>
 
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-              <span className={`h-1.5 w-1.5 rounded-full bg-emerald-500 ${shouldReduceMotion ? '' : 'animate-pulse'}`} />
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               Active
             </span>
           </div>
@@ -442,7 +416,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
           {/* Create Backup File (.mtbackup) */}
           <button
             onClick={handleDownloadBackup}
-            className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left"
+            className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 active:scale-[0.99] transition-all cursor-pointer text-left"
           >
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
@@ -461,7 +435,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
           </button>
 
           {/* Restore Backup File (.mtbackup) */}
-          <label className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left">
+          <label className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 active:scale-[0.99] transition-all cursor-pointer text-left">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400">
                 <Upload className="h-4 w-4" />
@@ -487,7 +461,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
           {/* Export to CSV */}
           <button
             onClick={handleExportCsv}
-            className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left"
+            className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 active:scale-[0.99] transition-all cursor-pointer text-left"
           >
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
@@ -509,7 +483,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
             <button
               onClick={() => setShowClearConfirm(true)}
-              className="flex w-full items-center justify-between rounded-2xl border border-red-100 dark:border-red-950 bg-red-50/50 dark:bg-red-950/20 p-3.5 hover:bg-red-100/60 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
+              className="flex w-full items-center justify-between rounded-2xl border border-red-100 dark:border-red-950 bg-red-50/50 dark:bg-red-950/20 p-3.5 hover:bg-red-100/60 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 active:scale-[0.99] transition-all cursor-pointer"
             >
               <div className="flex items-center gap-3 text-left">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400">
@@ -528,14 +502,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
             </button>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* ========================================================================= */}
       {/* SECTION 5: ABOUT                                                          */}
       {/* ========================================================================= */}
-      <motion.div
-        whileHover={!shouldReduceMotion ? { y: -2 } : undefined}
-        transition={interactiveSpring}
+      <div
         className="rounded-3xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)] text-center space-y-3"
       >
         <div className="flex justify-center">
@@ -564,260 +536,213 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
             </button>
           </div>
         )}
-      </motion.div>
+      </div>
 
       {/* ========================================================================= */}
       {/* LANGUAGE SELECTION MODAL                                                  */}
       {/* ========================================================================= */}
-      <AnimatePresence>
-        {showLanguageModal && (
-          <motion.div
-            variants={liquidModalBackdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md"
-          >
-            <motion.div
-              variants={liquidModalCardVariants}
-              className="relative w-full max-w-sm rounded-3xl bg-white/95 dark:bg-[#131D31]/95 backdrop-blur-xl shadow-2xl border border-white/60 dark:border-white/10 p-6 space-y-4"
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2">
-                  <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    {t.settings.selectLanguageTitle}
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setShowLanguageModal(false)}
-                  className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+      {showLanguageModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40">
+          <div className="relative w-full max-w-sm rounded-3xl bg-white dark:bg-[#131D31] shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  {t.settings.selectLanguageTitle}
+                </h3>
               </div>
+              <button
+                onClick={() => setShowLanguageModal(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
-              <div className="space-y-2">
-                {languageOptions.map(opt => {
-                  const isSelected = language === opt.code;
-                  return (
-                    <motion.button
-                      key={opt.code}
-                      whileHover={!shouldReduceMotion ? { scale: 1.02 } : undefined}
-                      whileTap={!shouldReduceMotion ? { scale: 0.97 } : undefined}
-                      transition={interactiveSpring}
-                      onClick={() => handleSelectLanguage(opt.code)}
-                      className={`flex w-full items-center justify-between rounded-2xl border p-3.5 transition-all cursor-pointer select-none ${
-                        isSelected
-                          ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-xs'
-                          : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#131D31] hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-200'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 text-left">
-                        <span className="text-sm font-bold">{opt.nativeLabel}</span>
-                        <span className="text-xs text-slate-400 font-normal">({opt.label})</span>
+            <div className="space-y-2">
+              {languageOptions.map(opt => {
+                const isSelected = language === opt.code;
+                return (
+                  <button
+                    key={opt.code}
+                    onClick={() => handleSelectLanguage(opt.code)}
+                    className={`flex w-full items-center justify-between rounded-2xl border p-3.5 active:scale-[0.98] transition-all cursor-pointer select-none ${
+                      isSelected
+                        ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-xs'
+                        : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#131D31] hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 text-left">
+                      <span className="text-sm font-bold">{opt.nativeLabel}</span>
+                      <span className="text-xs text-slate-400 font-normal">({opt.label})</span>
+                    </div>
+
+                    {isSelected ? (
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white">
+                        <Check className="h-3 w-3 stroke-[3]" />
                       </div>
-
-                      {isSelected ? (
-                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white">
-                          <Check className="h-3 w-3 stroke-[3]" />
-                        </div>
-                      ) : (
-                        <div className="h-5 w-5 rounded-full border border-slate-300 dark:border-slate-700" />
-                      )}
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                    ) : (
+                      <div className="h-5 w-5 rounded-full border border-slate-300 dark:border-slate-700" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* GOAL PICKER MODAL                                                         */}
       {/* ========================================================================= */}
-      <AnimatePresence>
-        {showGoalModal && (
-          <motion.div
-            variants={liquidModalBackdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md"
-          >
-            <motion.div
-              variants={liquidModalCardVariants}
-              className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white/95 dark:bg-[#131D31]/95 backdrop-blur-xl shadow-2xl border border-white/60 dark:border-white/10 p-6 space-y-4"
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  {t.welcome.step2Title}
-                </h3>
-                <button
-                  onClick={() => setShowGoalModal(false)}
-                  className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+      {showGoalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40">
+          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-[#131D31] shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                {t.welcome.step2Title}
+              </h3>
+              <button
+                onClick={() => setShowGoalModal(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
-              <div className="space-y-2.5">
-                {goalCards.map((card) => {
-                  const IconComponent = card.icon;
-                  const isSelected = selectedGoal === card.id;
+            <div className="space-y-2.5">
+              {goalCards.map((card) => {
+                const IconComponent = card.icon;
+                const isSelected = selectedGoal === card.id;
 
-                  return (
-                    <motion.div
-                      key={card.id}
-                      whileHover={!shouldReduceMotion ? { scale: 1.01 } : undefined}
-                      whileTap={!shouldReduceMotion ? { scale: 0.98 } : undefined}
-                      transition={interactiveSpring}
-                      onClick={() => setSelectedGoal(card.id)}
-                      className={`rounded-2xl border-2 p-3.5 transition-all cursor-pointer select-none ${
-                        isSelected
-                          ? 'border-blue-600 bg-blue-50/40 dark:bg-blue-950/30 dark:border-blue-500 shadow-xs'
-                          : 'border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#131D31] hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2.5">
-                        <div className="flex items-start gap-3">
-                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${card.iconColor}`}>
-                            <IconComponent className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-bold text-slate-900 dark:text-white">
-                                {card.title}
-                              </span>
-                              <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
-                                {card.badge}
-                              </span>
-                            </div>
-                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-snug">
-                              {card.description}
-                            </p>
-                            <p className="mt-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
-                              {card.targetText}
-                            </p>
-                          </div>
+                return (
+                  <div
+                    key={card.id}
+                    onClick={() => setSelectedGoal(card.id)}
+                    className={`rounded-2xl border-2 p-3.5 active:scale-[0.99] transition-all cursor-pointer select-none ${
+                      isSelected
+                        ? 'border-blue-600 bg-blue-50/40 dark:bg-blue-950/30 dark:border-blue-500 shadow-xs'
+                        : 'border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#131D31] hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex items-start gap-3">
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${card.iconColor}`}>
+                          <IconComponent className="h-4 w-4" />
                         </div>
-
-                        <div className="shrink-0 pt-0.5">
-                          <div
-                            className={`flex h-5 w-5 items-center justify-center rounded-full border transition-all ${
-                              isSelected
-                                ? 'border-blue-600 bg-blue-600 text-white'
-                                : 'border-slate-300 dark:border-slate-700 bg-transparent'
-                            }`}
-                          >
-                            {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">
+                              {card.title}
+                            </span>
+                            <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                              {card.badge}
+                            </span>
                           </div>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-snug">
+                            {card.description}
+                          </p>
+                          <p className="mt-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                            {card.targetText}
+                          </p>
                         </div>
                       </div>
 
-                      {/* Custom Hours Input inside modal */}
-                      {card.id === 'CUSTOM' && isSelected && (
-                        <div className="mt-3 pt-3 border-t border-blue-200/60 dark:border-blue-900/60 flex items-center justify-between gap-3">
-                          <label htmlFor="settings-custom-goal-input" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                            {t.welcome.customGoalLabel}
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              id="settings-custom-goal-input"
-                              type="number"
-                              min="1"
-                              max="300"
-                              value={customGoalInput || ''}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value, 10);
-                                setCustomGoalInput(isNaN(val) ? 0 : Math.max(1, Math.min(300, val)));
-                              }}
-                              className="w-20 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-center text-sm font-bold text-slate-900 dark:text-white focus:border-blue-500 focus:outline-hidden"
-                            />
-                            <span className="text-xs font-medium text-slate-500">{t.welcome.customGoalUnit}</span>
-                          </div>
+                      <div className="shrink-0 pt-0.5">
+                        <div
+                          className={`flex h-5 w-5 items-center justify-center rounded-full border transition-all ${
+                            isSelected
+                              ? 'border-blue-600 bg-blue-600 text-white'
+                              : 'border-slate-300 dark:border-slate-700 bg-transparent'
+                          }`}
+                        >
+                          {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
                         </div>
-                      )}
-                    </motion.div>
-                  );
-                })}
-              </div>
+                      </div>
+                    </div>
 
-              <div className="flex gap-2.5 pt-2">
-                <motion.button
-                  whileTap={!shouldReduceMotion ? { scale: 0.97 } : undefined}
-                  transition={interactiveSpring}
-                  onClick={() => setShowGoalModal(false)}
-                  className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer select-none"
-                >
-                  {t.common.cancel}
-                </motion.button>
-                <motion.button
-                  whileTap={!shouldReduceMotion ? { scale: 0.97 } : undefined}
-                  transition={interactiveSpring}
-                  onClick={handleSaveGoal}
-                  className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer select-none"
-                >
-                  {t.common.save}
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                    {/* Custom Hours Input inside modal */}
+                    {card.id === 'CUSTOM' && isSelected && (
+                      <div className="mt-3 pt-3 border-t border-blue-200/60 dark:border-blue-900/60 flex items-center justify-between gap-3">
+                        <label htmlFor="settings-custom-goal-input" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          {t.welcome.customGoalLabel}
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            id="settings-custom-goal-input"
+                            type="number"
+                            min="1"
+                            max="300"
+                            value={customGoalInput || ''}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
+                              setCustomGoalInput(isNaN(val) ? 0 : Math.max(1, Math.min(300, val)));
+                            }}
+                            className="w-20 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-center text-sm font-bold text-slate-900 dark:text-white focus:border-blue-500 focus:outline-hidden"
+                          />
+                          <span className="text-xs font-medium text-slate-500">{t.welcome.customGoalUnit}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                onClick={() => setShowGoalModal(false)}
+                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-[0.98] transition-all cursor-pointer select-none"
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                onClick={handleSaveGoal}
+                className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white text-xs font-bold shadow-xs transition-all cursor-pointer select-none"
+              >
+                {t.common.save}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* CLEAR ALL DATA CONFIRMATION MODAL                                         */}
       {/* ========================================================================= */}
-      <AnimatePresence>
-        {showClearConfirm && (
-          <motion.div
-            variants={liquidModalBackdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md"
-          >
-            <motion.div
-              variants={liquidModalCardVariants}
-              className="w-full max-w-sm rounded-3xl bg-white/95 dark:bg-[#131D31]/95 backdrop-blur-xl p-6 shadow-2xl border border-white/60 dark:border-white/10 space-y-4 text-center"
-            >
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600">
-                <Trash2 className="h-6 w-6" />
-              </div>
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40">
+          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#131D31] p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600">
+              <Trash2 className="h-6 w-6" />
+            </div>
 
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  {t.settings.clearConfirmTitle}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {t.settings.clearConfirmDesc}
-                </p>
-              </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                {t.settings.clearConfirmTitle}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {t.settings.clearConfirmDesc}
+              </p>
+            </div>
 
-              <div className="flex gap-2 pt-2">
-                <motion.button
-                  whileTap={!shouldReduceMotion ? { scale: 0.97 } : undefined}
-                  transition={interactiveSpring}
-                  onClick={() => setShowClearConfirm(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer select-none"
-                >
-                  {t.common.cancel}
-                </motion.button>
-                <motion.button
-                  whileTap={!shouldReduceMotion ? { scale: 0.97 } : undefined}
-                  transition={interactiveSpring}
-                  onClick={handleConfirmClear}
-                  className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors cursor-pointer select-none"
-                >
-                  {t.settings.clearConfirmButton}
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-[0.98] transition-all cursor-pointer select-none"
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                onClick={handleConfirmClear}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white text-xs font-bold transition-all cursor-pointer select-none"
+              >
+                {t.settings.clearConfirmButton}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -314,13 +314,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onContinue }) => {
 
               {/* Ministry AI Information Section */}
               <div className="welcome-ai-entrance flex items-start gap-3 rounded-2xl border border-indigo-200/90 dark:border-indigo-800/80 bg-gradient-to-r from-indigo-50/70 via-white to-blue-50/50 dark:from-[#131D31] dark:via-[#162138] dark:to-indigo-950/30 p-3.5 shadow-xs relative overflow-hidden">
-                {/* AI Icon with subtle glass highlight */}
-                <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 via-blue-500/15 to-violet-500/25 dark:from-indigo-400/25 dark:via-blue-400/20 dark:to-violet-400/30 border border-indigo-200/80 dark:border-indigo-700/60 shadow-xs backdrop-blur-xs overflow-hidden">
-                  {/* Glass specular highlight overlay */}
-                  <div
-                    className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-white/40 via-white/10 to-transparent dark:from-white/20 dark:via-white/5 dark:to-transparent rounded-xl"
-                    aria-hidden="true"
-                  />
+                {/* AI Icon */}
+                <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 via-blue-500/15 to-violet-500/25 dark:from-indigo-400/25 dark:via-blue-400/20 dark:to-violet-400/30 border border-indigo-200/80 dark:border-indigo-700/60 shadow-xs overflow-hidden">
                   <Sparkles className="relative z-10 h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -463,7 +458,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onContinue }) => {
 
       {/* Language Selection Modal */}
       {showLanguageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
           <div className="relative w-full max-w-sm rounded-3xl bg-white dark:bg-[#131D31] shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">

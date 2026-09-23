@@ -1,10 +1,8 @@
 import React from 'react';
 import { Pencil, Trash2, MapPin, FileText } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
 import { MinistryEntry } from '../types.ts';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { formatDateLocalized, formatDurationLocalized } from '../translations/index.ts';
-import { interactiveSpring } from '../utils/liquidGlass.ts';
 
 interface EntryCardProps {
   entry: MinistryEntry;
@@ -15,7 +13,6 @@ interface EntryCardProps {
 
 export const EntryCard: React.FC<EntryCardProps> = ({ entry, onEdit, onDelete, className = '' }) => {
   const { language, t } = useMinistry();
-  const shouldReduceMotion = useReducedMotion();
 
   const durationText = formatDurationLocalized(entry.durationMinutes, language);
 
@@ -48,10 +45,7 @@ export const EntryCard: React.FC<EntryCardProps> = ({ entry, onEdit, onDelete, c
   });
 
   return (
-    <motion.div
-      whileHover={!shouldReduceMotion ? { y: -2, scale: 1.006 } : undefined}
-      whileTap={!shouldReduceMotion ? { scale: 0.992 } : undefined}
-      transition={interactiveSpring}
+    <div
       className={`relative overflow-hidden rounded-3xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md p-4 sm:p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)] transition-colors select-none ${className}`}
     >
       <div className="flex items-center justify-between gap-3">
@@ -68,26 +62,24 @@ export const EntryCard: React.FC<EntryCardProps> = ({ entry, onEdit, onDelete, c
 
         {/* Action icons: Edit (Blue Pencil) & Delete (Red Trash) */}
         <div className="flex items-center gap-2 shrink-0">
-          <motion.button
-            whileHover={!shouldReduceMotion ? { scale: 1.12 } : undefined}
-            whileTap={!shouldReduceMotion ? { scale: 0.9 } : undefined}
+          <button
+            type="button"
             onClick={() => onEdit(entry)}
-            className="p-1.5 text-blue-600 hover:text-blue-700 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer"
+            className="p-1.5 text-blue-600 hover:text-blue-700 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/40 active:scale-90 transition-all cursor-pointer"
             title={t.common.edit}
             aria-label={t.common.edit}
           >
             <Pencil className="h-4 w-4" />
-          </motion.button>
-          <motion.button
-            whileHover={!shouldReduceMotion ? { scale: 1.12 } : undefined}
-            whileTap={!shouldReduceMotion ? { scale: 0.9 } : undefined}
+          </button>
+          <button
+            type="button"
             onClick={() => onDelete(entry.id)}
-            className="p-1.5 text-red-600 hover:text-red-700 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+            className="p-1.5 text-red-600 hover:text-red-700 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 active:scale-90 transition-all cursor-pointer"
             title={t.common.delete}
             aria-label={t.common.delete}
           >
             <Trash2 className="h-4 w-4" />
-          </motion.button>
+          </button>
         </div>
       </div>
 
@@ -134,6 +126,6 @@ export const EntryCard: React.FC<EntryCardProps> = ({ entry, onEdit, onDelete, c
           )}
         </div>
       )}
-    </motion.div>
+    </div>
   );
 };
