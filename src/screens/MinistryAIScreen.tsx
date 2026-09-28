@@ -9,14 +9,16 @@ import {
   AlertCircle,
   Search,
   CheckCircle2,
+  Video,
+  FileText,
+  Book,
   Compass,
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useMinistry } from '../context/MinistryContext.tsx';
-import { IntentRouter } from '../../server/services/IntentRouter.js';
-import { MinistryTrackerDataTools } from '../../server/services/MinistryTrackerDataTools.js';
-import { ResearchOrchestrator } from '../../server/services/ResearchOrchestrator.js';
+import { MinistryAssistantRouter } from '../../server/services/MinistryAssistantRouter.js';
 import { LanguageService } from '../../server/services/LanguageService.js';
+import type { ResearchSession } from '../../server/services/research/types.js';
 
 export interface SearchResultItem {
   id: string;
@@ -26,6 +28,8 @@ export interface SearchResultItem {
   source: 'JW.ORG' | 'WOL.JW.ORG';
   publication?: string;
   bibleVerses?: string[];
+  contentType?: 'Article' | 'Video' | 'Publication' | 'Bible' | 'News' | 'Other';
+  thumbnail?: string;
 }
 
 export interface ChatMessage {
@@ -37,7 +41,7 @@ export interface ChatMessage {
 }
 
 export const MinistryAIScreen: React.FC = () => {
-  const { entries, events, upcomingArrangements, settings, dashboardStats, language, t } = useMinistry();
+  const { entries, events, notes, upcomingArrangements, settings, dashboardStats, language, t } = useMinistry();
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
@@ -48,6 +52,7 @@ export const MinistryAIScreen: React.FC = () => {
     },
   ]);
 
+  const [activeSession, setActiveSession] = useState<ResearchSession | undefined>(undefined);
   const [dynamicSuggestions, setDynamicSuggestions] = useState<string[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -105,52 +110,15 @@ export const MinistryAIScreen: React.FC = () => {
       stats: dashboardStats,
       entries,
       events,
+      notes,
       upcomingArrangements,
       settings,
     };
 
-    // 1. Top-Level IntentRouter semantic evaluation
-    const evaluation = IntentRouter.evaluateIntent(textToSend.trim(), language, conversationHistory);
-
-    // 2. Prioritize Personal Data Requests (Hours, Goals, Schedule, History, Progress)
-    // Routes strictly to Ministry Tracker Data Tools WITHOUT triggering research!
-    if (evaluation.route === 'MINISTRY_TRACKER_DATA_TOOLS' && evaluation.trackerCategory) {
-      try {
-        const toolResult = MinistryTrackerDataTools.executeTool(
-          evaluation.trackerCategory,
-          userContext,
-          language
-        );
-
-        const followUps = LanguageService.getLocalizedSuggestions(language, 'MINISTRY_HOURS');
-
-        setMessages(prev => [
-          ...prev,
-          {
-            id: `ai-${Date.now()}`,
-            role: 'assistant',
-            content: toolResult.answer,
-            sources: [],
-            timestamp: Date.now(),
-          },
-        ]);
-
-        if (followUps && followUps.length > 0) {
-          setDynamicSuggestions(followUps);
-        }
-      } catch (err: any) {
-        console.error('Ministry Tracker Tool Execution Error:', err);
-        setError(LanguageService.getLocalizedError(language));
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
-    // 3. General Informational Inquiries or Hybrid Requests: Route to Research Orchestrator
     let answerText = '';
     let answerSources: SearchResultItem[] = [];
     let followUps: string[] = [];
+    let returnedSession: ResearchSession | undefined = activeSession;
 
     try {
       // 1. Attempt API fetch
@@ -165,6 +133,7 @@ export const MinistryAIScreen: React.FC = () => {
           conversationHistory,
           userContext,
           language,
+          researchSession: activeSession,
         }),
       });
 
@@ -182,19 +151,27 @@ export const MinistryAIScreen: React.FC = () => {
         answerText = data.answer || data.message;
         answerSources = data.sources || [];
         followUps = data.suggestedFollowUps || [];
+        returnedSession = data.researchSession || activeSession;
       } else if (data && data.error) {
         throw new Error(data.error.message || data.error);
       } else {
-        // Fallback: Execute local IntentRouter fallback
-        const fallbackResult = await IntentRouter.processMessage(
+        // Fallback: If Vercel/proxy returns HTML 404/500, execute native router locally
+        console.warn('Backend API endpoint returned non-JSON HTML or 404. Using client-side native Ministry Assistant router fallback.');
+        const fallbackResult = await MinistryAssistantRouter.handleRequest(
           textToSend.trim(),
           userContext,
           language,
-          conversationHistory
+          conversationHistory,
+          activeSession
         );
         answerText = fallbackResult.answer;
         answerSources = (fallbackResult.sources || []) as SearchResultItem[];
         followUps = fallbackResult.suggestedFollowUps || [];
+        returnedSession = fallbackResult.researchSession || activeSession;
+      }
+
+      if (returnedSession) {
+        setActiveSession(returnedSession);
       }
 
       setMessages(prev => [
@@ -211,14 +188,18 @@ export const MinistryAIScreen: React.FC = () => {
         setDynamicSuggestions(followUps);
       }
     } catch (err: any) {
-      console.warn('API Request Failed, executing local IntentRouter fallback:', err);
+      console.warn('API Request Failed, executing local fallback:', err);
       try {
-        const fallbackResult = await IntentRouter.processMessage(
+        const fallbackResult = await MinistryAssistantRouter.handleRequest(
           textToSend.trim(),
           userContext,
           language,
-          conversationHistory
+          conversationHistory,
+          activeSession
         );
+        if (fallbackResult.researchSession) {
+          setActiveSession(fallbackResult.researchSession);
+        }
         setMessages(prev => [
           ...prev,
           {
@@ -233,7 +214,7 @@ export const MinistryAIScreen: React.FC = () => {
           setDynamicSuggestions(fallbackResult.suggestedFollowUps);
         }
       } catch (fallbackErr: any) {
-        console.error('Local IntentRouter fallback failed:', fallbackErr);
+        console.error('Local fallback failed:', fallbackErr);
         setError(LanguageService.getLocalizedError(language));
       }
     } finally {
@@ -250,6 +231,7 @@ export const MinistryAIScreen: React.FC = () => {
         timestamp: Date.now(),
       },
     ]);
+    setActiveSession(undefined);
     setDynamicSuggestions([]);
     setError(null);
   };
@@ -257,6 +239,19 @@ export const MinistryAIScreen: React.FC = () => {
   const suggestedQuestions = dynamicSuggestions.length > 0
     ? dynamicSuggestions
     : LanguageService.getLocalizedSuggestions(language);
+
+  const getContentTypeIcon = (type?: string) => {
+    switch (type) {
+      case 'Video':
+        return <Video className="h-3 w-3 text-red-500" />;
+      case 'Publication':
+        return <Book className="h-3 w-3 text-indigo-500" />;
+      case 'Bible':
+        return <BookOpen className="h-3 w-3 text-amber-500" />;
+      default:
+        return <FileText className="h-3 w-3 text-blue-500" />;
+    }
+  };
 
   return (
     <div className="flex flex-col h-[calc(100dvh-13.5rem)] sm:h-[calc(100dvh-14rem)] max-w-2xl mx-auto pb-2">
@@ -274,11 +269,17 @@ export const MinistryAIScreen: React.FC = () => {
                 </h1>
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/10 dark:bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50">
                   <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                  Intent Router
+                  Research Orchestrator
                 </span>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-400 font-medium mt-0.5">
-                {t.ministryAi?.subtitle || 'Instant progress analysis & JW research'}
+                {activeSession ? (
+                  <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-semibold">
+                    <Compass className="h-3 w-3" /> Topic: "{activeSession.currentTopic}"
+                  </span>
+                ) : (
+                  t.ministryAi?.subtitle || 'Conversational research assistant for JW.ORG'
+                )}
               </p>
             </div>
           </div>
@@ -294,7 +295,7 @@ export const MinistryAIScreen: React.FC = () => {
       </div>
 
       {/* Chat Conversation Scroll Area */}
-      <div className="flex-1 overflow-y-auto min-h-0 space-y-3.5 pr-1 text-sm screen-scroll-container">
+      <div className="flex-1 overflow-y-auto min-h-0 space-y-3.5 pr-1 text-sm">
         {messages.map(msg => (
           <div
             key={msg.id}
@@ -316,7 +317,7 @@ export const MinistryAIScreen: React.FC = () => {
                     <Sparkles className="h-3 w-3" />
                   </div>
                   <span className="text-[11px] font-bold text-blue-700 dark:text-blue-400 tracking-wide uppercase">
-                    JW Ministry Assistant
+                    JW Research Assistant
                   </span>
                 </div>
               )}
@@ -326,25 +327,37 @@ export const MinistryAIScreen: React.FC = () => {
                 <Markdown>{msg.content}</Markdown>
               </div>
 
-              {/* Retreived Sources Section (JW.ORG & WOL.JW.ORG) */}
+              {/* Retrieved Sources Section (JW.ORG & WOL.JW.ORG) */}
               {msg.sources && msg.sources.length > 0 && (
                 <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800/90 space-y-2">
                   <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     <BookOpen className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                    <span>{t.ministryAi?.sourcesHeader || 'Retrieved Sources'} ({msg.sources.length})</span>
+                    <span>{t.ministryAi?.sourcesHeader || 'JW.ORG Official Sources'} ({msg.sources.length})</span>
                   </div>
 
                   <div className="grid grid-cols-1 gap-2 pt-1">
-                    {msg.sources.map(src => (
+                    {msg.sources.map((src, idx) => (
                       <div
-                        key={src.id}
-                        className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-2.5 transition-all hover:border-blue-300 dark:hover:border-blue-700"
+                        key={src.id || idx}
+                        className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-3 transition-all hover:border-blue-300 dark:hover:border-blue-700 shadow-2xs"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
+                        <div className="flex items-start gap-3">
+                          {/* Thumbnail image if available */}
+                          {src.thumbnail && (
+                            <img
+                              src={src.thumbnail}
+                              alt={src.title}
+                              className="w-14 h-14 object-cover rounded-lg shrink-0 border border-slate-200 dark:border-slate-800 bg-slate-200 dark:bg-slate-800"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          )}
+
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span
-                                className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase ${
+                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase ${
                                   src.source === 'JW.ORG'
                                     ? 'bg-blue-600 text-white'
                                     : 'bg-indigo-700 text-white'
@@ -352,8 +365,16 @@ export const MinistryAIScreen: React.FC = () => {
                               >
                                 {src.source}
                               </span>
+
+                              {src.contentType && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                  {getContentTypeIcon(src.contentType)}
+                                  <span>{src.contentType}</span>
+                                </span>
+                              )}
+
                               {src.publication && (
-                                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 truncate max-w-[160px]">
+                                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 truncate max-w-[140px]">
                                   {src.publication}
                                 </span>
                               )}
@@ -367,29 +388,25 @@ export const MinistryAIScreen: React.FC = () => {
                               {src.snippet}
                             </p>
 
-                            {src.bibleVerses && src.bibleVerses.length > 0 && (
-                              <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-                                {src.bibleVerses.map((verse, vIdx) => (
-                                  <span
-                                    key={vIdx}
-                                    className="inline-block bg-blue-100/80 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 text-[10px] font-medium px-1.5 py-0.5 rounded-xs"
-                                  >
-                                    📖 {verse}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                            <div className="flex items-center justify-between gap-2 mt-2 pt-1 border-t border-slate-200/50 dark:border-slate-800/50">
+                              <button
+                                onClick={() => handleSendMessage(`Open source #${idx + 1}: ${src.title}`)}
+                                className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                              >
+                                Ask AI about this source
+                              </button>
 
-                          <a
-                            href={src.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 shrink-0 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 px-2.5 py-1.5 text-[11px] font-bold text-white transition-all shadow-xs cursor-pointer"
-                          >
-                            <span>{t.ministryAi?.openArticle || 'Open Article'}</span>
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
+                              <a
+                                href={src.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 shrink-0 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 px-2.5 py-1 text-[11px] font-bold text-white transition-all shadow-xs cursor-pointer"
+                              >
+                                <span>{t.ministryAi?.openArticle || 'Open Source'}</span>
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -404,7 +421,7 @@ export const MinistryAIScreen: React.FC = () => {
         {loading && (
           <div className="flex items-center gap-2 p-3 rounded-2xl bg-white dark:bg-[#131D31] border border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-300 text-xs w-max">
             <RefreshCw className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
-            <span className="font-semibold">{t.ministryAi?.thinking || 'Analyzing...'}</span>
+            <span className="font-semibold">{t.ministryAi?.thinking || 'Searching official JW.ORG sources...'}</span>
           </div>
         )}
 
@@ -432,7 +449,7 @@ export const MinistryAIScreen: React.FC = () => {
       <div className="shrink-0 pt-2 pb-1">
         <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5 flex items-center gap-1">
           <Search className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-          <span>{t.ministryAi?.suggestedTitle || 'Suggested questions'}</span>
+          <span>{t.ministryAi?.suggestedTitle || 'Conversational Research Suggestions'}</span>
         </p>
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           {suggestedQuestions.map((q, idx) => (
@@ -462,7 +479,7 @@ export const MinistryAIScreen: React.FC = () => {
             value={input}
             onChange={e => setInput(e.target.value)}
             disabled={loading}
-            placeholder={t.ministryAi?.askPlaceholder || 'Ask a question...'}
+            placeholder={t.ministryAi?.askPlaceholder || 'Ask anything in natural language (e.g. Find me a video about patience...)'}
             className="flex-1 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131D31] px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-600 focus:outline-hidden dark:focus:border-blue-500 transition-colors shadow-xs disabled:opacity-60"
           />
           <button
@@ -478,3 +495,4 @@ export const MinistryAIScreen: React.FC = () => {
     </div>
   );
 };
+

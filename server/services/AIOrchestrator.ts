@@ -42,13 +42,10 @@ export class AIOrchestrator {
    */
   static evaluateMessage(
     message: string,
-    requestedLanguage: string = 'en',
-    conversationHistory: ChatHistoryMessage[] = []
+    _requestedLanguage: string = 'en',
+    _conversationHistory: ChatHistoryMessage[] = []
   ): OrchestrationEvaluation {
     const clean = message.trim();
-    const detected = LanguageService.detectLanguage(clean, requestedLanguage);
-    const targetLang: SupportedLanguage = detected !== 'en' ? detected : LanguageService.normalizeLanguage(requestedLanguage);
-
     const lower = clean.toLowerCase();
 
     // 1. Check for Jokes
@@ -356,7 +353,7 @@ export class AIOrchestrator {
         conversationHistory
       );
 
-      const suggestedFollowUps = LanguageService.getLocalizedSuggestions(targetLang, 'DEFAULT');
+      const suggestedFollowUps = LanguageService.getLocalizedSuggestions(targetLang, 'GENERAL');
 
       return {
         answer: aiResponse,
@@ -437,7 +434,7 @@ export class AIOrchestrator {
     return {
       answer: defaultResponse,
       sources: [],
-      suggestedFollowUps: LanguageService.getLocalizedSuggestions(targetLang, 'DEFAULT'),
+      suggestedFollowUps: LanguageService.getLocalizedSuggestions(targetLang, 'GENERAL'),
       routeUsed: 'General AI Model (Default)',
       orchestrationType: 'GENERAL_AI_MODEL',
     };

@@ -217,6 +217,76 @@ export interface GoogleDriveBackupItem {
   eventsCount?: number;
 }
 
+export type HouseStatusType =
+  | 'NOT_VISITED'
+  | 'VISITED'
+  | 'NO_ONE_HOME'
+  | 'RETURN_VISIT'
+  | 'BIBLE_STUDY'
+  | 'INTERESTED'
+  | 'NOT_INTERESTED'
+  | 'DO_NOT_CALL'
+  | 'CUSTOM';
+
+export interface HouseItem {
+  id: string;
+  number: string;
+  label?: string;
+  status: HouseStatusType;
+  customStatusLabel?: string;
+  notes: string;
+  createdAt: number;
+  updatedAt: number;
+  locationName?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  googleMapsUrl?: string;
+}
+
+export type NoteTypeCategory =
+  | 'GENERAL'
+  | 'MINISTRY'
+  | 'TERRITORY'
+  | 'HOUSE_LIST'
+  | 'RETURN_VISIT'
+  | 'BIBLE_STUDY'
+  | 'MEETING_NOTE'
+  | 'PREPARATION'
+  | 'PERSONAL';
+
+export interface NoteFolder {
+  id: string;
+  name: string;
+  iconName?: string;
+  color?: string;
+  createdAt: number;
+}
+
+export interface MinistryNote {
+  id: string;
+  title: string;
+  content: string; // Rich text HTML / formatted string
+  createdAt: number;
+  updatedAt: number;
+  folderId?: string;
+  folderName?: string;
+  tags: string[];
+  noteType: NoteTypeCategory;
+  isPinned: boolean;
+  isArchived: boolean;
+  isDeleted: boolean; // In trash
+  territoryId?: string;
+  territoryName?: string;
+  associatedEventId?: number;
+  houses?: HouseItem[];
+  locationName?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  googleMapsUrl?: string;
+}
+
 export interface BackupPayload {
   version: number;
   appVersion: string;
@@ -226,6 +296,8 @@ export interface BackupPayload {
   customGoalHours: number;
   ministryEntries: MinistryEntry[];
   scheduledEvents: ScheduledEvent[];
+  notes?: MinistryNote[];
+  noteFolders?: NoteFolder[];
   settings?: Partial<UserSettings>;
 }
 

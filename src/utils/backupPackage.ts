@@ -4,6 +4,8 @@ import {
   UserSettings,
   PublisherStatusType,
   SupportedLanguage,
+  MinistryNote,
+  NoteFolder,
 } from '../types.ts';
 
 export interface DeviceInstallationMeta {
@@ -39,6 +41,8 @@ export interface DecryptedBackupPayload {
   settings: UserSettings;
   entries: MinistryEntry[];
   events: ScheduledEvent[];
+  notes?: MinistryNote[];
+  noteFolders?: NoteFolder[];
   metadata: DeviceInstallationMeta;
 }
 
@@ -214,7 +218,9 @@ export async function createEncryptedMTBackup(
   entries: MinistryEntry[],
   events: ScheduledEvent[],
   settings: UserSettings,
-  deviceMeta?: Partial<DeviceInstallationMeta>
+  deviceMeta?: Partial<DeviceInstallationMeta>,
+  notes: MinistryNote[] = [],
+  noteFolders: NoteFolder[] = []
 ): Promise<string> {
   const identity = getOrCreateInstallationIdentity();
   const totalMinutes = entries.reduce((acc, e) => acc + (e.durationMinutes || 0), 0);
@@ -242,6 +248,8 @@ export async function createEncryptedMTBackup(
     settings,
     entries,
     events,
+    notes,
+    noteFolders,
     metadata,
   };
 
@@ -394,9 +402,11 @@ export function mergeMinistryData(
   currentEntries: MinistryEntry[] = [],
   currentEvents: ScheduledEvent[] = [],
   currentSettings: UserSettings,
-  restoredData: DecryptedBackupPayload
-): { entries: MinistryEntry[]; events: ScheduledEvent[]; settings: UserSettings } {
-  // Merge Entries: deduplicate by entry ID or by exact dateMillis + ministryType + duration
+  restoredData: DecryptedBackupPayload,
+  currentNotes: MinistryNote[] = [],
+  currentFolders: NoteFolder[] = []
+): { entries: MinistryEntry[]; events: ScheduledEvent[]; notes: MinistryNote[]; noteFolders: NoteFolder[]; settings: UserSettings } {
+  // Merge Entries
   const entryMap = new Map<string, MinistryEntry>();
 
   (currentEntries || []).forEach(entry => {
@@ -409,7 +419,6 @@ export function mergeMinistryData(
     if (!entryMap.has(key)) {
       entryMap.set(key, entry);
     } else {
-      // Keep entry with more recent updatedAt or higher duration
       const existing = entryMap.get(key)!;
       if ((entry.updatedAt || 0) > (existing.updatedAt || 0)) {
         entryMap.set(key, entry);
@@ -419,7 +428,7 @@ export function mergeMinistryData(
 
   const mergedEntries = Array.from(entryMap.values()).sort((a, b) => b.dateMillis - a.dateMillis);
 
-  // Merge Events: deduplicate by event ID or title+dateMillis
+  // Merge Events
   const eventMap = new Map<string, ScheduledEvent>();
   (currentEvents || []).forEach(evt => {
     const key = evt.id ? `id_${evt.id}` : `t_${evt.title}_${evt.dateMillis}`;
@@ -435,11 +444,38 @@ export function mergeMinistryData(
 
   const mergedEvents = Array.from(eventMap.values()).sort((a, b) => a.dateMillis - b.dateMillis);
 
-  // Merge Settings: keep non-empty properties
+  // Merge Notes
+  const noteMap = new Map<string, MinistryNote>();
+  (currentNotes || []).forEach(n => {
+    noteMap.set(n.id, n);
+  });
+
+  (restoredData?.notes || []).forEach(n => {
+    if (!noteMap.has(n.id)) {
+      noteMap.set(n.id, n);
+    } else {
+      const existing = noteMap.get(n.id)!;
+      if ((n.updatedAt || 0) > (existing.updatedAt || 0)) {
+        noteMap.set(n.id, n);
+      }
+    }
+  });
+
+  const mergedNotes = Array.from(noteMap.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+
+  // Merge Folders
+  const folderMap = new Map<string, NoteFolder>();
+  (currentFolders || []).forEach(f => folderMap.set(f.id, f));
+  (restoredData?.noteFolders || []).forEach(f => {
+    if (!folderMap.has(f.id)) folderMap.set(f.id, f);
+  });
+
+  const mergedFolders = Array.from(folderMap.values());
+
+  // Merge Settings
   const mergedSettings: UserSettings = {
     ...currentSettings,
     ...restoredData.settings,
-    // Preserve active onboarding status
     onboardingCompleted: true,
     isFirstLaunch: false,
     lastBackupDate: Date.now(),
@@ -448,6 +484,8 @@ export function mergeMinistryData(
   return {
     entries: mergedEntries,
     events: mergedEvents,
+    notes: mergedNotes,
+    noteFolders: mergedFolders,
     settings: mergedSettings,
   };
 }

@@ -1,14 +1,15 @@
 import React from 'react';
-import { Sun, Moon, Sparkles, ShieldCheck, Settings } from 'lucide-react';
+import { Sun, Moon, Sparkles, ShieldCheck, Settings, BarChart2 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { JWMinistryLogo } from './JWMinistryLogo.tsx';
 
 interface HeaderProps {
   onOpenNewEntry?: () => void;
   onOpenSettings?: () => void;
+  onOpenReports?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onOpenReports }) => {
   const { settings, updateTheme, t } = useMinistry();
 
   const handleToggleTheme = () => {
@@ -43,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-[#0B1120]/95 shadow-[0_1px_3px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)] transition-colors">
+    <header className="sticky top-0 z-30 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2.5 sm:px-6">
         {/* Left: App Logo & Name */}
         <div className="flex items-center gap-2.5">
@@ -65,13 +66,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
           </div>
         </div>
 
-        {/* Right: Actions */}
+        {/* Right: Actions [ Theme ] [ Settings ] [ Reports ] */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Theme Switcher Button */}
+          {/* Theme Switcher */}
           <button
             id="theme-toggle-btn"
             onClick={handleToggleTheme}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 transition-all shadow-xs cursor-pointer overflow-hidden select-none"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
             title={`${t.header.toggleTheme}: ${settings.themeMode === 'DARK' ? t.header.themeDark : settings.themeMode === 'LIGHT' ? t.header.themeLight : t.header.themeSystem}`}
             aria-label={t.header.toggleTheme}
           >
@@ -89,11 +90,24 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
             <button
               id="header-settings-btn"
               onClick={onOpenSettings}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 transition-all shadow-xs cursor-pointer select-none"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
               title={t.navigation.settings}
               aria-label={t.navigation.settings}
             >
               <Settings className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+            </button>
+          )}
+
+          {/* Reports Button */}
+          {onOpenReports && (
+            <button
+              id="header-reports-btn"
+              onClick={onOpenReports}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              title={t.navigation.reports}
+              aria-label={t.navigation.reports}
+            >
+              <BarChart2 className="h-4 w-4 text-slate-600 dark:text-slate-300" />
             </button>
           )}
         </div>

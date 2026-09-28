@@ -133,6 +133,16 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (isOpen) {
+      const originalStyle = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalStyle;
+      };
+    }
+  }, [isOpen]);
+
   const reminderOptionsList: Array<{ id: ReminderOptionType; label: string }> = [
     { id: 'NONE', label: t.scheduleModal.reminders.none },
     { id: 'AT_TIME', label: t.scheduleModal.reminders.atTime },
@@ -162,7 +172,7 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
 
           {/* Modal Panel */}
           <div
-            className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-slate-50 dark:bg-[#0B1120] shadow-2xl border border-slate-200 dark:border-slate-800 p-6 z-10"
+            className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain rounded-3xl bg-slate-50 dark:bg-[#0B1120] shadow-2xl border border-slate-200 dark:border-slate-800 p-6 z-10"
           >
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-200/60 dark:border-slate-800/60">

@@ -1,7 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { SupportedLanguage } from '../../src/types.js';
 import type { ChatHistoryMessage, SearchResult } from './types.js';
-import { LanguageService } from './LanguageService.js';
 
 let geminiClient: GoogleGenAI | null = null;
 
@@ -104,7 +103,7 @@ Guidelines:
     clean: string,
     lower: string,
     targetLang: SupportedLanguage,
-    conversationHistory: ChatHistoryMessage[],
+    _conversationHistory: ChatHistoryMessage[],
     contextExtra?: { ministryDataSummary?: string; sources?: SearchResult[] }
   ): string {
     // 1. Concept: Return Visit vs Bible Study
@@ -383,7 +382,7 @@ I'm here and ready to help you with your ministry tracking, hours and goals, sch
   /**
    * Default helpful response for other inquiries
    */
-  static getDefaultHelpfulResponse(query: string, lang: SupportedLanguage): string {
+  static getDefaultHelpfulResponse(_query: string, lang: SupportedLanguage): string {
     switch (lang) {
       case 'hy':
         return `Շնորհակալություն ձեր հարցի համար։ Ես կարող եմ օգնել ձեզ ստուգել ձեր ծառայության գրանցումները, հաշվարկել նպատակները կամ փնտրել հոգևոր նյութեր JW.ORG-ում։ Ինչպե՞ս կարող եմ օգտակար լինել։`;

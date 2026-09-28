@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Bell, X, Calendar as CalendarIcon } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { MinistryProvider, useMinistry } from './context/MinistryContext.tsx';
 import { Header } from './components/Header.tsx';
 import { Navigation, TabType } from './components/Navigation.tsx';
@@ -9,19 +10,35 @@ import { CalendarScreen } from './screens/CalendarScreen.tsx';
 import { ReportsScreen } from './screens/ReportsScreen.tsx';
 import { SettingsScreen } from './screens/SettingsScreen.tsx';
 import { MinistryAIScreen } from './screens/MinistryAIScreen.tsx';
+import { NotesScreen } from './screens/NotesScreen.tsx';
 import { WelcomeScreen } from './screens/WelcomeScreen.tsx';
 import { AddEditEntryModal } from './screens/AddEditEntryModal.tsx';
 import { AddEditScheduleModal } from './screens/AddEditScheduleModal.tsx';
 import { JWMinistryLogo } from './components/JWMinistryLogo.tsx';
 import { MinistryEntry, ScheduledEvent, ExpandedCalendarEvent } from './types.ts';
 
+const TAB_INDEX_MAP: Record<TabType, number> = {
+  home: 0,
+  activity: 1,
+  ministryAi: 2,
+  calendar: 3,
+  notes: 4,
+  reports: 5,
+  settings: 6,
+};
+
 const AppContent: React.FC = () => {
   const { settings, isLoaded, activeNotification, dismissActiveNotification } = useMinistry();
   const [activeTab, setActiveTab] = useState<TabType>('home');
+  const [direction, setDirection] = useState<number>(0);
   const [manualWelcome, setManualWelcome] = useState<boolean>(false);
+  const shouldReduceMotion = useReducedMotion();
 
   const handleSelectTab = (nextTab: TabType) => {
     if (nextTab === activeTab) return;
+    const currentIdx = TAB_INDEX_MAP[activeTab] ?? 0;
+    const nextIdx = TAB_INDEX_MAP[nextTab] ?? 0;
+    setDirection(nextIdx > currentIdx ? 1 : -1);
     setActiveTab(nextTab);
   };
 
@@ -121,12 +138,10 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 flex flex-col selection:bg-blue-500/20">
       {/* Active In-App Notification Toast */}
       {activeNotification && (
-        <div
-          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md transition-all duration-200"
-        >
-          <div className="rounded-2xl bg-amber-500/95 dark:bg-amber-600/95 text-white p-4 shadow-xl backdrop-blur-md flex items-start justify-between gap-3 border border-amber-300/40 dark:border-amber-400/30">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md animate-in slide-in-from-top duration-300">
+          <div className="rounded-2xl bg-amber-500 text-white p-4 shadow-xl flex items-start justify-between gap-3 border border-amber-400/50">
             <div className="flex items-start gap-3">
-              <div className="rounded-xl bg-white/20 p-2 mt-0.5 shrink-0 shadow-inner">
+              <div className="rounded-xl bg-white/20 p-2 mt-0.5 shrink-0">
                 <Bell className="h-5 w-5" />
               </div>
               <div className="space-y-0.5">
@@ -165,36 +180,65 @@ const AppContent: React.FC = () => {
       <Header
         onOpenNewEntry={handleOpenNewEntry}
         onOpenSettings={() => handleSelectTab('settings')}
+        onOpenReports={() => handleSelectTab('reports')}
       />
 
-      {/* Main Screen Content */}
-      <main className="flex-1 mx-auto w-full max-w-5xl px-4 pt-4 pb-20 sm:px-6 sm:pt-5 sm:pb-24 overflow-x-hidden screen-scroll-container">
-        <div key={activeTab} className="w-full">
-          {activeTab === 'home' && (
-            <HomeScreen
-              onOpenNewEntry={handleOpenNewEntry}
-              onOpenEditEntry={handleOpenEditEntry}
-              onNavigateToTab={(tab) => handleSelectTab(tab)}
-            />
-          )}
-          {activeTab === 'activity' && (
-            <ActivityScreen
-              onOpenNewEntry={handleOpenNewEntry}
-              onOpenEditEntry={handleOpenEditEntry}
-            />
-          )}
-          {activeTab === 'ministryAi' && <MinistryAIScreen />}
-          {activeTab === 'calendar' && (
-            <CalendarScreen
-              onOpenNewSchedule={handleOpenNewSchedule}
-              onOpenEditSchedule={handleOpenEditSchedule}
-            />
-          )}
-          {activeTab === 'reports' && <ReportsScreen />}
-          {activeTab === 'settings' && (
-            <SettingsScreen onShowWelcome={() => setManualWelcome(true)} />
-          )}
-        </div>
+      {/* Main Screen Content with Native-feel Tab Transition */}
+      <main className="flex-1 mx-auto w-full max-w-5xl px-4 pt-4 pb-20 sm:px-6 sm:pt-5 sm:pb-24 overflow-x-hidden">
+        <AnimatePresence mode="wait" custom={direction} initial={false}>
+          <motion.div
+            key={activeTab}
+            custom={direction}
+            variants={{
+              enter: (dir: number) => ({
+                x: shouldReduceMotion ? 0 : dir > 0 ? 18 : -18,
+                opacity: 0,
+              }),
+              center: {
+                x: 0,
+                opacity: 1,
+              },
+              exit: (dir: number) => ({
+                x: shouldReduceMotion ? 0 : dir > 0 ? -18 : 18,
+                opacity: 0,
+              }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{
+              duration: shouldReduceMotion ? 0.12 : 0.18,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            className="w-full"
+          >
+            {activeTab === 'home' && (
+              <HomeScreen
+                onOpenNewEntry={handleOpenNewEntry}
+                onOpenEditEntry={handleOpenEditEntry}
+                onNavigateToTab={(tab) => handleSelectTab(tab)}
+              />
+            )}
+            {activeTab === 'activity' && (
+              <ActivityScreen
+                onOpenNewEntry={handleOpenNewEntry}
+                onOpenEditEntry={handleOpenEditEntry}
+              />
+            )}
+            {activeTab === 'notes' && <NotesScreen />}
+            {activeTab === 'ministryAi' && <MinistryAIScreen />}
+            {activeTab === 'calendar' && (
+              <CalendarScreen
+                onOpenNewSchedule={handleOpenNewSchedule}
+                onOpenEditSchedule={handleOpenEditSchedule}
+              />
+            )}
+            {activeTab === 'reports' && <ReportsScreen />}
+            {activeTab === 'settings' && (
+              <SettingsScreen onShowWelcome={() => setManualWelcome(true)} />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Bottom Navigation */}

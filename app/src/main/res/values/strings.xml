@@ -1,6 +1,3 @@
 <resources>
     <string name="app_name">JW Ministry App</string>
-    <string name="widget_small_desc">Small Ministry Tracker Widget (2x2)</string>
-    <string name="widget_medium_desc">Medium Ministry Tracker Widget (4x2)</string>
-    <string name="widget_large_desc">Large Ministry Tracker Widget (4x4)</string>
 </resources>

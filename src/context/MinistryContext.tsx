@@ -11,6 +11,9 @@ import {
   ReportsData,
   SupportedLanguage,
   PUBLISHER_STATUS_OPTIONS,
+  MinistryNote,
+  NoteFolder,
+  HouseItem,
 } from '../types.ts';
 import { storage, DEFAULT_TIMER } from '../utils/storage.ts';
 import { getTranslation, TranslationSchema } from '../translations/index.ts';
@@ -45,6 +48,8 @@ interface MinistryContextType {
   isLoaded: boolean;
   entries: MinistryEntry[];
   events: ScheduledEvent[];
+  notes: MinistryNote[];
+  noteFolders: NoteFolder[];
   settings: UserSettings;
   timer: TimerState;
   dashboardStats: DashboardStats;
@@ -55,6 +60,20 @@ interface MinistryContextType {
   saveEntry: (entryData: Partial<MinistryEntry> & { id?: number }) => MinistryEntry;
   deleteEntry: (id: number) => void;
   
+  // Note Operations
+  saveNote: (noteData: Partial<MinistryNote> & { id?: string }) => MinistryNote;
+  deleteNote: (id: string, permanent?: boolean) => void;
+  restoreNote: (id: string) => void;
+  duplicateNote: (id: string) => MinistryNote | null;
+  togglePinNote: (id: string) => void;
+  toggleArchiveNote: (id: string) => void;
+  saveFolder: (name: string, iconName?: string, color?: string) => NoteFolder;
+  deleteFolder: (id: string) => void;
+  updateHouseInNote: (noteId: string, houseId: string, updates: Partial<HouseItem>) => void;
+  addHouseToNote: (noteId: string, houseData?: Partial<HouseItem>) => HouseItem | null;
+  deleteHouseFromNote: (noteId: string, houseId: string) => void;
+  reorderHousesInNote: (noteId: string, houses: HouseItem[]) => void;
+
   // Event Operations
   saveEvent: (
     eventData: Partial<ScheduledEvent> & { id?: number },
@@ -104,7 +123,7 @@ interface MinistryContextType {
   restoreFromMTBackupFile: (fileContent: string, mergeMode?: 'replace' | 'merge') => Promise<{ success: boolean; message?: string }>;
   performManualBackupNow: () => Promise<boolean>;
   downloadMTBackupFile: () => Promise<boolean>;
-  exportCsv: () => string;
+  exportCsv: (customEntries?: MinistryEntry[]) => string;
   createBackup: () => string;
   restoreBackup: (json: string) => boolean;
   clearAllData: () => void;
@@ -118,6 +137,8 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [settings, setSettings] = useState<UserSettings>(() => storage.getSettings());
   const [entries, setEntries] = useState<MinistryEntry[]>(() => storage.getEntries());
   const [events, setEvents] = useState<ScheduledEvent[]>(() => storage.getEvents());
+  const [notes, setNotes] = useState<MinistryNote[]>(() => storage.getNotes());
+  const [noteFolders, setNoteFolders] = useState<NoteFolder[]>(() => storage.getNoteFolders());
   const [timer, setTimer] = useState<TimerState>(() => storage.getTimer());
   const [timerTicker, setTimerTicker] = useState<number>(0);
   const [activeNotification, setActiveNotification] = useState<InAppNotification | null>(null);
@@ -139,7 +160,7 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // On mount: if app has no entries/events or is first launch/not onboarded, check for existing backup to offer one-click restore
   useEffect(() => {
     if (!isLoaded) return;
-    if (entries.length === 0 && events.length === 0) {
+    if (entries.length === 0 && events.length === 0 && notes.length === 0) {
       BackupManager.checkForExistingBackup().then(info => {
         if (info && info.found) {
           setDiscoveredBackup(info);
@@ -151,8 +172,8 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Debounced auto backup whenever user data changes
   useEffect(() => {
     if (!isLoaded) return;
-    BackupManager.triggerDebouncedBackup(entries, events, settings, 2500);
-  }, [entries, events, settings, isLoaded]);
+    BackupManager.triggerDebouncedBackup(entries, events, settings, notes, noteFolders, 2500);
+  }, [entries, events, settings, notes, noteFolders, isLoaded]);
 
   // Mark storage as securely initialized after component mounts
   useEffect(() => {
@@ -169,6 +190,16 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!isLoaded) return;
     storage.saveEvents(events);
   }, [events, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    storage.saveNotes(notes);
+  }, [notes, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    storage.saveNoteFolders(noteFolders);
+  }, [noteFolders, isLoaded]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -213,42 +244,20 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Initial check
     checkNotifications();
 
-    let intervalId: NodeJS.Timeout | null = null;
-    const startInterval = () => {
-      if (!intervalId) {
-        intervalId = setInterval(checkNotifications, 45000);
-      }
-    };
-    const stopInterval = () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-      }
-    };
-
-    if (document.visibilityState === 'visible') {
-      startInterval();
-    }
-
+    const intervalId = setInterval(checkNotifications, 25000);
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         checkNotifications();
-        startInterval();
-      } else {
-        stopInterval();
       }
     };
-    const handleWindowFocus = () => {
-      checkNotifications();
-      startInterval();
-    };
+    const handleWindowFocus = () => checkNotifications();
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleWindowFocus);
     window.addEventListener('pageshow', handleWindowFocus);
 
     return () => {
-      stopInterval();
+      clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleWindowFocus);
       window.removeEventListener('pageshow', handleWindowFocus);
@@ -359,6 +368,175 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deleteEntry = useCallback((id: number) => {
     setEntries(prev => prev.filter(e => e.id !== id));
+  }, []);
+
+  // Note Operations
+  const saveNote = useCallback((noteData: Partial<MinistryNote> & { id?: string }): MinistryNote => {
+    const now = Date.now();
+    let saved: MinistryNote;
+
+    if (noteData.id) {
+      const existing = notes.find(n => n.id === noteData.id);
+      saved = {
+        id: noteData.id,
+        title: noteData.title !== undefined ? noteData.title : existing?.title ?? 'Untitled Note',
+        content: noteData.content !== undefined ? noteData.content : existing?.content ?? '',
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+        folderId: noteData.folderId !== undefined ? noteData.folderId : existing?.folderId,
+        folderName: noteData.folderName !== undefined ? noteData.folderName : existing?.folderName,
+        tags: noteData.tags !== undefined ? noteData.tags : existing?.tags ?? [],
+        noteType: noteData.noteType !== undefined ? noteData.noteType : existing?.noteType ?? 'GENERAL',
+        isPinned: noteData.isPinned !== undefined ? noteData.isPinned : existing?.isPinned ?? false,
+        isArchived: noteData.isArchived !== undefined ? noteData.isArchived : existing?.isArchived ?? false,
+        isDeleted: noteData.isDeleted !== undefined ? noteData.isDeleted : existing?.isDeleted ?? false,
+        territoryId: noteData.territoryId !== undefined ? noteData.territoryId : existing?.territoryId,
+        territoryName: noteData.territoryName !== undefined ? noteData.territoryName : existing?.territoryName,
+        associatedEventId: noteData.associatedEventId !== undefined ? noteData.associatedEventId : existing?.associatedEventId,
+        houses: noteData.houses !== undefined ? noteData.houses : existing?.houses,
+        locationName: noteData.locationName !== undefined ? noteData.locationName : existing?.locationName,
+        address: noteData.address !== undefined ? noteData.address : existing?.address,
+        latitude: noteData.latitude !== undefined ? noteData.latitude : existing?.latitude,
+        longitude: noteData.longitude !== undefined ? noteData.longitude : existing?.longitude,
+        googleMapsUrl: noteData.googleMapsUrl !== undefined ? noteData.googleMapsUrl : existing?.googleMapsUrl,
+      };
+      setNotes(prev => prev.map(n => n.id === saved.id ? saved : n));
+    } else {
+      const newId = `note_${now}_${Math.random().toString(36).substring(2, 7)}`;
+      saved = {
+        id: newId,
+        title: noteData.title || 'Untitled Note',
+        content: noteData.content || '',
+        createdAt: now,
+        updatedAt: now,
+        folderId: noteData.folderId,
+        folderName: noteData.folderName,
+        tags: noteData.tags || [],
+        noteType: noteData.noteType || 'GENERAL',
+        isPinned: noteData.isPinned || false,
+        isArchived: noteData.isArchived || false,
+        isDeleted: false,
+        territoryId: noteData.territoryId,
+        territoryName: noteData.territoryName,
+        associatedEventId: noteData.associatedEventId,
+        houses: noteData.houses,
+        locationName: noteData.locationName,
+        address: noteData.address,
+        latitude: noteData.latitude,
+        longitude: noteData.longitude,
+        googleMapsUrl: noteData.googleMapsUrl,
+      };
+      setNotes(prev => [saved, ...prev]);
+    }
+    return saved;
+  }, [notes]);
+
+  const deleteNote = useCallback((id: string, permanent: boolean = false) => {
+    if (permanent) {
+      setNotes(prev => prev.filter(n => n.id !== id));
+    } else {
+      setNotes(prev => prev.map(n => n.id === id ? { ...n, isDeleted: true, updatedAt: Date.now() } : n));
+    }
+  }, []);
+
+  const restoreNote = useCallback((id: string) => {
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, isDeleted: false, updatedAt: Date.now() } : n));
+  }, []);
+
+  const duplicateNote = useCallback((id: string): MinistryNote | null => {
+    const existing = notes.find(n => n.id === id);
+    if (!existing) return null;
+    const now = Date.now();
+    const newNote: MinistryNote = {
+      ...existing,
+      id: `note_${now}_${Math.random().toString(36).substring(2, 7)}`,
+      title: `${existing.title} (Copy)`,
+      createdAt: now,
+      updatedAt: now,
+      isPinned: false,
+    };
+    setNotes(prev => [newNote, ...prev]);
+    return newNote;
+  }, [notes]);
+
+  const togglePinNote = useCallback((id: string) => {
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, isPinned: !n.isPinned, updatedAt: Date.now() } : n));
+  }, []);
+
+  const toggleArchiveNote = useCallback((id: string) => {
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, isArchived: !n.isArchived, updatedAt: Date.now() } : n));
+  }, []);
+
+  const saveFolder = useCallback((name: string, iconName?: string, color?: string): NoteFolder => {
+    const now = Date.now();
+    const newFolder: NoteFolder = {
+      id: `folder_${now}_${Math.random().toString(36).substring(2, 7)}`,
+      name: name.trim(),
+      iconName,
+      color,
+      createdAt: now,
+    };
+    setNoteFolders(prev => [...prev, newFolder]);
+    return newFolder;
+  }, []);
+
+  const deleteFolder = useCallback((id: string) => {
+    setNoteFolders(prev => prev.filter(f => f.id !== id));
+    setNotes(prev => prev.map(n => n.folderId === id ? { ...n, folderId: undefined, folderName: undefined } : n));
+  }, []);
+
+  const updateHouseInNote = useCallback((noteId: string, houseId: string, updates: Partial<HouseItem>) => {
+    const now = Date.now();
+    setNotes(prev => prev.map(n => {
+      if (n.id !== noteId) return n;
+      const houses = (n.houses || []).map(h => {
+        if (h.id !== houseId) return h;
+        return { ...h, ...updates, updatedAt: now };
+      });
+      return { ...n, houses, updatedAt: now };
+    }));
+  }, []);
+
+  const addHouseToNote = useCallback((noteId: string, houseData?: Partial<HouseItem>): HouseItem | null => {
+    const now = Date.now();
+    let createdHouse: HouseItem | null = null;
+
+    setNotes(prev => prev.map(n => {
+      if (n.id !== noteId) return n;
+      const houses = n.houses ? [...n.houses] : [];
+      const nextNumber = houseData?.number || `${houses.length + 1}`;
+      createdHouse = {
+        id: `house_${now}_${Math.random().toString(36).substring(2, 7)}`,
+        number: nextNumber,
+        label: houseData?.label || '',
+        status: houseData?.status || 'NOT_VISITED',
+        customStatusLabel: houseData?.customStatusLabel,
+        notes: houseData?.notes || '',
+        createdAt: now,
+        updatedAt: now,
+      };
+      houses.push(createdHouse);
+      return { ...n, houses, updatedAt: now };
+    }));
+
+    return createdHouse;
+  }, []);
+
+  const deleteHouseFromNote = useCallback((noteId: string, houseId: string) => {
+    const now = Date.now();
+    setNotes(prev => prev.map(n => {
+      if (n.id !== noteId) return n;
+      const houses = (n.houses || []).filter(h => h.id !== houseId);
+      return { ...n, houses, updatedAt: now };
+    }));
+  }, []);
+
+  const reorderHousesInNote = useCallback((noteId: string, houses: HouseItem[]) => {
+    const now = Date.now();
+    setNotes(prev => prev.map(n => {
+      if (n.id !== noteId) return n;
+      return { ...n, houses, updatedAt: now };
+    }));
   }, []);
 
   // Event & Recurrence Operations
@@ -669,21 +847,23 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setTimer(DEFAULT_TIMER);
   }, []);
 
-  const exportCsv = useCallback(() => {
-    return storage.exportToCsv(entries);
+  const exportCsv = useCallback((customEntries?: MinistryEntry[]) => {
+    return storage.exportToCsv(customEntries || entries);
   }, [entries]);
 
   const createBackup = useCallback(() => {
-    const json = storage.createBackupJson(entries, events, settings);
+    const json = storage.createBackupJson(entries, events, settings, notes, noteFolders);
     setSettings(prev => ({ ...prev, lastBackupDate: Date.now() }));
     return json;
-  }, [entries, events, settings]);
+  }, [entries, events, settings, notes, noteFolders]);
 
   const restoreBackup = useCallback((json: string) => {
     const result = storage.restoreBackup(json);
     if (!result) return false;
     setEntries(result.entries);
     if (result.events) setEvents(result.events);
+    if (result.notes) setNotes(result.notes);
+    if (result.noteFolders) setNoteFolders(result.noteFolders);
     if (result.publisherStatus) {
       setSettings(prev => ({
         ...prev,
@@ -697,6 +877,8 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const clearAllData = useCallback(() => {
     setEntries([]);
     setEvents([]);
+    setNotes([]);
+    setNoteFolders([]);
     setTimer(DEFAULT_TIMER);
     storage.clearAll();
   }, []);
@@ -710,14 +892,18 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const payload = await BackupManager.restoreFromCloud();
       if (!payload) return false;
 
-      if (mergeMode === 'merge' && (entries.length > 0 || events.length > 0)) {
-        const merged = mergeMinistryData(entries, events, settings, payload);
+      if (mergeMode === 'merge' && (entries.length > 0 || events.length > 0 || notes.length > 0)) {
+        const merged = mergeMinistryData(entries, events, settings, payload, notes, noteFolders);
         setEntries(merged.entries);
         setEvents(merged.events);
+        setNotes(merged.notes);
+        setNoteFolders(merged.noteFolders);
         setSettings(merged.settings);
       } else {
         setEntries(payload.entries || []);
         setEvents(payload.events || []);
+        setNotes(payload.notes || []);
+        setNoteFolders(payload.noteFolders || []);
         setSettings({
           ...settings,
           ...payload.settings,
@@ -732,7 +918,7 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.error('Failed to restore discovered backup:', err);
       return false;
     }
-  }, [entries, events, settings]);
+  }, [entries, events, settings, notes, noteFolders]);
 
   const restoreWithRecoveryKey = useCallback(async (
     key: string,
@@ -744,14 +930,18 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return { success: false, message: 'Backup not found for this recovery key.' };
       }
 
-      if (mergeMode === 'merge' && (entries.length > 0 || events.length > 0)) {
-        const merged = mergeMinistryData(entries, events, settings, payload);
+      if (mergeMode === 'merge' && (entries.length > 0 || events.length > 0 || notes.length > 0)) {
+        const merged = mergeMinistryData(entries, events, settings, payload, notes, noteFolders);
         setEntries(merged.entries);
         setEvents(merged.events);
+        setNotes(merged.notes);
+        setNoteFolders(merged.noteFolders);
         setSettings(merged.settings);
       } else {
         setEntries(payload.entries || []);
         setEvents(payload.events || []);
+        setNotes(payload.notes || []);
+        setNoteFolders(payload.noteFolders || []);
         setSettings({
           ...settings,
           ...payload.settings,
@@ -764,7 +954,7 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (err: any) {
       return { success: false, message: err?.message || 'Restore failed' };
     }
-  }, [entries, events, settings]);
+  }, [entries, events, settings, notes, noteFolders]);
 
   const restoreFromMTBackupFile = useCallback(async (
     fileContent: string,
@@ -776,14 +966,18 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return { success: false, message: 'Invalid or corrupted backup file.' };
       }
 
-      if (mergeMode === 'merge' && (entries.length > 0 || events.length > 0)) {
-        const merged = mergeMinistryData(entries, events, settings, payload);
+      if (mergeMode === 'merge' && (entries.length > 0 || events.length > 0 || notes.length > 0)) {
+        const merged = mergeMinistryData(entries, events, settings, payload, notes, noteFolders);
         setEntries(merged.entries);
         setEvents(merged.events);
+        setNotes(merged.notes);
+        setNoteFolders(merged.noteFolders);
         setSettings(merged.settings);
       } else {
         setEntries(payload.entries || []);
         setEvents(payload.events || []);
+        setNotes(payload.notes || []);
+        setNoteFolders(payload.noteFolders || []);
         setSettings({
           ...settings,
           ...payload.settings,
@@ -796,23 +990,23 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch {
       return { success: false, message: 'This backup file is invalid or damaged.' };
     }
-  }, [entries, events, settings]);
+  }, [entries, events, settings, notes, noteFolders]);
 
   const performManualBackupNow = useCallback(async (): Promise<boolean> => {
-    const res = await BackupManager.executeBackupNow(entries, events, settings);
+    const res = await BackupManager.executeBackupNow(entries, events, settings, notes, noteFolders);
     if (res.success) {
       setSettings(prev => ({ ...prev, lastBackupDate: res.lastBackupAt }));
     }
     return res.success;
-  }, [entries, events, settings]);
+  }, [entries, events, settings, notes, noteFolders]);
 
   const downloadMTBackupFile = useCallback(async (): Promise<boolean> => {
-    const success = await BackupManager.downloadMTBackupFile(entries, events, settings);
+    const success = await BackupManager.downloadMTBackupFile(entries, events, settings, notes, noteFolders);
     if (success) {
       setSettings(prev => ({ ...prev, lastBackupDate: Date.now() }));
     }
     return success;
-  }, [entries, events, settings]);
+  }, [entries, events, settings, notes, noteFolders]);
 
   // Dashboard Stats Computation
   const dashboardStats: DashboardStats = useMemo(() => {
@@ -962,6 +1156,8 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     isLoaded,
     entries,
     events,
+    notes,
+    noteFolders,
     settings,
     timer,
     dashboardStats,
@@ -969,6 +1165,18 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     t,
     saveEntry,
     deleteEntry,
+    saveNote,
+    deleteNote,
+    restoreNote,
+    duplicateNote,
+    togglePinNote,
+    toggleArchiveNote,
+    saveFolder,
+    deleteFolder,
+    updateHouseInNote,
+    addHouseToNote,
+    deleteHouseFromNote,
+    reorderHousesInNote,
     saveEvent,
     deleteEvent,
     toggleEventCompleted,

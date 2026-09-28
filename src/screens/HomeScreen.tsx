@@ -7,6 +7,9 @@ import {
   Calendar,
   Plus,
   User,
+  FileText,
+  ChevronRight,
+  Pin,
 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { StatCard } from '../components/StatCard.tsx';
@@ -16,16 +19,18 @@ import { formatDurationLocalized, formatMonthYearLocalized } from '../translatio
 interface HomeScreenProps {
   onOpenNewEntry: () => void;
   onOpenEditEntry: (entry: MinistryEntry) => void;
-  onNavigateToTab: (tab: 'activity' | 'calendar' | 'reports' | 'settings') => void;
+  onNavigateToTab: (tab: 'activity' | 'notes' | 'calendar' | 'reports' | 'settings') => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenNewEntry,
+  onNavigateToTab,
 }) => {
   const {
     dashboardStats,
     settings,
     entries,
+    notes,
     language,
     t,
   } = useMinistry();
@@ -235,6 +240,72 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               bgAccentColor="bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Quick Ministry Notes & Territories Section */}
+      <div className="pt-2">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+            <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            {t.notes.title}
+          </h2>
+          <button
+            type="button"
+            onClick={() => onNavigateToTab('notes')}
+            className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 flex items-center gap-0.5 cursor-pointer"
+          >
+            <span>{t.notes.allNotes}</span>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        <div
+          onClick={() => onNavigateToTab('notes')}
+          className="rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 p-4 shadow-xs hover:border-blue-400/80 transition-all cursor-pointer select-none"
+        >
+          {notes.filter(n => !n.isTrash).length > 0 ? (
+            <div className="space-y-2">
+              {notes
+                .filter(n => !n.isTrash)
+                .slice(0, 2)
+                .map(n => (
+                  <div
+                    key={n.id}
+                    className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-800/60 p-2.5 hover:bg-blue-50/50 dark:hover:bg-blue-950/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {n.isPinned && <Pin className="h-3.5 w-3.5 text-blue-600 shrink-0 fill-current" />}
+                      {n.territoryNumber && (
+                        <span className="rounded bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0">
+                          #{n.territoryNumber}
+                        </span>
+                      )}
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                        {n.title.trim() || 'Untitled Note'}
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-medium text-slate-400 shrink-0 ml-2">
+                      {new Date(n.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between py-1">
+              <div className="space-y-0.5">
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  {t.notes.emptyNotes}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  {t.notes.emptyNotesDesc}
+                </p>
+              </div>
+              <span className="rounded-xl bg-blue-600 text-white px-3 py-1.5 text-xs font-bold shrink-0">
+                + {t.notes.newNote}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>

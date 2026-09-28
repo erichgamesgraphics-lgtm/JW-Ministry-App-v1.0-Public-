@@ -53,7 +53,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onContinue }) => {
       if (success) {
         onContinue();
       } else {
-        setRestoreError(t.backup.restoreFailed || 'Unable to restore backup.');
+        setRestoreError(t.settings.restoreBackupError || 'Unable to restore backup.');
       }
     } catch (err: any) {
       setRestoreError(err?.message || 'Restore failed');

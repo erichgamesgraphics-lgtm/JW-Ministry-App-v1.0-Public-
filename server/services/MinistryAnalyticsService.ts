@@ -6,13 +6,14 @@ export class MinistryAnalyticsService {
     stats?: any;
     entries?: any[];
     events?: any[];
+    notes?: any[];
     settings?: any;
   }): string {
     if (!userContext) {
       return 'No Ministry Tracker data currently recorded.';
     }
 
-    const { stats, entries = [], events = [], settings = {} } = userContext;
+    const { stats, entries = [], events = [], notes = [], settings = {} } = userContext;
 
     const publisherStatus = settings.publisherStatus || 'PUBLISHER';
     const customGoal = settings.customGoalHours || 0;
@@ -57,6 +58,21 @@ export class MinistryAnalyticsService {
         return `- ${dateStr}: "${e.title}" at ${e.location || 'N/A'}`;
       });
 
+    // Territory & Notes Summary
+    const territoryNotes = [...notes].filter((n: any) => !n.isDeleted && (n.noteType === 'TERRITORY' || n.noteType === 'HOUSE_LIST' || n.territoryName || (n.houses && n.houses.length > 0) || n.address || n.locationName));
+    const territoriesSummary = territoryNotes.map((n: any) => {
+      const name = n.territoryName || n.title || 'Territory';
+      const loc = n.address || n.locationName ? `Address/Location: ${n.address || n.locationName}` : 'No saved address';
+      const coords = n.latitude && n.longitude ? ` [Lat: ${n.latitude}, Lng: ${n.longitude}]` : '';
+      const mapsUrl = n.googleMapsUrl ? ` | Google Maps Link: ${n.googleMapsUrl}` : (n.address ? ` | Google Maps Link: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(n.address)}` : '');
+      const houseCount = n.houses ? n.houses.length : 0;
+      const houseList = (n.houses || []).slice(0, 5).map((h: any) => {
+        const hLoc = h.address || h.locationName ? ` (${h.address || h.locationName})` : '';
+        return `    * House ${h.number}: Status ${h.status}${hLoc}`;
+      }).join('\n');
+      return `- ${name}: ${loc}${coords}${mapsUrl} | ${houseCount} house(s) recorded${houseList ? `\n${houseList}` : ''}`;
+    });
+
     return `
 USER MINISTRY TRACKER ACTUAL STORED DATA:
 - Publisher Status: ${publisherStatus}
@@ -69,6 +85,9 @@ USER MINISTRY TRACKER ACTUAL STORED DATA:
 - Literature Placements This Month: ${monthlyPlacements}
 - Active Ministry Streak: ${streakMonths} consecutive month(s)
 - Total Activity Entries Recorded: ${entries.length}
+
+TERRITORIES & MAP LOCATIONS:
+${territoriesSummary.length > 0 ? territoriesSummary.join('\n') : 'No territory map locations currently saved in Notes.'}
 
 RECENT ACTIVITY LOGS:
 ${recentEntries.length > 0 ? recentEntries.join('\n') : 'No recent activity logged.'}

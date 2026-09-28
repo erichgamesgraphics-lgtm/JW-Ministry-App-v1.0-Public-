@@ -93,6 +93,16 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
     }
   }, [startTime, endTime, isManualDuration]);
 
+  useEffect(() => {
+    if (isOpen) {
+      const originalStyle = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalStyle;
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const totalCalculatedMinutes = hours * 60 + minutes;
@@ -150,7 +160,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
 
           {/* Modal Panel */}
           <div
-            className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl bg-slate-50 dark:bg-[#0B1120] shadow-2xl border border-slate-200 dark:border-slate-800 p-5 z-10"
+            className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto overscroll-contain rounded-3xl bg-slate-50 dark:bg-[#0B1120] shadow-2xl border border-slate-200 dark:border-slate-800 p-5 z-10"
           >
             {/* Top App Bar with Back Arrow */}
             <div className="flex items-center justify-between pb-3">

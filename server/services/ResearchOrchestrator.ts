@@ -31,9 +31,9 @@ export class ResearchOrchestrator {
    */
   static async orchestrateResearch(
     message: string,
-    userContext: any,
+    _userContext: any,
     requestedLanguage: string = 'en',
-    conversationHistory: ChatHistoryMessage[] = []
+    _conversationHistory: ChatHistoryMessage[] = []
   ): Promise<ResearchResult> {
     const detectedLang = LanguageService.detectLanguage(message, requestedLanguage);
     const targetLang: SupportedLanguage = detectedLang !== 'en' ? detectedLang : LanguageService.normalizeLanguage(requestedLanguage);
@@ -148,7 +148,8 @@ Keep formatting clean with clear markdown headings and bullet points. Always res
         );
 
         const aiResponse = await Promise.race([responsePromise, timeoutPromise]);
-        const text = aiResponse.text?.();
+        const rawText = (aiResponse as any)?.text;
+        const text = typeof rawText === 'function' ? rawText() : (typeof rawText === 'string' ? rawText : '');
 
         if (text && text.trim().length > 30) {
           answerParts = [text.trim()];

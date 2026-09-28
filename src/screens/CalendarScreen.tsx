@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -42,6 +42,16 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [eventToDelete, setEventToDelete] = useState<ExpandedCalendarEvent | null>(null);
+
+  useEffect(() => {
+    if (eventToDelete) {
+      const originalStyle = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalStyle;
+      };
+    }
+  }, [eventToDelete]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -433,8 +443,15 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
 
       {/* Recurring Delete Confirmation Dialog */}
       {eventToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-          <div className="relative w-full max-w-sm rounded-3xl bg-white dark:bg-[#131D31] p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          {/* Backdrop */}
+          <div
+            onClick={() => setEventToDelete(null)}
+            className="fixed inset-0 bg-black/60 dark:bg-black/75 backdrop-blur-xs transition-opacity"
+          />
+
+          {/* Modal Panel */}
+          <div className="relative z-10 w-full max-w-sm max-h-[85vh] overflow-y-auto overscroll-contain rounded-3xl bg-white dark:bg-[#131D31] p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40 text-red-600">
               <Trash2 className="h-6 w-6" />
             </div>

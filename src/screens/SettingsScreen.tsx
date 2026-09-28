@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Sun,
   Moon,
@@ -19,6 +19,10 @@ import {
   FileSpreadsheet,
   Globe,
   CheckCircle2,
+  Filter,
+  FileText,
+  Calendar,
+  Clock,
 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { PublisherStatusType, SupportedLanguage } from '../types.ts';
@@ -30,6 +34,7 @@ interface SettingsScreenProps {
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome }) => {
   const {
+    entries,
     settings,
     updatePublisherStatus,
     updateTheme,
@@ -46,11 +51,70 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
 
   const [showGoalModal, setShowGoalModal] = useState<boolean>(false);
   const [showLanguageModal, setShowLanguageModal] = useState<boolean>(false);
+  const [showCsvModal, setShowCsvModal] = useState<boolean>(false);
+  const [csvFilterRange, setCsvFilterRange] = useState<'ALL' | 'THIS_MONTH' | 'SERVICE_YEAR' | 'THIS_YEAR' | 'CUSTOM'>('ALL');
+  const [csvStartDate, setCsvStartDate] = useState<string>(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [csvEndDate, setCsvEndDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+
   const [selectedGoal, setSelectedGoal] = useState<PublisherStatusType>(settings.publisherStatus);
   const [customGoalInput, setCustomGoalInput] = useState<number>(settings.customGoalHours || 50);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState<boolean>(false);
+
+  const filteredCsvEntries = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    if (csvFilterRange === 'THIS_MONTH') {
+      return entries.filter(e => {
+        const d = new Date(e.dateMillis);
+        return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+      });
+    }
+
+    if (csvFilterRange === 'SERVICE_YEAR') {
+      const startServiceYear = currentMonth >= 8 ? currentYear : currentYear - 1;
+      const startMillis = new Date(startServiceYear, 8, 1, 0, 0, 0).getTime();
+      const endMillis = new Date(startServiceYear + 1, 7, 31, 23, 59, 59).getTime();
+      return entries.filter(e => e.dateMillis >= startMillis && e.dateMillis <= endMillis);
+    }
+
+    if (csvFilterRange === 'THIS_YEAR') {
+      return entries.filter(e => new Date(e.dateMillis).getFullYear() === currentYear);
+    }
+
+    if (csvFilterRange === 'CUSTOM') {
+      const start = csvStartDate ? new Date(`${csvStartDate}T00:00:00`).getTime() : 0;
+      const end = csvEndDate ? new Date(`${csvEndDate}T23:59:59`).getTime() : Infinity;
+      return entries.filter(e => e.dateMillis >= start && e.dateMillis <= end);
+    }
+
+    return entries;
+  }, [entries, csvFilterRange, csvStartDate, csvEndDate]);
+
+  const csvStats = useMemo(() => {
+    const totalMinutes = filteredCsvEntries.reduce((sum, e) => sum + e.durationMinutes, 0);
+    const totalHours = Math.floor(totalMinutes / 60);
+    const remainingMinutes = totalMinutes % 60;
+    const returnVisits = filteredCsvEntries.reduce((sum, e) => sum + e.returnVisits, 0);
+    const bibleStudies = filteredCsvEntries.reduce((sum, e) => sum + e.bibleStudies, 0);
+    const placements = filteredCsvEntries.reduce((sum, e) => sum + e.placements, 0);
+    return {
+      count: filteredCsvEntries.length,
+      totalMinutes,
+      totalHours,
+      remainingMinutes,
+      returnVisits,
+      bibleStudies,
+      placements,
+    };
+  }, [filteredCsvEntries]);
 
   const showNotification = (msg: string) => {
     setSuccessMessage(msg);
@@ -83,16 +147,28 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
   };
 
   const handleExportCsv = () => {
+    setShowCsvModal(true);
+  };
+
+  const handleDownloadCsvFromModal = () => {
     try {
-      const csv = exportCsv();
+      if (filteredCsvEntries.length === 0) {
+        showError(t.common.noData || 'No activity entries found for this date range.');
+        return;
+      }
+      const csv = exportCsv(filteredCsvEntries);
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);
-      link.setAttribute('download', `ministry_report_${new Date().toISOString().slice(0, 10)}.csv`);
+      const dateTag = new Date().toISOString().slice(0, 10);
+      const rangeTag = csvFilterRange.toLowerCase();
+      link.setAttribute('download', `ministry_records_${rangeTag}_${dateTag}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setShowCsvModal(false);
       showNotification(t.settings.csvExportSuccess);
     } catch {
       showError(t.settings.csvExportFailed);
@@ -251,9 +327,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
       {/* ========================================================================= */}
       {/* SECTION 1: LANGUAGE (AT THE TOP AS REQUESTED)                             */}
       {/* ========================================================================= */}
-      <div
-        className="rounded-3xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-3"
-      >
+      <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-5 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Globe className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -265,7 +339,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
 
         <button
           onClick={() => setShowLanguageModal(true)}
-          className="flex w-full items-center justify-between rounded-2xl border border-white/40 dark:border-white/5 bg-slate-50/70 dark:bg-slate-800/50 p-3.5 hover:bg-slate-100/70 dark:hover:bg-slate-800 active:scale-[0.99] transition-all cursor-pointer text-left select-none"
+          className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 p-3.5 hover:bg-slate-100/70 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left"
         >
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400">
@@ -290,9 +364,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
       {/* ========================================================================= */}
       {/* SECTION 2: MINISTRY GOALS                                                 */}
       {/* ========================================================================= */}
-      <div
-        className="rounded-3xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-3"
-      >
+      <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-5 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -304,7 +376,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
 
         <div
           onClick={handleOpenGoalModal}
-          className="flex items-center justify-between rounded-2xl border border-white/40 dark:border-white/5 bg-slate-50/70 dark:bg-slate-800/50 p-3.5 hover:bg-slate-100/70 dark:hover:bg-slate-800 active:scale-[0.99] transition-all cursor-pointer select-none"
+          className="flex items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 p-3.5 hover:bg-slate-100/70 dark:hover:bg-slate-800 transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400">
@@ -333,9 +405,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
       {/* ========================================================================= */}
       {/* SECTION 3: APPEARANCE                                                     */}
       {/* ========================================================================= */}
-      <div
-        className="rounded-3xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-3"
-      >
+      <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-5 shadow-xs space-y-3">
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           {t.settings.sectionAppearance}
         </h2>
@@ -352,9 +422,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
               <button
                 key={themeOpt.id}
                 onClick={() => updateTheme(themeOpt.id)}
-                className={`flex flex-col items-center justify-center rounded-2xl border p-3 active:scale-95 transition-all cursor-pointer select-none ${
+                className={`flex flex-col items-center justify-center rounded-2xl border p-3 transition-all cursor-pointer ${
                   isSelected
-                    ? 'border-blue-600 bg-blue-50/60 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-bold shadow-xs'
+                    ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold shadow-xs'
                     : 'border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:border-slate-300'
                 }`}
               >
@@ -369,9 +439,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
       {/* ========================================================================= */}
       {/* SECTION 4: DATA & BACKUP                                                  */}
       {/* ========================================================================= */}
-      <div
-        className="rounded-3xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)] space-y-4"
-      >
+      <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-5 shadow-xs space-y-4">
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           {t.settings.sectionDataBackup}
         </h2>
@@ -388,7 +456,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
                   {t.settings.autoBackupTitle || 'Automatic Backup'}
                 </h3>
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
-                  {backupStatus === 'pending_offline'
+                  {backupStatus === 'backing_up'
+                    ? (t.settings.autoBackupBackingUp || 'Backing up…')
+                    : backupStatus === 'offline'
                     ? (t.settings.autoBackupPendingOffline || 'Backup pending (offline)')
                     : (t.settings.autoBackupUpToDate || '✓ Backup up to date')}
                 </p>
@@ -396,7 +466,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
             </div>
 
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Active
             </span>
           </div>
@@ -416,7 +486,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
           {/* Create Backup File (.mtbackup) */}
           <button
             onClick={handleDownloadBackup}
-            className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 active:scale-[0.99] transition-all cursor-pointer text-left"
+            className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left"
           >
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
@@ -435,7 +505,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
           </button>
 
           {/* Restore Backup File (.mtbackup) */}
-          <label className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 active:scale-[0.99] transition-all cursor-pointer text-left">
+          <label className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400">
                 <Upload className="h-4 w-4" />
@@ -461,7 +531,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
           {/* Export to CSV */}
           <button
             onClick={handleExportCsv}
-            className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 active:scale-[0.99] transition-all cursor-pointer text-left"
+            className="flex w-full items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5 hover:bg-slate-100/60 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left"
           >
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
@@ -483,7 +553,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
             <button
               onClick={() => setShowClearConfirm(true)}
-              className="flex w-full items-center justify-between rounded-2xl border border-red-100 dark:border-red-950 bg-red-50/50 dark:bg-red-950/20 p-3.5 hover:bg-red-100/60 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 active:scale-[0.99] transition-all cursor-pointer"
+              className="flex w-full items-center justify-between rounded-2xl border border-red-100 dark:border-red-950 bg-red-50/50 dark:bg-red-950/20 p-3.5 hover:bg-red-100/60 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-3 text-left">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400">
@@ -507,9 +577,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
       {/* ========================================================================= */}
       {/* SECTION 5: ABOUT                                                          */}
       {/* ========================================================================= */}
-      <div
-        className="rounded-3xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)] text-center space-y-3"
-      >
+      <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-5 shadow-xs text-center space-y-3">
         <div className="flex justify-center">
           <JWMinistryLogo size={44} className="rounded-2xl" />
         </div>
@@ -542,7 +610,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
       {/* LANGUAGE SELECTION MODAL                                                  */}
       {/* ========================================================================= */}
       {showLanguageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="relative w-full max-w-sm rounded-3xl bg-white dark:bg-[#131D31] shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
@@ -566,7 +634,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
                   <button
                     key={opt.code}
                     onClick={() => handleSelectLanguage(opt.code)}
-                    className={`flex w-full items-center justify-between rounded-2xl border p-3.5 active:scale-[0.98] transition-all cursor-pointer select-none ${
+                    className={`flex w-full items-center justify-between rounded-2xl border p-3.5 transition-all cursor-pointer ${
                       isSelected
                         ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shadow-xs'
                         : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#131D31] hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-200'
@@ -596,7 +664,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
       {/* GOAL PICKER MODAL                                                         */}
       {/* ========================================================================= */}
       {showGoalModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-[#131D31] shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">
@@ -619,7 +687,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
                   <div
                     key={card.id}
                     onClick={() => setSelectedGoal(card.id)}
-                    className={`rounded-2xl border-2 p-3.5 active:scale-[0.99] transition-all cursor-pointer select-none ${
+                    className={`rounded-2xl border-2 p-3.5 transition-all cursor-pointer ${
                       isSelected
                         ? 'border-blue-600 bg-blue-50/40 dark:bg-blue-950/30 dark:border-blue-500 shadow-xs'
                         : 'border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#131D31] hover:border-slate-300'
@@ -692,13 +760,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
             <div className="flex gap-2.5 pt-2">
               <button
                 onClick={() => setShowGoalModal(false)}
-                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-[0.98] transition-all cursor-pointer select-none"
+                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 {t.common.cancel}
               </button>
               <button
                 onClick={handleSaveGoal}
-                className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white text-xs font-bold shadow-xs transition-all cursor-pointer select-none"
+                className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
               >
                 {t.common.save}
               </button>
@@ -711,7 +779,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
       {/* CLEAR ALL DATA CONFIRMATION MODAL                                         */}
       {/* ========================================================================= */}
       {showClearConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#131D31] p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600">
               <Trash2 className="h-6 w-6" />
@@ -729,13 +797,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => setShowClearConfirm(false)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-[0.98] transition-all cursor-pointer select-none"
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 {t.common.cancel}
               </button>
               <button
                 onClick={handleConfirmClear}
-                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white text-xs font-bold transition-all cursor-pointer select-none"
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors cursor-pointer"
               >
                 {t.settings.clearConfirmButton}
               </button>
@@ -744,6 +812,182 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* CSV EXPORT MODAL                                                          */}
+      {/* ========================================================================= */}
+      {showCsvModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-[#131D31] shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-5">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400">
+                  <FileSpreadsheet className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    {t.settings.exportCsvTitle || 'Export Ministry Data'}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    CSV Spreadsheet for Personal Records
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCsvModal(false)}
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Description */}
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Export your ministry activity log as a clean CSV file. Compatible with Microsoft Excel, Apple Numbers, Google Sheets, and personal backup archives.
+            </p>
+
+            {/* Filter Selection */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Filter className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                <span>Select Date Range to Export:</span>
+              </label>
+
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'ALL' as const, label: t.common.allTime || 'All Time' },
+                  { id: 'THIS_MONTH' as const, label: t.common.thisMonth || 'This Month' },
+                  { id: 'SERVICE_YEAR' as const, label: t.common.serviceYear || 'Service Year' },
+                  { id: 'THIS_YEAR' as const, label: t.common.year || 'Current Year' },
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setCsvFilterRange(opt.id)}
+                    className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                      csvFilterRange === opt.id
+                        ? 'border-emerald-600 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 shadow-xs'
+                        : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setCsvFilterRange('CUSTOM')}
+                className={`w-full py-2 px-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                  csvFilterRange === 'CUSTOM'
+                    ? 'border-emerald-600 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 shadow-xs'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                }`}
+              >
+                Custom Date Range
+              </button>
+
+              {/* Custom Range Inputs */}
+              {csvFilterRange === 'CUSTOM' && (
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2 mt-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label htmlFor="csv-modal-start-date" className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                        Start Date
+                      </label>
+                      <input
+                        id="csv-modal-start-date"
+                        type="date"
+                        value={csvStartDate}
+                        onChange={(e) => setCsvStartDate(e.target.value)}
+                        className="w-full text-xs font-semibold p-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="csv-modal-end-date" className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                        End Date
+                      </label>
+                      <input
+                        id="csv-modal-end-date"
+                        type="date"
+                        value={csvEndDate}
+                        onChange={(e) => setCsvEndDate(e.target.value)}
+                        className="w-full text-xs font-semibold p-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Live Summary Preview */}
+            <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 p-3.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  Export Summary
+                </span>
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-md">
+                  {csvStats.count} {csvStats.count === 1 ? 'Entry' : 'Entries'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+                <div className="p-2 rounded-xl bg-white dark:bg-[#131D31] border border-slate-200/60 dark:border-slate-800">
+                  <p className="text-[10px] text-slate-400 uppercase font-bold">Total Time</p>
+                  <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-0.5">
+                    {csvStats.totalHours}h {csvStats.remainingMinutes}m
+                  </p>
+                </div>
+                <div className="p-2 rounded-xl bg-white dark:bg-[#131D31] border border-slate-200/60 dark:border-slate-800">
+                  <p className="text-[10px] text-slate-400 uppercase font-bold">RVs</p>
+                  <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-0.5">
+                    {csvStats.returnVisits}
+                  </p>
+                </div>
+                <div className="p-2 rounded-xl bg-white dark:bg-[#131D31] border border-slate-200/60 dark:border-slate-800">
+                  <p className="text-[10px] text-slate-400 uppercase font-bold">Studies / Plac.</p>
+                  <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-0.5">
+                    {csvStats.bibleStudies} / {csvStats.placements}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* CSV Format Badges */}
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+              <p className="flex items-center gap-1.5 font-medium">
+                <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                Includes Date, Ministry Type, Duration, RVs, Studies, Placements, Location & Notes
+              </p>
+              <p className="flex items-center gap-1.5 font-medium">
+                <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                Encoded in UTF-8 with Excel BOM for international character accuracy
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                onClick={() => setShowCsvModal(false)}
+                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                onClick={handleDownloadCsvFromModal}
+                disabled={csvStats.count === 0}
+                className={`flex-1 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer ${
+                  csvStats.count > 0
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
+                }`}
+              >
+                <Download className="h-4 w-4" />
+                <span>{t.settings.exportCsv || 'Download CSV File'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

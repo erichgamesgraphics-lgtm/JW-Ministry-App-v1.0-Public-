@@ -45,7 +45,7 @@ export class LanguageService {
   /**
    * Cleans conversational query phrasing to extract core search terms across all 5 languages
    */
-  static cleanSearchQuery(query: string, lang: SupportedLanguage): string {
+  static cleanSearchQuery(query: string, _lang?: SupportedLanguage): string {
     let clean = query.trim();
 
     // Remove punctuation like quotes, question marks, leading bullet points
@@ -508,7 +508,7 @@ export class LanguageService {
   /**
    * Localized User-Friendly Error Messages
    */
-  static getLocalizedError(lang: SupportedLanguage, errorCode?: string): string {
+  static getLocalizedError(lang: SupportedLanguage, _errorCode?: string): string {
     switch (lang) {
       case 'hy':
         return 'Ծառայության Օգնականը ժամանակավորապես անհասանելի է։ Խնդրում ենք փորձել նորից։';

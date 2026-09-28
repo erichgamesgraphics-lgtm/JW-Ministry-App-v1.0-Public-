@@ -6,7 +6,7 @@ import {
   DeviceInstallationMeta,
   DecryptedBackupPayload,
 } from './backupPackage.ts';
-import { MinistryEntry, ScheduledEvent, UserSettings } from '../types.ts';
+import { MinistryEntry, ScheduledEvent, UserSettings, MinistryNote, NoteFolder } from '../types.ts';
 
 export type BackupSyncStatus = 'idle' | 'backing_up' | 'synced' | 'pending_offline' | 'error';
 
@@ -32,7 +32,7 @@ class BackupManagerService {
   private debounceTimer: any = null;
   private isOnline: boolean = typeof navigator !== 'undefined' ? navigator.onLine : true;
   private listeners: Set<(status: BackupSyncStatus, lastBackupAt: number, error?: string) => void> = new Set();
-  private pendingBackupPayload: { entries: MinistryEntry[]; events: ScheduledEvent[]; settings: UserSettings } | null = null;
+  private pendingBackupPayload: { entries: MinistryEntry[]; events: ScheduledEvent[]; settings: UserSettings; notes?: MinistryNote[]; noteFolders?: NoteFolder[] } | null = null;
   private isBackingUp: boolean = false;
 
   constructor() {
@@ -44,6 +44,8 @@ class BackupManagerService {
             this.pendingBackupPayload.entries,
             this.pendingBackupPayload.events,
             this.pendingBackupPayload.settings,
+            this.pendingBackupPayload.notes || [],
+            this.pendingBackupPayload.noteFolders || [],
             500
           );
         }
@@ -129,9 +131,11 @@ class BackupManagerService {
     entries: MinistryEntry[],
     events: ScheduledEvent[],
     settings: UserSettings,
+    notes: MinistryNote[] = [],
+    noteFolders: NoteFolder[] = [],
     delayMs = 2500
   ): void {
-    this.pendingBackupPayload = { entries, events, settings };
+    this.pendingBackupPayload = { entries, events, settings, notes, noteFolders };
 
     if (!this.isOnline) {
       this.updateStatus('pending_offline');
@@ -143,7 +147,7 @@ class BackupManagerService {
     }
 
     this.debounceTimer = setTimeout(() => {
-      this.executeBackupNow(entries, events, settings).catch(err => {
+      this.executeBackupNow(entries, events, settings, notes, noteFolders).catch(err => {
         console.warn('Background auto backup failed:', err);
       });
     }, delayMs);
@@ -155,7 +159,9 @@ class BackupManagerService {
   public async executeBackupNow(
     entries: MinistryEntry[],
     events: ScheduledEvent[],
-    settings: UserSettings
+    settings: UserSettings,
+    notes: MinistryNote[] = [],
+    noteFolders: NoteFolder[] = []
   ): Promise<{ success: boolean; lastBackupAt: number }> {
     if (this.isBackingUp) return { success: false, lastBackupAt: this.lastBackupTime };
     this.isBackingUp = true;
@@ -182,7 +188,7 @@ class BackupManagerService {
       };
 
       // Create encrypted package
-      const backupPackageStr = await createEncryptedMTBackup(entries, events, settings, metadata);
+      const backupPackageStr = await createEncryptedMTBackup(entries, events, settings, metadata, notes, noteFolders);
 
       // Save local backup snapshot (survives minor crashes)
       try {
@@ -273,10 +279,12 @@ class BackupManagerService {
   public async downloadMTBackupFile(
     entries: MinistryEntry[],
     events: ScheduledEvent[],
-    settings: UserSettings
+    settings: UserSettings,
+    notes: MinistryNote[] = [],
+    noteFolders: NoteFolder[] = []
   ): Promise<boolean> {
     try {
-      const encryptedStr = await createEncryptedMTBackup(entries, events, settings);
+      const encryptedStr = await createEncryptedMTBackup(entries, events, settings, undefined, notes, noteFolders);
       const dateStr = new Date().toISOString().split('T')[0];
       const filename = `MinistryTracker_Backup_${dateStr}.mtbackup`;
 
