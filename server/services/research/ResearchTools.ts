@@ -77,7 +77,8 @@ export class ResearchTools {
   static async searchJWOrg(
     rawQuery: string,
     langStr: string = 'en',
-    page: number = 1
+    page: number = 1,
+    secondaryQueries?: string[]
   ): Promise<ResearchResult[]> {
     const lang = LanguageService.normalizeLanguage(langStr);
     const cleanQuery = LanguageService.cleanSearchQuery(rawQuery, lang);
@@ -99,29 +100,48 @@ export class ResearchTools {
 
     const { path: jwLang, wtlocale } = langPathMap[lang] || langPathMap['en'];
     const results: ResearchResult[] = [];
+    const seenUrls = new Set<string>();
+
+    const queriesToExecute = [cleanQuery];
+    if (Array.isArray(secondaryQueries)) {
+      for (const sq of secondaryQueries) {
+        const cleanedSq = LanguageService.cleanSearchQuery(sq, lang);
+        if (cleanedSq && !queriesToExecute.includes(cleanedSq)) {
+          queriesToExecute.push(cleanedSq);
+        }
+      }
+    }
 
     try {
       const jwt = await getJWOrgJWT();
       if (jwt) {
-        const offset = (page - 1) * 20;
-        const searchUrl = `https://b.jw-cdn.org/apis/search/results/${wtlocale}/all?q=${encodeURIComponent(cleanQuery)}&limit=20&offset=${offset}`;
+        for (const q of queriesToExecute) {
+          if (results.length >= 8) break; // Sufficient quality results collected
+          const offset = (page - 1) * 20;
+          const searchUrl = `https://b.jw-cdn.org/apis/search/results/${wtlocale}/all?q=${encodeURIComponent(q)}&limit=20&offset=${offset}`;
 
-        const response = await fetch(searchUrl, {
-          headers: {
-            Authorization: `Bearer ${jwt}`,
-            Accept: 'application/json; charset=utf-8',
-            'X-Client-ID': 'jworg-web',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) MinistryTrackerApp/2.0',
-          },
-          signal: AbortSignal.timeout(7000),
-        });
+          const response = await fetch(searchUrl, {
+            headers: {
+              Authorization: `Bearer ${jwt}`,
+              Accept: 'application/json; charset=utf-8',
+              'X-Client-ID': 'jworg-web',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) MinistryTrackerApp/2.0',
+            },
+            signal: AbortSignal.timeout(5000),
+          });
 
-        if (response.ok) {
-          const contentTypeHeader = response.headers.get('content-type') || '';
-          if (contentTypeHeader.includes('application/json')) {
-            const data = await response.json();
-            const extracted = this.extractJWSearchResults(data.results || [], lang, jwLang);
-            results.push(...extracted);
+          if (response.ok) {
+            const contentTypeHeader = response.headers.get('content-type') || '';
+            if (contentTypeHeader.includes('application/json')) {
+              const data = await response.json();
+              const extracted = this.extractJWSearchResults(data.results || [], lang, jwLang);
+              for (const item of extracted) {
+                if (!seenUrls.has(item.url)) {
+                  seenUrls.add(item.url);
+                  results.push(item);
+                }
+              }
+            }
           }
         }
       }
@@ -131,28 +151,33 @@ export class ResearchTools {
 
     // Fallback: Use verified catalog if API produced no items
     if (results.length === 0) {
-      const scoredCatalog = VERIFIED_JW_ARTICLES_CATALOG.map((article) => ({
-        article,
-        score: this.scoreCatalogArticle(article, cleanQuery, lang),
-      }))
-        .filter((item) => item.score >= 0.2)
-        .sort((a, b) => b.score - a.score);
+      for (const q of queriesToExecute) {
+        const scoredCatalog = VERIFIED_JW_ARTICLES_CATALOG.map((article) => ({
+          article,
+          score: this.scoreCatalogArticle(article, q, lang),
+        }))
+          .filter((item) => item.score >= 0.2)
+          .sort((a, b) => b.score - a.score);
 
-      for (const item of scoredCatalog) {
-        const loc = item.article.localizations[lang] || item.article.localizations['en'];
-        results.push({
-          id: item.article.id,
-          title: loc.title,
-          snippet: loc.snippet,
-          url: item.article.url,
-          source: 'JW.ORG',
-          publication: loc.publication,
-          contentType: 'Article',
-          language: lang,
-          bibleVerses: item.article.bibleVerses,
-          topicKeywords: item.article.topicKeywords,
-          relevanceScore: Number(item.score.toFixed(2)),
-        });
+        for (const item of scoredCatalog) {
+          if (!seenUrls.has(item.article.url)) {
+            seenUrls.add(item.article.url);
+            const loc = item.article.localizations[lang] || item.article.localizations['en'];
+            results.push({
+              id: item.article.id,
+              title: loc.title,
+              snippet: loc.snippet,
+              url: item.article.url,
+              source: 'JW.ORG',
+              publication: loc.publication,
+              contentType: 'Article',
+              language: lang,
+              bibleVerses: item.article.bibleVerses,
+              topicKeywords: item.article.topicKeywords,
+              relevanceScore: Number(item.score.toFixed(2)),
+            });
+          }
+        }
       }
     }
 

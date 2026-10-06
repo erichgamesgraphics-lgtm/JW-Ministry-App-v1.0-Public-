@@ -55,17 +55,20 @@ Requested Language: ${lang}
 ${sessionContext}
 
 Categorize the intent into one of these actionType values:
-- "NEW_SEARCH": User asks a new research question (e.g. "Find me something about patience", "I need something useful for the ministry").
-- "OPEN_RESULT": User asks to open or inspect a specific result from the previous research results (e.g. "Open the second one", "Show me the video", "Play the video", "Tell me more about article #1").
-- "FILTER_RESULTS": User wants to filter existing research results (e.g. "I don't want an article", "Only show videos").
-- "REFINE_SEARCH": User refines research with audience, date, etc. (e.g. "Is there anything specifically for young people?", "Find something newer").
-- "CHANGE_TOPIC": User changes topic while preserving context (e.g. "Actually, find me something similar but about courage").
-- "TRACKER_DATA": User asks for Ministry Tracker hours/stats (e.g. "How many hours do I have this month?").
+- "NEW_SEARCH": User asks a new research question (e.g. "Find me something about patience", "Найди мне статью о терпении", "Գտիր հոդված համբերության մասին").
+- "OPEN_RESULT": User asks to open or inspect a specific result from previous results (e.g. "Open the second one", "Show me the video", "Открой второй", "Բացիր երկրորդը", "दूसरा खोलें").
+- "FILTER_RESULTS": User wants to filter existing results (e.g. "I don't want an article", "Only show videos", "Не хочу статью").
+- "REFINE_SEARCH": User refines research with audience or date (e.g. "Is there anything specifically for young people?", "для молодежи").
+- "CHANGE_TOPIC": User changes topic while preserving context (e.g. "Actually, find me something similar but about courage", "похожее про мужество").
+- "TRACKER_DATA": User asks for Ministry Tracker personal stats or hours (e.g. "How many hours do I have this month?", "Сколько часов у меня").
 - "GENERAL_TALK": Conversational greeting or non-research question.
 
-Identify targetResultIndex (0-based) if user refers to a specific result index (e.g. "second one" -> 1).
+Identify targetResultIndex (0-based) if user refers to a result index (e.g. "second one" -> 1).
 Identify targetContentTypeReference ("Video", "Article", "Publication", "Bible") if user refers to a type from previous results (e.g. "show me the video").
-Construct an optimized JW.ORG search query representing the core research concept.`;
+
+IMPORTANT: Construct searchQueries directly in the requested language (${lang}):
+- searchQuery: The primary core concept term in ${lang}.
+- secondaryQueries: 2-3 alternate search terms, synonyms, or related phrasing in ${lang}.`;
 
         const responsePromise = ai.models.generateContent({
           model: 'gemini-2.5-flash',
@@ -89,6 +92,10 @@ Construct an optimized JW.ORG search query representing the core research concep
                 targetResultIndex: { type: Type.INTEGER },
                 targetContentTypeReference: { type: Type.STRING },
                 searchQuery: { type: Type.STRING },
+                secondaryQueries: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                },
                 reason: { type: Type.STRING },
               },
               required: ['needsResearch', 'isAppTrackerQuery', 'actionType', 'topic', 'searchQuery', 'reason'],
@@ -119,6 +126,7 @@ Construct an optimized JW.ORG search query representing the core research concep
             targetContentTypeReference: (parsed.targetContentTypeReference as ContentType) || undefined,
             language: lang,
             searchQuery: parsed.searchQuery || parsed.topic || cleanMsg,
+            secondaryQueries: Array.isArray(parsed.secondaryQueries) && parsed.secondaryQueries.length > 0 ? parsed.secondaryQueries : undefined,
             reason: parsed.reason || 'AI Gemini Plan',
           };
         }

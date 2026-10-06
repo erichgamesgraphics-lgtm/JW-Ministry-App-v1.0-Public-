@@ -47,6 +47,7 @@ export interface ResearchPlan {
   targetContentTypeReference?: ContentType;
   language: string;
   searchQuery: string;
+  secondaryQueries?: string[];
   reason: string;
 }
 

@@ -25,6 +25,7 @@ import { useMinistry } from '../context/MinistryContext.tsx';
 import { MinistryNote, NoteTypeCategory } from '../types.ts';
 import { RichTextEditor } from '../components/RichTextEditor.tsx';
 import { HouseListTracker } from '../components/HouseListTracker.tsx';
+import { FolderManagerModal } from '../components/notes/FolderManagerModal.tsx';
 
 export const NotesScreen: React.FC = () => {
   const {
@@ -37,6 +38,7 @@ export const NotesScreen: React.FC = () => {
     togglePinNote,
     toggleArchiveNote,
     saveFolder,
+    renameFolder,
     deleteFolder,
     t,
   } = useMinistry();
@@ -51,6 +53,7 @@ export const NotesScreen: React.FC = () => {
   // Bottom sheets & Modals state
   const [showSortSheet, setShowSortSheet] = useState(false);
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
+  const [showFolderManagerModal, setShowFolderManagerModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
   // Active Editor Note state
@@ -280,6 +283,17 @@ export const NotesScreen: React.FC = () => {
             <FolderPlus className="h-3.5 w-3.5" />
             <span>{t.notes.createFolder}</span>
           </button>
+
+          {noteFolders.length > 0 && (
+            <button
+              onClick={() => setShowFolderManagerModal(true)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131D31] text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 cursor-pointer shrink-0"
+              title="Manage Folders"
+            >
+              <Folder className="h-3.5 w-3.5 text-indigo-600" />
+              <span>Manage</span>
+            </button>
+          )}
 
           {noteFolders.map(folder => (
             <button
@@ -666,6 +680,16 @@ export const NotesScreen: React.FC = () => {
                     placeholder="+ Add tag"
                     className="w-20 text-[11px] font-semibold bg-transparent border-b border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-hidden"
                   />
+                  {newTagInput.trim() && (
+                    <button
+                      type="button"
+                      onClick={handleAddTagToEditingNote}
+                      className="p-1 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer"
+                      title="Add tag"
+                    >
+                      <Plus className="h-3 w-3 stroke-[3]" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -786,6 +810,14 @@ export const NotesScreen: React.FC = () => {
           </form>
         </div>
       )}
+      {/* Folder Manager Modal */}
+      <FolderManagerModal
+        isOpen={showFolderManagerModal}
+        onClose={() => setShowFolderManagerModal(false)}
+        folders={noteFolders}
+        onCreateFolder={(name, color, icon) => saveFolder(name, icon, color)}
+        onDeleteFolder={folderId => deleteFolder(folderId)}
+      />
     </div>
   );
 };

@@ -127,11 +127,11 @@ export class ResearchOrchestrator {
         rawResults = filtered;
       } else {
         // If filtered set was empty, perform a new JW.ORG search with modified query
-        rawResults = await ResearchTools.searchJWOrg(plan.searchQuery, lang);
+        rawResults = await ResearchTools.searchJWOrg(plan.searchQuery, lang, 1, plan.secondaryQueries);
       }
     } else {
       // NEW_SEARCH or CHANGE_TOPIC -> Execute fresh JW.ORG search
-      rawResults = await ResearchTools.searchJWOrg(plan.searchQuery, lang);
+      rawResults = await ResearchTools.searchJWOrg(plan.searchQuery, lang, 1, plan.secondaryQueries);
     }
 
     // 5. RELEVANCE RANKING & CONTENT TYPE FILTERING
@@ -307,6 +307,12 @@ Instructions:
     if (lang === 'hy') {
       return ['Գտիր նմանատիպ նյութ քաջության մասին', 'Կա՞ արդյոք տեսանյութ այս թեմայով', 'Գտիր նյութեր երիտասարդների համար'];
     }
+    if (lang === 'hi') {
+      return ['साहस के बारे में कुछ और खोजें', 'क्या इस विषय पर कोई वीडियो है?', 'युवाओं के लिए लेख खोजें'];
+    }
+    if (lang === 'pa') {
+      return ['ਦਲੇਰੀ ਬਾਰੇ ਹੋਰ ਜਾਣਕਾਰੀ ਲੱਭੋ', 'ਕੀ ਇਸ ਵਿਸ਼ੇ \'ਤੇ ਕੋਈ ਵੀਡੀਓ ਹੈ?', 'ਨੌਜਵਾਨਾਂ ਲਈ ਲੇਖ ਲੱਭੋ'];
+    }
     return ['Find something similar about courage', 'Can you find me a video about this?', 'Is there anything specifically for young people?'];
   }
 
@@ -323,6 +329,18 @@ Instructions:
       const suggestions = ['Բացիր երկրորդ արդյունքը'];
       if (hasVideo) suggestions.unshift('Ցույց տու տեսանյութը');
       suggestions.push(`Գտիր նյութեր երիտասարդների համար ${plan.topic} թեմայով`);
+      return suggestions;
+    }
+    if (lang === 'hi') {
+      const suggestions = ['दूसरा परिणाम खोलें'];
+      if (hasVideo) suggestions.unshift('वीडियो दिखाओ');
+      suggestions.push(`युवाओं के लिए ${plan.topic} के बारे में खोजें`);
+      return suggestions;
+    }
+    if (lang === 'pa') {
+      const suggestions = ['ਦੂਜਾ ਨਤੀਜਾ ਖੋਲ੍ਹੋ'];
+      if (hasVideo) suggestions.unshift('ਵੀਡੀਓ ਦਿਖਾਓ');
+      suggestions.push(`ਨੌਜਵਾਨਾਂ ਲਈ ${plan.topic} ਬਾਰੇ ਖੋਜੋ`);
       return suggestions;
     }
 

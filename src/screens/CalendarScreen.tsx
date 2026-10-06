@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { ScheduledEvent, ExpandedCalendarEvent, MinistryEntry } from '../types.ts';
-import { formatDurationLocalized, formatDateLocalized, formatMonthYearLocalized } from '../translations/index.ts';
+import { formatDurationLocalized, formatDateLocalized, formatMonthYearLocalized, formatTimeLocalized } from '../translations/index.ts';
 
 interface CalendarScreenProps {
   onOpenNewSchedule: (date?: Date) => void;
@@ -321,8 +321,8 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
           <div className="space-y-3">
             {/* Scheduled Events & Occurrences */}
             {selectedDayEvents.map(ev => {
-              const startStr = new Date(ev.startTimeMillis).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-              const endStr = new Date(ev.endTimeMillis).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const startStr = formatTimeLocalized(ev.occurrenceStartTimeMillis || ev.startTimeMillis, language);
+              const endStr = formatTimeLocalized(ev.occurrenceEndTimeMillis || ev.endTimeMillis, language);
               const repeatLabel = getRecurrenceLabel(ev.repeatOption);
               const isRecurringEvent = ev.isOccurrence || (ev.repeatOption && ev.repeatOption !== 'NONE') || Boolean(ev.parentEventId);
 

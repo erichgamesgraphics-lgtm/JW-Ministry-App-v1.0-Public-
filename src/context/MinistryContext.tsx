@@ -15,8 +15,8 @@ import {
   NoteFolder,
   HouseItem,
 } from '../types.ts';
-import { storage, DEFAULT_TIMER } from '../utils/storage.ts';
-import { getTranslation, TranslationSchema } from '../translations/index.ts';
+import { storage, DEFAULT_TIMER, sanitizeEntry, sanitizeEvent } from '../utils/storage.ts';
+import { getTranslation, TranslationSchema, formatTimeLocalized } from '../translations/index.ts';
 import {
   getOccurrencesForDate,
   getOccurrencesForMonth,
@@ -68,6 +68,7 @@ interface MinistryContextType {
   togglePinNote: (id: string) => void;
   toggleArchiveNote: (id: string) => void;
   saveFolder: (name: string, iconName?: string, color?: string) => NoteFolder;
+  renameFolder: (id: string, newName: string) => void;
   deleteFolder: (id: string) => void;
   updateHouseInNote: (noteId: string, houseId: string, updates: Partial<HouseItem>) => void;
   addHouseToNote: (noteId: string, houseData?: Partial<HouseItem>) => HouseItem | null;
@@ -223,10 +224,7 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const checkNotifications = () => {
       processDueNotifications((item) => {
-        const startStr = new Date(item.startTimeMillis).toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        });
+        const startStr = formatTimeLocalized(item.startTimeMillis, settings.language || 'en');
         let timingText = `Starts at ${startStr}`;
         if (item.reminderMinutesBefore > 0) {
           timingText = `Starts in ${item.reminderMinutesBefore}m (${startStr})`;
@@ -320,50 +318,17 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Entry operations
   const saveEntry = useCallback((entryData: Partial<MinistryEntry> & { id?: number }) => {
-    let saved: MinistryEntry;
+    const now = Date.now();
+    const clean = sanitizeEntry(entryData, entryData.id && entryData.id > 0 ? entryData.id : now);
+
     if (entryData.id && entryData.id > 0) {
       // Update
-      const now = Date.now();
-      saved = {
-        id: entryData.id,
-        dateMillis: entryData.dateMillis ?? now,
-        startTimeMillis: entryData.startTimeMillis ?? 0,
-        endTimeMillis: entryData.endTimeMillis ?? 0,
-        durationMinutes: entryData.durationMinutes ?? 0,
-        ministryType: entryData.ministryType ?? 'HOUSE_TO_HOUSE',
-        returnVisits: entryData.returnVisits ?? 0,
-        bibleStudies: entryData.bibleStudies ?? 0,
-        placements: entryData.placements ?? 0,
-        location: entryData.location ?? '',
-        notes: entryData.notes ?? '',
-        isSynced: false,
-        createdAt: entryData.createdAt ?? now,
-        updatedAt: now,
-      };
-      setEntries(prev => prev.map(e => e.id === saved.id ? saved : e));
+      setEntries(prev => prev.map(e => e.id === clean.id ? clean : e));
     } else {
       // Create new
-      const now = Date.now();
-      const newId = now;
-      saved = {
-        id: newId,
-        dateMillis: entryData.dateMillis ?? now,
-        startTimeMillis: entryData.startTimeMillis ?? 0,
-        endTimeMillis: entryData.endTimeMillis ?? 0,
-        durationMinutes: entryData.durationMinutes ?? 0,
-        ministryType: entryData.ministryType ?? 'HOUSE_TO_HOUSE',
-        returnVisits: entryData.returnVisits ?? 0,
-        bibleStudies: entryData.bibleStudies ?? 0,
-        placements: entryData.placements ?? 0,
-        location: entryData.location ?? '',
-        notes: entryData.notes ?? '',
-        isSynced: false,
-        createdAt: now,
-        updatedAt: now,
-      };
-      setEntries(prev => [saved, ...prev]);
+      setEntries(prev => [clean, ...prev]);
     }
-    return saved;
+    return clean;
   }, []);
 
   const deleteEntry = useCallback((id: number) => {
@@ -480,6 +445,13 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return newFolder;
   }, []);
 
+  const renameFolder = useCallback((id: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    setNoteFolders(prev => prev.map(f => f.id === id ? { ...f, name: trimmed } : f));
+    setNotes(prev => prev.map(n => n.folderId === id ? { ...n, folderName: trimmed, updatedAt: Date.now() } : n));
+  }, []);
+
   const deleteFolder = useCallback((id: string) => {
     setNoteFolders(prev => prev.filter(f => f.id !== id));
     setNotes(prev => prev.map(n => n.folderId === id ? { ...n, folderId: undefined, folderName: undefined } : n));
@@ -561,7 +533,7 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setEvents(prev =>
         prev.map(ev => {
           if (ev.id === parentId) {
-            const excluded = ev.excludedDates ? [...ev.excludedDates] : [];
+            const excluded = Array.isArray(ev.excludedDates) ? [...ev.excludedDates] : [];
             if (!excluded.includes(targetOccurrenceDate)) {
               excluded.push(targetOccurrenceDate);
             }
@@ -572,21 +544,16 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       );
 
       // 2. Create detached one-off event for this date with customized details
-      const detachedEvent: ScheduledEvent = {
+      const detachedEvent = sanitizeEvent({
+        ...eventData,
         id: now,
         title: eventData.title ?? 'Ministry Arrangement',
         dateMillis: targetMiddayMillis,
-        startTimeMillis: eventData.startTimeMillis ?? now,
-        endTimeMillis: eventData.endTimeMillis ?? now + 2 * 3600 * 1000,
-        location: eventData.location ?? '',
-        description: eventData.description ?? '',
-        reminderMinutesBefore: eventData.reminderMinutesBefore ?? 15,
         repeatOption: 'NONE', // Detached instance is a single event
-        isCompleted: eventData.isCompleted ?? false,
         createdAt: now,
         parentEventId: parentId,
         originalOccurrenceDate: targetOccurrenceDate,
-      };
+      }, now);
 
       setEvents(prev => [detachedEvent, ...prev]);
       return detachedEvent;
@@ -598,44 +565,28 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setEvents(prev => {
         return prev.map(ev => {
           if (ev.id === eventData.id) {
-            updatedEvent = {
+            updatedEvent = sanitizeEvent({
               ...ev,
-              title: eventData.title ?? ev.title,
-              dateMillis: eventData.dateMillis ?? ev.dateMillis,
-              startTimeMillis: eventData.startTimeMillis ?? ev.startTimeMillis,
-              endTimeMillis: eventData.endTimeMillis ?? ev.endTimeMillis,
-              location: eventData.location ?? ev.location,
-              description: eventData.description ?? ev.description,
-              reminderMinutesBefore: eventData.reminderMinutesBefore ?? ev.reminderMinutesBefore,
-              repeatOption: eventData.repeatOption ?? ev.repeatOption,
-              isCompleted: eventData.isCompleted ?? ev.isCompleted,
-              excludedDates: eventData.excludedDates ?? ev.excludedDates,
-              completedDates: eventData.completedDates ?? ev.completedDates,
-            };
+              ...eventData,
+              id: ev.id,
+              excludedDates: Array.isArray(eventData.excludedDates) ? eventData.excludedDates : ev.excludedDates,
+              completedDates: Array.isArray(eventData.completedDates) ? eventData.completedDates : ev.completedDates,
+            }, ev.id);
             return updatedEvent;
           }
           return ev;
         });
       });
-      return updatedEvent || (eventData as ScheduledEvent);
+      return updatedEvent || sanitizeEvent(eventData, now);
     }
 
     // Mode C: Create brand new event / recurring series
-    const newEvent: ScheduledEvent = {
+    const newEvent = sanitizeEvent({
+      ...eventData,
       id: now,
-      title: eventData.title ?? 'Ministry Arrangement',
-      dateMillis: eventData.dateMillis ?? now,
-      startTimeMillis: eventData.startTimeMillis ?? now,
-      endTimeMillis: eventData.endTimeMillis ?? now + 2 * 3600 * 1000,
-      location: eventData.location ?? '',
-      description: eventData.description ?? '',
-      reminderMinutesBefore: eventData.reminderMinutesBefore ?? 15,
-      repeatOption: eventData.repeatOption ?? 'NONE',
-      isCompleted: false,
       createdAt: now,
-      excludedDates: [],
-      completedDates: [],
-    };
+      isCompleted: false,
+    }, now);
     setEvents(prev => [newEvent, ...prev]);
     return newEvent;
   }, []);
@@ -1020,14 +971,15 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
     });
 
-    const monthlyMinutes = currentMonthEntries.reduce((sum, e) => sum + e.durationMinutes, 0);
-    const monthlyReturnVisits = currentMonthEntries.reduce((sum, e) => sum + e.returnVisits, 0);
-    const monthlyBibleStudies = currentMonthEntries.reduce((sum, e) => sum + e.bibleStudies, 0);
-    const monthlyPlacements = currentMonthEntries.reduce((sum, e) => sum + e.placements, 0);
+    const monthlyMinutes = currentMonthEntries.reduce((sum, e) => sum + (Number.isFinite(e.durationMinutes) ? e.durationMinutes : 0), 0);
+    const monthlyReturnVisits = currentMonthEntries.reduce((sum, e) => sum + (Number.isFinite(e.returnVisits) ? e.returnVisits : 0), 0);
+    const monthlyBibleStudies = currentMonthEntries.reduce((sum, e) => sum + (Number.isFinite(e.bibleStudies) ? e.bibleStudies : 0), 0);
+    const monthlyPlacements = currentMonthEntries.reduce((sum, e) => sum + (Number.isFinite(e.placements) ? e.placements : 0), 0);
 
-    const goalHours = settings.publisherStatus === 'CUSTOM'
+    const rawGoal = settings.publisherStatus === 'CUSTOM'
       ? settings.customGoalHours
       : PUBLISHER_STATUS_OPTIONS[settings.publisherStatus]?.defaultGoalHours || 0;
+    const goalHours = Number.isFinite(rawGoal) && rawGoal > 0 ? rawGoal : 0;
 
     const goalProgressPercentage = goalHours > 0 ? Math.min(1.0, (monthlyMinutes / 60) / goalHours) : 0;
 
@@ -1172,6 +1124,7 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     togglePinNote,
     toggleArchiveNote,
     saveFolder,
+    renameFolder,
     deleteFolder,
     updateHouseInNote,
     addHouseToNote,

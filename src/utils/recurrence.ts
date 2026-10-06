@@ -3,7 +3,10 @@ import { ScheduledEvent, ExpandedCalendarEvent } from '../types.ts';
 /**
  * Format a Date into 'YYYY-MM-DD' key based on local timezone
  */
-export function formatDateKey(date: Date): string {
+export function formatDateKey(date?: Date | null): string {
+  if (!date || isNaN(date.getTime())) {
+    date = new Date();
+  }
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
@@ -13,15 +16,25 @@ export function formatDateKey(date: Date): string {
 /**
  * Parse a 'YYYY-MM-DD' key into a local Date object at midday to avoid DST edges
  */
-export function parseDateKey(dateStr: string): Date {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d, 12, 0, 0, 0);
+export function parseDateKey(dateStr?: string | null): Date {
+  if (!dateStr || typeof dateStr !== 'string') {
+    return new Date();
+  }
+  const parts = dateStr.split('-').map(Number);
+  if (parts.length === 3 && parts.every(n => Number.isFinite(n) && n > 0)) {
+    return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0, 0);
+  }
+  return new Date();
 }
 
 /**
  * Normalizes date to midnight (00:00:00.000) local time
  */
-export function getMidnight(date: Date): Date {
+export function getMidnight(date?: Date | null): Date {
+  if (!date || isNaN(date.getTime())) {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  }
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
 }
 
@@ -29,7 +42,19 @@ export function getMidnight(date: Date): Date {
  * Checks if a scheduled event occurs on a specific target date (in local time)
  */
 export function doesEventOccurOnDate(event: ScheduledEvent, targetDate: Date): boolean {
-  const baseDate = new Date(event.dateMillis);
+  if (!event || !targetDate || isNaN(targetDate.getTime())) {
+    return false;
+  }
+  const baseMillis = Number.isFinite(event.dateMillis) && event.dateMillis > 0
+    ? event.dateMillis
+    : (Number.isFinite(event.startTimeMillis) ? event.startTimeMillis : 0);
+  if (!baseMillis) {
+    return false;
+  }
+  const baseDate = new Date(baseMillis);
+  if (isNaN(baseDate.getTime())) {
+    return false;
+  }
   const baseMidnight = getMidnight(baseDate);
   const targetMidnight = getMidnight(targetDate);
 
@@ -39,7 +64,7 @@ export function doesEventOccurOnDate(event: ScheduledEvent, targetDate: Date): b
   }
 
   // Check optional recurrence end date
-  if (event.recurrenceEndDateMillis) {
+  if (event.recurrenceEndDateMillis && Number.isFinite(event.recurrenceEndDateMillis)) {
     const endMidnight = getMidnight(new Date(event.recurrenceEndDateMillis));
     if (targetMidnight.getTime() > endMidnight.getTime()) {
       return false;
@@ -48,7 +73,7 @@ export function doesEventOccurOnDate(event: ScheduledEvent, targetDate: Date): b
 
   // Check excluded/deleted occurrence dates
   const targetDateKey = formatDateKey(targetDate);
-  if (event.excludedDates && event.excludedDates.includes(targetDateKey)) {
+  if (Array.isArray(event.excludedDates) && event.excludedDates.includes(targetDateKey)) {
     return false;
   }
 
@@ -107,13 +132,20 @@ export function getExpandedEventForDate(
   event: ScheduledEvent,
   targetDate: Date
 ): ExpandedCalendarEvent | null {
+  if (!event || !targetDate || isNaN(targetDate.getTime())) {
+    return null;
+  }
   if (!doesEventOccurOnDate(event, targetDate)) {
     return null;
   }
 
-  const origStart = new Date(event.startTimeMillis);
-  const origEnd = new Date(event.endTimeMillis);
-  const duration = Math.max(0, origEnd.getTime() - origStart.getTime());
+  const startMs = Number.isFinite(event.startTimeMillis) ? event.startTimeMillis : event.dateMillis;
+  const endMs = Number.isFinite(event.endTimeMillis) ? event.endTimeMillis : (startMs + 2 * 3600 * 1000);
+  const origStart = new Date(startMs);
+  const origEnd = new Date(endMs);
+  const safeStart = isNaN(origStart.getTime()) ? new Date() : origStart;
+  const safeEnd = isNaN(origEnd.getTime()) ? new Date(safeStart.getTime() + 2 * 3600 * 1000) : origEnd;
+  const duration = Math.max(0, safeEnd.getTime() - safeStart.getTime());
 
   const y = targetDate.getFullYear();
   const m = targetDate.getMonth();
@@ -123,20 +155,20 @@ export function getExpandedEventForDate(
     y,
     m,
     d,
-    origStart.getHours(),
-    origStart.getMinutes(),
-    origStart.getSeconds(),
+    safeStart.getHours(),
+    safeStart.getMinutes(),
+    safeStart.getSeconds(),
     0
   ).getTime();
 
   const occurrenceEndTimeMillis = occurrenceStartTimeMillis + duration;
   const occurrenceDateMillis = new Date(y, m, d, 12, 0, 0, 0).getTime();
   const occurrenceDateStr = formatDateKey(targetDate);
-  const isRecurringInstance = event.repeatOption !== 'NONE';
+  const isRecurringInstance = Boolean(event.repeatOption && event.repeatOption !== 'NONE');
 
   const isCompletedForOccurrence = isRecurringInstance
-    ? !!(event.completedDates && event.completedDates.includes(occurrenceDateStr))
-    : !!event.isCompleted;
+    ? Array.isArray(event.completedDates) && event.completedDates.includes(occurrenceDateStr)
+    : Boolean(event.isCompleted);
 
   const instanceId = `${event.id}_${occurrenceDateStr}`;
 
@@ -161,18 +193,22 @@ export function getOccurrencesForDate(
   events: ScheduledEvent[],
   targetDate: Date
 ): ExpandedCalendarEvent[] {
+  if (!Array.isArray(events) || !targetDate || isNaN(targetDate.getTime())) {
+    return [];
+  }
   const targetDateKey = formatDateKey(targetDate);
   const results: ExpandedCalendarEvent[] = [];
 
   // Track parent event IDs of any detached one-off instances for this date
   const detachedParentIds = new Set<number>();
   for (const ev of events) {
-    if (ev.parentEventId && ev.originalOccurrenceDate === targetDateKey) {
+    if (ev && ev.parentEventId && ev.originalOccurrenceDate === targetDateKey) {
       detachedParentIds.add(ev.parentEventId);
     }
   }
 
   for (const ev of events) {
+    if (!ev || typeof ev !== 'object') continue;
     // If this is a recurring series whose occurrence for this date was detached as a separate event, skip the series occurrence
     if (detachedParentIds.has(ev.id)) {
       continue;

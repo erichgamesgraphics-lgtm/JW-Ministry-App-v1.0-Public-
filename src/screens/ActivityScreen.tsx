@@ -7,6 +7,7 @@ import {
   Search,
   Clock,
   Radio,
+  Plus,
 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { EntryCard } from '../components/EntryCard.tsx';
@@ -18,6 +19,7 @@ interface ActivityScreenProps {
 }
 
 export const ActivityScreen: React.FC<ActivityScreenProps> = ({
+  onOpenNewEntry,
   onOpenEditEntry,
 }) => {
   const {
@@ -145,6 +147,18 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Quick Action: Log Ministry Entry */}
+      <div>
+        <button
+          type="button"
+          onClick={onOpenNewEntry}
+          className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] py-3.5 px-4 text-sm font-semibold text-white shadow-xs shadow-blue-500/25 border border-blue-400/30 transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
+        >
+          <Plus className="h-4 w-4 stroke-[2.5]" />
+          <span>{t.home.logService}</span>
+        </button>
       </div>
 
       {/* History Section */}

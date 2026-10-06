@@ -109,31 +109,52 @@ export function getTranslation(lang?: SupportedLanguage): TranslationSchema {
  * Format a duration in minutes into a localized string (e.g. "1h 30m" or "1 ժ 30 ր" or "1 ч 30 мин")
  */
 export function formatDurationLocalized(
-  minutes: number,
+  minutes: number | undefined | null,
   lang: SupportedLanguage = 'en'
 ): string {
+  const safeMinutes = Number.isFinite(minutes) && (minutes as number) >= 0 ? Math.round(minutes as number) : 0;
   const t = getTranslation(lang);
-  const hrs = Math.floor(minutes / 60);
-  const mins = minutes % 60;
+  const hrs = Math.floor(safeMinutes / 60);
+  const mins = safeMinutes % 60;
+
+  const hoursShort = t?.common?.hoursShort || 'h';
+  const minutesShort = t?.common?.minutesShort || 'm';
 
   if (hrs > 0) {
     if (mins > 0) {
-      return `${hrs}${t.common.hoursShort} ${mins}${t.common.minutesShort}`;
+      return `${hrs}${hoursShort} ${mins}${minutesShort}`;
     }
-    return `${hrs}${t.common.hoursShort}`;
+    return `${hrs}${hoursShort}`;
   }
-  return `${mins}${t.common.minutesShort}`;
+  return `${mins}${minutesShort}`;
 }
 
 /**
- * Format a date nicely using Intl based on the active language
+ * Format a date nicely using Intl based on the active language.
+ * Safely handles undefined, null, NaN, and invalid dates without throwing exceptions.
  */
 export function formatDateLocalized(
-  dateOrMillis: Date | number,
+  dateOrMillis: Date | number | undefined | null,
   lang: SupportedLanguage = 'en',
   options?: Intl.DateTimeFormatOptions
 ): string {
-  const date = typeof dateOrMillis === 'number' ? new Date(dateOrMillis) : dateOrMillis;
+  if (dateOrMillis === undefined || dateOrMillis === null) {
+    return '';
+  }
+  let date: Date;
+  if (typeof dateOrMillis === 'number') {
+    if (!Number.isFinite(dateOrMillis)) return '';
+    date = new Date(dateOrMillis);
+  } else if (dateOrMillis instanceof Date) {
+    date = dateOrMillis;
+  } else {
+    date = new Date(dateOrMillis);
+  }
+
+  if (isNaN(date.getTime())) {
+    return '';
+  }
+
   const localeMap: Record<SupportedLanguage, string> = {
     en: 'en-US',
     hy: 'hy-AM',
@@ -153,7 +174,14 @@ export function formatDateLocalized(
   try {
     return date.toLocaleDateString(locale, options || defaultOptions);
   } catch {
-    return date.toLocaleDateString('en-US', options || defaultOptions);
+    try {
+      return date.toLocaleDateString('en-US', options || defaultOptions);
+    } catch {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
   }
 }
 
@@ -161,8 +189,45 @@ export function formatDateLocalized(
  * Format Month and Year localized (e.g. "May 2026", "Մայիս 2026", "Май 2026")
  */
 export function formatMonthYearLocalized(
-  dateOrMillis: Date | number,
+  dateOrMillis: Date | number | undefined | null,
   lang: SupportedLanguage = 'en'
 ): string {
-  return formatDateLocalized(dateOrMillis, lang, { month: 'long', year: 'numeric' });
+  const result = formatDateLocalized(dateOrMillis, lang, { month: 'long', year: 'numeric' });
+  if (result) return result;
+  const now = new Date();
+  return formatDateLocalized(now, lang, { month: 'long', year: 'numeric' });
+}
+
+/**
+ * Format Time localized (e.g. "09:30 AM" or "09:30")
+ * Safely handles invalid dates without throwing RangeError.
+ */
+export function formatTimeLocalized(
+  dateOrMillis: Date | number | undefined | null,
+  lang: SupportedLanguage = 'en'
+): string {
+  if (dateOrMillis === undefined || dateOrMillis === null) return '--:--';
+  const date = typeof dateOrMillis === 'number' ? new Date(dateOrMillis) : dateOrMillis;
+  if (!date || isNaN(date.getTime())) return '--:--';
+
+  const localeMap: Record<SupportedLanguage, string> = {
+    en: 'en-US',
+    hy: 'hy-AM',
+    ru: 'ru-RU',
+    hi: 'hi-IN',
+    pa: 'pa-IN',
+  };
+  const locale = localeMap[lang] || 'en-US';
+
+  try {
+    return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    try {
+      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      const h = String(date.getHours()).padStart(2, '0');
+      const m = String(date.getMinutes()).padStart(2, '0');
+      return `${h}:${m}`;
+    }
+  }
 }

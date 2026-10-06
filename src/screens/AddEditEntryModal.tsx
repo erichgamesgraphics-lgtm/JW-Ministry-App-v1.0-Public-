@@ -13,6 +13,7 @@ import {
 import { MinistryEntry, MinistryTypeCategory } from '../types.ts';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { formatDateLocalized, formatDurationLocalized } from '../translations/index.ts';
+import { safeFormatDateInput } from '../utils/storage.ts';
 
 interface AddEditEntryModalProps {
   isOpen: boolean;
@@ -29,7 +30,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
 }) => {
   const { saveEntry, deleteEntry, language, t } = useMinistry();
 
-  const [date, setDate] = useState<Date>(() => initialDate || new Date());
+  const [date, setDate] = useState<Date>(() => (initialDate && !isNaN(initialDate.getTime()) ? initialDate : new Date()));
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isManualDuration, setIsManualDuration] = useState(true);
 
@@ -52,19 +53,42 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
   useEffect(() => {
     if (entryToEdit) {
       const d = new Date(entryToEdit.dateMillis);
-      setDate(d);
-      const h = Math.floor(entryToEdit.durationMinutes / 60);
-      const m = entryToEdit.durationMinutes % 60;
+      setDate(isNaN(d.getTime()) ? new Date() : d);
+
+      const dur = Number.isFinite(entryToEdit.durationMinutes) && entryToEdit.durationMinutes > 0
+        ? Math.round(entryToEdit.durationMinutes)
+        : 90;
+      const h = Math.floor(dur / 60);
+      const m = dur % 60;
       setHours(h);
       setMinutes(m);
-      setMinistryType(entryToEdit.ministryType);
-      setReturnVisits(entryToEdit.returnVisits);
-      setBibleStudies(entryToEdit.bibleStudies);
-      setPlacements(entryToEdit.placements);
+
+      if (Number.isFinite(entryToEdit.startTimeMillis) && Number.isFinite(entryToEdit.endTimeMillis)) {
+        const s = new Date(entryToEdit.startTimeMillis);
+        const e = new Date(entryToEdit.endTimeMillis);
+        if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
+          setStartTime(s.toTimeString().slice(0, 5));
+          setEndTime(e.toTimeString().slice(0, 5));
+        } else {
+          setStartTime('09:00');
+          setEndTime('10:30');
+        }
+      } else {
+        setStartTime('09:00');
+        const endHour = (9 + h + Math.floor((30 + m) / 60)) % 24;
+        const endMin = (30 + m) % 60;
+        setEndTime(`${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`);
+      }
+
+      setMinistryType(entryToEdit.ministryType || 'HOUSE_TO_HOUSE');
+      setReturnVisits(Math.max(0, Number(entryToEdit.returnVisits) || 0));
+      setBibleStudies(Math.max(0, Number(entryToEdit.bibleStudies) || 0));
+      setPlacements(Math.max(0, Number(entryToEdit.placements) || 0));
       setLocation(entryToEdit.location || '');
       setNotes(entryToEdit.notes || '');
     } else {
-      setDate(initialDate || new Date());
+      const validInitial = initialDate && !isNaN(initialDate.getTime()) ? initialDate : new Date();
+      setDate(validInitial);
       setHours(1);
       setMinutes(30);
       setStartTime('09:00');
@@ -84,12 +108,14 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
     if (isManualDuration && startTime && endTime) {
       const [sh, sm] = startTime.split(':').map(Number);
       const [eh, em] = endTime.split(':').map(Number);
-      let totalMins = (eh * 60 + em) - (sh * 60 + sm);
-      if (totalMins < 0) totalMins += 24 * 60; // handle overnight
-      const calcH = Math.floor(totalMins / 60);
-      const calcM = totalMins % 60;
-      setHours(calcH);
-      setMinutes(calcM);
+      if (Number.isFinite(sh) && Number.isFinite(sm) && Number.isFinite(eh) && Number.isFinite(em)) {
+        let totalMins = (eh * 60 + em) - (sh * 60 + sm);
+        if (totalMins < 0) totalMins += 24 * 60; // handle overnight
+        const calcH = Math.floor(totalMins / 60);
+        const calcM = totalMins % 60;
+        setHours(Math.max(0, calcH));
+        setMinutes(Math.max(0, Math.min(59, calcM)));
+      }
     }
   }, [startTime, endTime, isManualDuration]);
 
@@ -105,10 +131,13 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
 
   if (!isOpen) return null;
 
-  const totalCalculatedMinutes = hours * 60 + minutes;
+  const safeHours = Number.isFinite(hours) && hours >= 0 ? Math.floor(hours) : 0;
+  const safeMinutes = Number.isFinite(minutes) && minutes >= 0 ? Math.floor(minutes) : 0;
+  const totalCalculatedMinutes = Math.max(1, safeHours * 60 + safeMinutes);
   const durationSummaryFormatted = formatDurationLocalized(totalCalculatedMinutes, language);
 
-  const dateFormatted = formatDateLocalized(date, language, {
+  const safeDateObj = date && !isNaN(date.getTime()) ? date : new Date();
+  const dateFormatted = formatDateLocalized(safeDateObj, language, {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
@@ -117,16 +146,44 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const saveDate = date && !isNaN(date.getTime()) ? date : new Date();
+    const finalMinutes = Math.max(1, totalCalculatedMinutes);
+
+    // Calculate safe start and end times
+    let startMillis = 0;
+    let endMillis = 0;
+    if (startTime && endTime) {
+      const [sh, sm] = startTime.split(':').map(Number);
+      const [eh, em] = endTime.split(':').map(Number);
+      if (Number.isFinite(sh) && Number.isFinite(sm)) {
+        startMillis = new Date(saveDate.getFullYear(), saveDate.getMonth(), saveDate.getDate(), sh, sm, 0).getTime();
+      }
+      if (Number.isFinite(eh) && Number.isFinite(em)) {
+        endMillis = new Date(saveDate.getFullYear(), saveDate.getMonth(), saveDate.getDate(), eh, em, 0).getTime();
+        if (endMillis < startMillis) {
+          endMillis += 24 * 60 * 60 * 1000;
+        }
+      }
+    }
+
+    if (!startMillis || isNaN(startMillis)) {
+      startMillis = saveDate.getTime();
+      endMillis = startMillis + finalMinutes * 60 * 1000;
+    }
+
     saveEntry({
       id: entryToEdit ? entryToEdit.id : undefined,
-      dateMillis: date.getTime(),
-      durationMinutes: Math.max(1, totalCalculatedMinutes),
-      ministryType,
-      returnVisits,
-      bibleStudies,
-      placements,
-      location,
-      notes,
+      dateMillis: saveDate.getTime(),
+      startTimeMillis: startMillis,
+      endTimeMillis: endMillis,
+      durationMinutes: finalMinutes,
+      ministryType: ministryType || 'HOUSE_TO_HOUSE',
+      returnVisits: Math.max(0, Number(returnVisits) || 0),
+      bibleStudies: Math.max(0, Number(bibleStudies) || 0),
+      placements: Math.max(0, Number(placements) || 0),
+      location: (location || '').trim(),
+      notes: (notes || '').trim(),
     });
     onClose();
   };
@@ -220,12 +277,15 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
               <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#131D31] p-3">
                 <input
                   type="date"
-                  value={date.toISOString().split('T')[0]}
+                  value={safeFormatDateInput(date)}
                   onChange={e => {
-                    if (e.target.value) {
-                      const [y, m, d] = e.target.value.split('-').map(Number);
-                      setDate(new Date(y, m - 1, d, 10, 0));
-                      setShowDatePicker(false);
+                    const val = e.target.value;
+                    if (val) {
+                      const parts = val.split('-').map(Number);
+                      if (parts.length === 3 && parts.every(n => Number.isFinite(n) && n > 0)) {
+                        setDate(new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0));
+                        setShowDatePicker(false);
+                      }
                     }
                   }}
                   className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 text-xs font-bold text-slate-900 dark:text-white"

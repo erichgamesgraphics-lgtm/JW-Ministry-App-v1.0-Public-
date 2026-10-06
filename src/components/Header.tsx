@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sun, Moon, Sparkles, ShieldCheck, Settings, BarChart2 } from 'lucide-react';
+import { Sun, Moon, Sparkles, Settings, BarChart2 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { JWMinistryLogo } from './JWMinistryLogo.tsx';
 
@@ -54,10 +54,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onOpenReports })
               <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
                 {t.common.appName}
               </h1>
-              <span className="hidden sm:inline-flex items-center gap-1 rounded-md bg-blue-500/10 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300">
-                <ShieldCheck className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                {t.common.localAndPrivate}
-              </span>
             </div>
             <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
               {getStatusDisplayName()}

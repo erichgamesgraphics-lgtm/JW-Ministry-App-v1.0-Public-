@@ -596,6 +596,142 @@ export const VERIFIED_JW_ARTICLES_CATALOG: MultilingualJWArticle[] = [
       },
     },
   },
+  {
+    id: 'jw-patience-1',
+    url: 'https://www.jw.org/en/library/series/more-topics/what-does-the-bible-say-about-patience/',
+    source: 'JW.ORG',
+    bibleVerses: ['James 5:7, 8', 'Galatians 5:22', 'Proverbs 16:32'],
+    topicKeywords: ['patience', 'patient', 'endurance', 'long-suffering', 'waiting', 'терпение', 'терпеливость', 'долготерпение', 'համբերություն', 'տոկունություն', 'धैर्य', 'सहनशीलता', 'धीरज', 'ਸਬਰ'],
+    localizations: {
+      en: {
+        title: 'How Can You Be Patient With Others?',
+        snippet: 'Patience is a quality of God’s holy spirit. Learn practical Bible principles to cultivate calmness, deal with difficult people, and wait on Jehovah.',
+        publication: 'Bible Teachings & Answers',
+      },
+      hy: {
+        title: 'Ինչպես լինել համբերատար ուրիշների հանդեպ',
+        snippet: 'Համբերությունը Աստծու սուրբ ոգու պտուղն է։ Իմացեք աստվածաշնչյան գործնական սկզբունքներ՝ հանգստություն պահպանելու մասին։',
+        publication: 'Աստվածաշնչյան Ուսմունքներ',
+      },
+      ru: {
+        title: 'Как проявлять терпение к людям?',
+        snippet: 'Терпение — это составляющая плода святого духа Бога. Практические библейские советы о том, как сохранять спокойствие и не выходить из себя.',
+        publication: 'Библейские Учения',
+      },
+      hi: {
+        title: 'आप दूसरों के साथ धैर्य कैसे रख सकते हैं?',
+        snippet: 'धैर्य परमेश्वर की पवित्र आत्मा का एक गुण है। शांत रहने और कठिन लोगों से निपटने के लिए व्यावहारिक बाइबल सिद्धांत।',
+        publication: 'बाइबल की शिक्षाएं',
+      },
+      pa: {
+        title: 'ਤੁਸੀਂ ਦੂਜਿਆਂ ਨਾਲ ਧੀਰਜ ਕਿਵੇਂ ਰੱਖ ਸਕਦੇ ਹੋ?',
+        snippet: 'ਧੀਰਜ ਪਰਮੇਸ਼ੁਰ ਦੀ ਪਵਿੱਤਰ ਸ਼ਕਤੀ ਦਾ ਫਲ ਹੈ। ਸ਼ਾਂਤ ਰਹਿਣ ਅਤੇ ਮੁਸ਼ਕਲ ਲੋਕਾਂ ਨਾਲ ਨਜਿੱਠਣ ਲਈ ਬਾਈਬਲ ਦੇ ਸੁਝਾਅ।',
+        publication: 'ਬਾਈਬਲ ਦੀਆਂ ਸਿੱਖਿਆਵਾਂ',
+      },
+    },
+  },
+  {
+    id: 'jw-courage-1',
+    url: 'https://www.jw.org/en/bible-teachings/questions/how-to-be-courageous/',
+    source: 'JW.ORG',
+    bibleVerses: ['Joshua 1:9', 'Psalm 27:14', '1 Corinthians 16:13'],
+    topicKeywords: ['courage', 'courageous', 'brave', 'fearless', 'boldness', 'мужество', 'смелость', 'храбрость', 'քաջություն', 'արիություն', 'साहस', 'हौसला', 'ਦਲੇਰੀ', 'ਹੌਸਲਾ'],
+    localizations: {
+      en: {
+        title: 'How to Build True Christian Courage',
+        snippet: 'Courage is not the absence of fear, but relying on God despite challenges. Discover how prayer and Bible examples help you stand firm.',
+        publication: 'Bible Questions Answered',
+      },
+      hy: {
+        title: 'Ինչպես զարգացնել իսկական քաջություն',
+        snippet: 'Քաջությունը վախի բացակայությունը չէ, այլ Աստծուն ապավինելը։ Իմացեք, թե ինչպես աղոթքը և աստվածաշնչյան օրինակները կօգնեն ձեզ։',
+        publication: 'Աստվածաշնչյան Հարցեր',
+      },
+      ru: {
+        title: 'Как обрести истинную христианскую мужественность?',
+        snippet: 'Мужество — это не отсутствие страха, а упование на Бога вопреки испытаниям. Узнайте, как библейские примеры помогают быть стойкими.',
+        publication: 'Ответы на Библейские Вопросы',
+      },
+      hi: {
+        title: 'सच्चा मसीही साहस कैसे पैदा करें',
+        snippet: 'साहस डर का न होना नहीं है, बल्कि चुनौतियों के बावजूद परमेश्वर पर भरोसा रखना है। बाइबल के उदाहरण आपको साहसी बनने में कैसे मदद करते हैं।',
+        publication: 'बाइबल के प्रश्नों के उत्तर',
+      },
+      pa: {
+        title: 'ਸੱਚੀ ਮਸੀਹੀ ਦਲੇਰੀ ਕਿਵੇਂ ਬਣਾਈਏ',
+        snippet: 'ਦਲੇਰੀ ਡਰ ਦਾ ਨਾ ਹੋਣਾ ਨਹੀਂ ਹੈ, ਸਗੋਂ ਮੁਸ਼ਕਲਾਂ ਦੇ ਬਾਵਜੂਦ ਰੱਬ \'ਤੇ ਭਰੋਸਾ ਰੱਖਣਾ ਹੈ। ਦੇਖੋ ਬਾਈਬਲ ਦੀਆਂ ਮਿਸਾਲਾਂ ਤੁਹਾਨੂੰ ਕਿਵੇਂ ਮਜ਼ਬੂਤ ਕਰਦੀਆਂ ਹਨ।',
+        publication: 'ਬਾਈਬਲ ਦੇ ਸਵਾਲਾਂ ਦੇ ਜਵਾਬ',
+      },
+    },
+  },
+  {
+    id: 'jw-prayer-1',
+    url: 'https://www.jw.org/en/bible-teachings/questions/how-to-pray/',
+    source: 'JW.ORG',
+    bibleVerses: ['1 Thessalonians 5:17', 'Psalm 65:2', 'Matthew 6:9-13'],
+    topicKeywords: ['prayer', 'pray', 'talking to god', 'supplication', 'молитва', 'молиться', 'աղոթք', 'աղոթել', 'प्रार्थना', 'ਪ੍ਰਾਰਥਨਾ'],
+    localizations: {
+      en: {
+        title: 'Does God Hear and Answer Our Prayers?',
+        snippet: 'How to pray in a way that pleases God, what to pray for, and how Jehovah answers sincere prayers from the heart.',
+        publication: 'Bible Questions Answered',
+      },
+      hy: {
+        title: 'Արդյոք Աստված լսում է մեր աղոթքները',
+        snippet: 'Ինչպես աղոթել Աստծուն հաճելի ձևով, ինչի մասին աղոթել և ինչպես է Եհովան պատասխանում սրտանց աղոթքներին։',
+        publication: 'Աստվածաշնչյան Հարցեր',
+      },
+      ru: {
+        title: 'Слышит ли Бог наши молитвы и отвечает ли на них?',
+        snippet: 'Как молиться так, чтобы Бог слышал нас, о чем можно просить в молитве и как Иегова отвечает на искренние молитвы.',
+        publication: 'Ответы на Библейские Вопросы',
+      },
+      hi: {
+        title: 'क्या ईश्वर हमारी प्रार्थनाएँ सुनता है?',
+        snippet: 'ईश्वर को प्रसन्न करने वाले तरीके से प्रार्थना कैसे करें, किस चीज़ के लिए प्रार्थना करें और यहोवा प्रार्थनाओं का उत्तर कैसे देता है।',
+        publication: 'बाइबल के प्रश्नों के उत्तर',
+      },
+      pa: {
+        title: 'ਕੀ ਪਰਮੇਸ਼ੁਰ ਸਾਡੀਆਂ ਪ੍ਰਾਰਥਨਾਵਾਂ ਸੁਣਦਾ ਹੈ?',
+        snippet: 'ਰੱਬ ਨੂੰ ਖ਼ੁਸ਼ ਕਰਨ ਵਾਲੇ ਤਰੀਕੇ ਨਾਲ ਪ੍ਰਾਰਥਨਾ ਕਿਵੇਂ ਕਰੀਏ ਅਤੇ ਯਹੋਵਾਹ ਸਾਡੀਆਂ ਪ੍ਰਾਰਥਨਾਵਾਂ ਦਾ ਜਵਾਬ ਕਿਵੇਂ ਦਿੰਦਾ ਹੈ।',
+        publication: 'ਬਾਈਬਲ ਦੇ ਸਵਾਲਾਂ ਦੇ ਜਵਾਬ',
+      },
+    },
+  },
+  {
+    id: 'jw-preaching-1',
+    url: 'https://www.jw.org/en/library/series/more-topics/share-good-news/',
+    source: 'JW.ORG',
+    bibleVerses: ['Matthew 28:19, 20', 'Acts 20:20', '2 Timothy 4:2'],
+    topicKeywords: ['preaching', 'ministry', 'good news', 'field service', 'door to door', 'проповедь', 'служение', 'благая весть', 'քարոզչություն', 'ծառայություն', 'բարի լուր', 'प्रचार', 'सेवकाई', 'सुसमाचार', 'ਪ੍ਰਚਾਰ', 'ਸੇਵਕਾਈ', 'ਖ਼ੁਸ਼ਖ਼ਬਰੀ'],
+    localizations: {
+      en: {
+        title: 'Why Do Jehovah’s Witnesses Preach Door to Door?',
+        snippet: 'The scriptural reasons behind the worldwide preaching work, sharing comfort from the Bible, and helping people know God’s name.',
+        publication: 'Bible Teachings & Ministry',
+      },
+      hy: {
+        title: 'Ինչու են Եհովայի վկաները քարոզում տնից տուն',
+        snippet: 'Աստվածաշնչյան պատճառները համաշխարհային քարոզչական աշխատանքի հետևում և բարի լուրը մարդկանց փոխանցելու մասին։',
+        publication: 'Ծառայություն և Աստվածաշունչ',
+      },
+      ru: {
+        title: 'Почему Свидетели Иеговы проповедуют по домам?',
+        snippet: 'Библейские основания всемирной проповеднической деятельности, обмен утешением из Библии и помощь людям в познании Бога.',
+        publication: 'Библейские Учения и Служение',
+      },
+      hi: {
+        title: 'यहोवा के साक्षी घर-घर जाकर प्रचार क्यों करते हैं?',
+        snippet: 'दुनिया भर में प्रचार कार्य के पीछे बाइबल के कारण, लोगों को बाइबल से सांत्वना देना और परमेश्वर का नाम बताना।',
+        publication: 'बाइबल की शिक्षाएं और सेवकाई',
+      },
+      pa: {
+        title: 'ਯਹੋਵਾਹ ਦੇ ਗਵਾਹ ਘਰ-ਘਰ ਜਾ ਕੇ ਪ੍ਰਚਾਰ ਕਿਉਂ ਕਰਦੇ ਹਨ?',
+        snippet: 'ਪੂਰੀ ਦੁਨੀਆਂ ਵਿੱਚ ਪ੍ਰਚਾਰ ਕੰਮ ਦੇ ਬਾਈਬਲੀ ਕਾਰਨ ਅਤੇ ਲੋਕਾਂ ਨੂੰ ਪਰਮੇਸ਼ੁਰ ਦਾ ਨਾਂ ਦੱਸਣ ਦੀ ਅਹਿਮਿਅਤ।',
+        publication: 'ਬਾਈਬਲ ਦੀਆਂ ਸਿੱਖਿਆਵਾਂ',
+      },
+    },
+  },
 ];
 
 let cachedJWT: { token: string; expiresAt: number } | null = null;

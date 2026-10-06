@@ -45,35 +45,39 @@ const AppContent: React.FC = () => {
   // Modal states
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
   const [entryToEdit, setEntryToEdit] = useState<MinistryEntry | null>(null);
+  const [initialEntryDate, setInitialEntryDate] = useState<Date | undefined>(undefined);
 
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [eventToEdit, setEventToEdit] = useState<ScheduledEvent | ExpandedCalendarEvent | null>(null);
   const [initialScheduleDate, setInitialScheduleDate] = useState<Date | undefined>(undefined);
 
-  const handleOpenNewEntry = () => {
+  const handleOpenNewEntry = (date?: Date) => {
     setEntryToEdit(null);
+    setInitialEntryDate(date && !isNaN(date.getTime()) ? date : new Date());
     setIsEntryModalOpen(true);
   };
 
   const handleOpenEditEntry = (entry: MinistryEntry) => {
     setEntryToEdit(entry);
+    setInitialEntryDate(entry?.dateMillis ? new Date(entry.dateMillis) : new Date());
     setIsEntryModalOpen(true);
   };
 
   const handleCloseEntryModal = () => {
     setIsEntryModalOpen(false);
     setEntryToEdit(null);
+    setInitialEntryDate(undefined);
   };
 
   const handleOpenNewSchedule = (date?: Date) => {
     setEventToEdit(null);
-    setInitialScheduleDate(date || new Date());
+    setInitialScheduleDate(date && !isNaN(date.getTime()) ? date : new Date());
     setIsScheduleModalOpen(true);
   };
 
   const handleOpenEditSchedule = (event: ScheduledEvent | ExpandedCalendarEvent) => {
     setEventToEdit(event);
-    setInitialScheduleDate(new Date(event.dateMillis));
+    setInitialScheduleDate(event?.dateMillis ? new Date(event.dateMillis) : new Date());
     setIsScheduleModalOpen(true);
   };
 
@@ -231,6 +235,8 @@ const AppContent: React.FC = () => {
               <CalendarScreen
                 onOpenNewSchedule={handleOpenNewSchedule}
                 onOpenEditSchedule={handleOpenEditSchedule}
+                onOpenNewEntry={handleOpenNewEntry}
+                onOpenEditEntry={handleOpenEditEntry}
               />
             )}
             {activeTab === 'reports' && <ReportsScreen />}
@@ -253,6 +259,7 @@ const AppContent: React.FC = () => {
         isOpen={isEntryModalOpen}
         onClose={handleCloseEntryModal}
         entryToEdit={entryToEdit}
+        initialDate={initialEntryDate}
       />
 
       <AddEditScheduleModal

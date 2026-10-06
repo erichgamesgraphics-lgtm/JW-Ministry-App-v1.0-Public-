@@ -14,7 +14,7 @@ import {
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { StatCard } from '../components/StatCard.tsx';
 import { MinistryEntry } from '../types.ts';
-import { formatDurationLocalized, formatMonthYearLocalized } from '../translations/index.ts';
+import { formatDurationLocalized, formatMonthYearLocalized, formatDateLocalized } from '../translations/index.ts';
 
 interface HomeScreenProps {
   onOpenNewEntry: () => void;
@@ -286,7 +286,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                       </span>
                     </div>
                     <span className="text-[11px] font-medium text-slate-400 shrink-0 ml-2">
-                      {new Date(n.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                      {formatDateLocalized(n.updatedAt, language, { month: 'short', day: 'numeric' })}
                     </span>
                   </div>
                 ))}

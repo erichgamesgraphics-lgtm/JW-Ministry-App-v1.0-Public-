@@ -54,6 +54,89 @@ function getStorageKey(baseKey: string, userScope: string = 'guest'): string {
   return `${baseKey}_${sanitizedScope}`;
 }
 
+export function safeFormatDateInput(d?: Date | number | string | null): string {
+  if (!d) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  let date: Date;
+  if (typeof d === 'number') {
+    date = Number.isFinite(d) ? new Date(d) : new Date();
+  } else if (typeof d === 'string') {
+    // If already in 'YYYY-MM-DD' format, return directly if valid
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d.trim())) {
+      return d.trim();
+    }
+    date = new Date(d);
+  } else {
+    date = d;
+  }
+  if (!date || isNaN(date.getTime())) {
+    date = new Date();
+  }
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export function sanitizeEntry(e: any, fallbackId: number = Date.now()): MinistryEntry {
+  const now = Date.now();
+  const dateMillis = Number.isFinite(e?.dateMillis) && e.dateMillis > 0 ? Number(e.dateMillis) : now;
+  const durationMinutes = Number.isFinite(e?.durationMinutes) && e.durationMinutes > 0 ? Math.round(Number(e.durationMinutes)) : 0;
+  const startTimeMillis = Number.isFinite(e?.startTimeMillis) && e.startTimeMillis > 0 ? Number(e.startTimeMillis) : dateMillis;
+  const endTimeMillis = Number.isFinite(e?.endTimeMillis) && e.endTimeMillis >= startTimeMillis
+    ? Number(e.endTimeMillis)
+    : (startTimeMillis + durationMinutes * 60 * 1000);
+
+  return {
+    id: Number.isFinite(e?.id) && e.id > 0 ? Number(e.id) : fallbackId,
+    dateMillis,
+    startTimeMillis,
+    endTimeMillis,
+    durationMinutes,
+    ministryType: e?.ministryType || 'HOUSE_TO_HOUSE',
+    returnVisits: Math.max(0, Number(e?.returnVisits) || 0),
+    bibleStudies: Math.max(0, Number(e?.bibleStudies) || 0),
+    placements: Math.max(0, Number(e?.placements) || 0),
+    location: typeof e?.location === 'string' ? e.location : '',
+    notes: typeof e?.notes === 'string' ? e.notes : '',
+    isSynced: Boolean(e?.isSynced),
+    createdAt: Number.isFinite(e?.createdAt) && e.createdAt > 0 ? Number(e.createdAt) : now,
+    updatedAt: Number.isFinite(e?.updatedAt) && e.updatedAt > 0 ? Number(e.updatedAt) : now,
+  };
+}
+
+export function sanitizeEvent(ev: any, fallbackId: number = Date.now()): ScheduledEvent {
+  const now = Date.now();
+  const dateMillis = Number.isFinite(ev?.dateMillis) && ev.dateMillis > 0 ? Number(ev.dateMillis) : now;
+  const startTimeMillis = Number.isFinite(ev?.startTimeMillis) && ev.startTimeMillis > 0 ? Number(ev.startTimeMillis) : dateMillis;
+  const endTimeMillis = Number.isFinite(ev?.endTimeMillis) && ev.endTimeMillis > startTimeMillis
+    ? Number(ev.endTimeMillis)
+    : (startTimeMillis + 2 * 3600 * 1000);
+
+  return {
+    id: Number.isFinite(ev?.id) && ev.id > 0 ? Number(ev.id) : fallbackId,
+    title: typeof ev?.title === 'string' && ev.title.trim() ? ev.title.trim() : 'Ministry Arrangement',
+    dateMillis,
+    startTimeMillis,
+    endTimeMillis,
+    location: typeof ev?.location === 'string' ? ev.location : '',
+    description: typeof ev?.description === 'string' ? ev.description : '',
+    reminderMinutesBefore: Number.isFinite(ev?.reminderMinutesBefore) ? Number(ev.reminderMinutesBefore) : 15,
+    repeatOption: ev?.repeatOption || 'NONE',
+    isCompleted: Boolean(ev?.isCompleted),
+    createdAt: Number.isFinite(ev?.createdAt) && ev.createdAt > 0 ? Number(ev.createdAt) : now,
+    excludedDates: Array.isArray(ev?.excludedDates) ? ev.excludedDates.filter((d: any) => typeof d === 'string') : [],
+    completedDates: Array.isArray(ev?.completedDates) ? ev.completedDates.filter((d: any) => typeof d === 'string') : [],
+    parentEventId: Number.isFinite(ev?.parentEventId) ? Number(ev.parentEventId) : undefined,
+    originalOccurrenceDate: typeof ev?.originalOccurrenceDate === 'string' ? ev.originalOccurrenceDate : undefined,
+  };
+}
+
 export const storage = {
   getEntries(userScope: string = 'guest'): MinistryEntry[] {
     try {
@@ -61,7 +144,10 @@ export const storage = {
       const data = localStorage.getItem(scopedKey);
       if (data) {
         const parsed = JSON.parse(data);
-        return Array.isArray(parsed) ? parsed : [];
+        if (Array.isArray(parsed)) {
+          return parsed.map((e, idx) => sanitizeEntry(e, Date.now() + idx));
+        }
+        return [];
       }
       
       // If legacy data exists and we are in guest scope, migrate once
@@ -70,8 +156,9 @@ export const storage = {
         if (legacyData) {
           const parsedLegacy = JSON.parse(legacyData);
           if (Array.isArray(parsedLegacy) && parsedLegacy.length > 0) {
-            localStorage.setItem(scopedKey, legacyData);
-            return parsedLegacy;
+            const sanitized = parsedLegacy.map((e, idx) => sanitizeEntry(e, Date.now() + idx));
+            localStorage.setItem(scopedKey, JSON.stringify(sanitized));
+            return sanitized;
           }
         }
       }
@@ -86,7 +173,8 @@ export const storage = {
   saveEntries(entries: MinistryEntry[], userScope: string = 'guest'): void {
     try {
       const scopedKey = getStorageKey(BASE_ENTRIES_KEY, userScope);
-      localStorage.setItem(scopedKey, JSON.stringify(entries));
+      const sanitized = Array.isArray(entries) ? entries.map((e, idx) => sanitizeEntry(e, Date.now() + idx)) : [];
+      localStorage.setItem(scopedKey, JSON.stringify(sanitized));
     } catch (e) {
       console.warn('Failed to save entries to localStorage', e);
     }
@@ -98,7 +186,10 @@ export const storage = {
       const data = localStorage.getItem(scopedKey);
       if (data) {
         const parsed = JSON.parse(data);
-        return Array.isArray(parsed) ? parsed : [];
+        if (Array.isArray(parsed)) {
+          return parsed.map((ev, idx) => sanitizeEvent(ev, Date.now() + idx));
+        }
+        return [];
       }
 
       // If legacy data exists and we are in guest scope, migrate once
@@ -107,8 +198,9 @@ export const storage = {
         if (legacyData) {
           const parsedLegacy = JSON.parse(legacyData);
           if (Array.isArray(parsedLegacy) && parsedLegacy.length > 0) {
-            localStorage.setItem(scopedKey, legacyData);
-            return parsedLegacy;
+            const sanitized = parsedLegacy.map((ev, idx) => sanitizeEvent(ev, Date.now() + idx));
+            localStorage.setItem(scopedKey, JSON.stringify(sanitized));
+            return sanitized;
           }
         }
       }
@@ -123,7 +215,8 @@ export const storage = {
   saveEvents(events: ScheduledEvent[], userScope: string = 'guest'): void {
     try {
       const scopedKey = getStorageKey(BASE_EVENTS_KEY, userScope);
-      localStorage.setItem(scopedKey, JSON.stringify(events));
+      const sanitized = Array.isArray(events) ? events.map((ev, idx) => sanitizeEvent(ev, Date.now() + idx)) : [];
+      localStorage.setItem(scopedKey, JSON.stringify(sanitized));
     } catch (e) {
       console.warn('Failed to save events to localStorage', e);
     }

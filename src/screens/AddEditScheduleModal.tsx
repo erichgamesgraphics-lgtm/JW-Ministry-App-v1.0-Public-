@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Calendar as CalendarIcon, Clock, MapPin, Bell, Repeat, FileText, Trash2, Check } from 'lucide-react';
 import { ScheduledEvent, ExpandedCalendarEvent, ReminderOptionType, RepeatOptionType, REMINDER_OPTIONS } from '../types.ts';
 import { useMinistry } from '../context/MinistryContext.tsx';
+import { safeFormatDateInput } from '../utils/storage.ts';
 
 interface AddEditScheduleModalProps {
   isOpen: boolean;
@@ -19,7 +20,7 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
   const { saveEvent, deleteEvent, t } = useMinistry();
 
   const [title, setTitle] = useState('');
-  const [dateStr, setDateStr] = useState(() => (initialDate || new Date()).toISOString().split('T')[0]);
+  const [dateStr, setDateStr] = useState(() => safeFormatDateInput(initialDate));
   const [startTime, setStartTime] = useState('09:30');
   const [endTime, setEndTime] = useState('11:30');
   const [location, setLocation] = useState('');
@@ -42,24 +43,41 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
 
   useEffect(() => {
     if (eventToEdit) {
-      setTitle(eventToEdit.title);
-      setDateStr(new Date(eventToEdit.dateMillis).toISOString().split('T')[0]);
+      setTitle(eventToEdit.title || '');
+      setDateStr(safeFormatDateInput(eventToEdit.dateMillis));
       
-      const startD = new Date(eventToEdit.startTimeMillis);
-      const endD = new Date(eventToEdit.endTimeMillis);
-      setStartTime(startD.toTimeString().slice(0, 5));
-      setEndTime(endD.toTimeString().slice(0, 5));
+      if (Number.isFinite(eventToEdit.startTimeMillis)) {
+        const startD = new Date(eventToEdit.startTimeMillis);
+        if (!isNaN(startD.getTime())) {
+          setStartTime(startD.toTimeString().slice(0, 5));
+        } else {
+          setStartTime('09:30');
+        }
+      } else {
+        setStartTime('09:30');
+      }
+
+      if (Number.isFinite(eventToEdit.endTimeMillis)) {
+        const endD = new Date(eventToEdit.endTimeMillis);
+        if (!isNaN(endD.getTime())) {
+          setEndTime(endD.toTimeString().slice(0, 5));
+        } else {
+          setEndTime('11:30');
+        }
+      } else {
+        setEndTime('11:30');
+      }
       
       setLocation(eventToEdit.location || '');
       setDescription(eventToEdit.description || '');
       
-      // Match reminder option
+      // Match reminder option safely
       const matchingRem = Object.values(REMINDER_OPTIONS).find(r => r.minutesBefore === eventToEdit.reminderMinutesBefore);
       setReminder(matchingRem?.id || 'MINUTES_15');
       setRepeat(eventToEdit.repeatOption || 'NONE');
     } else {
       setTitle('');
-      setDateStr((initialDate || new Date()).toISOString().split('T')[0]);
+      setDateStr(safeFormatDateInput(initialDate));
       setStartTime('09:30');
       setEndTime('11:30');
       setLocation('');
@@ -72,17 +90,57 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
     setPendingSaveData(null);
   }, [eventToEdit, initialDate, isOpen]);
 
+  useEffect(() => {
+    if (isOpen) {
+      const originalStyle = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalStyle;
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const [startH, startM] = startTime.split(':').map(Number);
-    const [endH, endM] = endTime.split(':').map(Number);
+    
+    // Parse date safely
+    let y: number, m: number, d: number;
+    const dateParts = (dateStr || '').split('-').map(Number);
+    if (dateParts.length === 3 && dateParts.every(n => Number.isFinite(n) && n > 0)) {
+      [y, m, d] = dateParts;
+    } else {
+      const today = new Date();
+      y = today.getFullYear();
+      m = today.getMonth() + 1;
+      d = today.getDate();
+    }
+
+    // Parse times safely
+    let startH = 9, startM = 30;
+    const startParts = (startTime || '09:30').split(':').map(Number);
+    if (startParts.length >= 2 && Number.isFinite(startParts[0]) && Number.isFinite(startParts[1])) {
+      startH = Math.max(0, Math.min(23, startParts[0]));
+      startM = Math.max(0, Math.min(59, startParts[1]));
+    }
+
+    let endH = 11, endM = 30;
+    const endParts = (endTime || '11:30').split(':').map(Number);
+    if (endParts.length >= 2 && Number.isFinite(endParts[0]) && Number.isFinite(endParts[1])) {
+      endH = Math.max(0, Math.min(23, endParts[0]));
+      endM = Math.max(0, Math.min(59, endParts[1]));
+    }
 
     const dateMillis = new Date(y, m - 1, d, 12, 0, 0).getTime();
     const startTimeMillis = new Date(y, m - 1, d, startH, startM, 0).getTime();
-    const endTimeMillis = new Date(y, m - 1, d, endH, endM, 0).getTime();
+    let endTimeMillis = new Date(y, m - 1, d, endH, endM, 0).getTime();
+    if (endTimeMillis <= startTimeMillis) {
+      endTimeMillis = startTimeMillis + 2 * 3600 * 1000;
+    }
+
+    const reminderMinutesBefore = REMINDER_OPTIONS[reminder]?.minutesBefore ?? 15;
+    const safeRepeat = repeat || 'NONE';
 
     const payload: Partial<ScheduledEvent> = {
       id: eventToEdit ? eventToEdit.id : undefined,
@@ -90,11 +148,11 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
       dateMillis,
       startTimeMillis,
       endTimeMillis,
-      location,
-      description,
-      reminderMinutesBefore: REMINDER_OPTIONS[reminder].minutesBefore,
-      repeatOption: repeat,
-      isCompleted: eventToEdit ? eventToEdit.isCompleted : false,
+      location: (location || '').trim(),
+      description: (description || '').trim(),
+      reminderMinutesBefore,
+      repeatOption: safeRepeat,
+      isCompleted: eventToEdit ? Boolean(eventToEdit.isCompleted) : false,
     };
 
     // If editing a recurring instance, ask user whether to update this occurrence only or the series
@@ -132,16 +190,6 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
       onClose();
     }
   };
-
-  useEffect(() => {
-    if (isOpen) {
-      const originalStyle = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = originalStyle;
-      };
-    }
-  }, [isOpen]);
 
   const reminderOptionsList: Array<{ id: ReminderOptionType; label: string }> = [
     { id: 'NONE', label: t.scheduleModal.reminders.none },
