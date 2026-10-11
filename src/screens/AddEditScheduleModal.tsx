@@ -3,6 +3,7 @@ import { X, Calendar as CalendarIcon, Clock, MapPin, Bell, Repeat, FileText, Tra
 import { ScheduledEvent, ExpandedCalendarEvent, ReminderOptionType, RepeatOptionType, REMINDER_OPTIONS } from '../types.ts';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { safeFormatDateInput } from '../utils/storage.ts';
+import { GoogleCalendarConfirmModal } from '../components/GoogleCalendarConfirmModal.tsx';
 
 interface AddEditScheduleModalProps {
   isOpen: boolean;
@@ -17,7 +18,14 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
   eventToEdit,
   initialDate,
 }) => {
-  const { saveEvent, deleteEvent, t } = useMinistry();
+  const {
+    saveEvent,
+    deleteEvent,
+    syncScheduleToGoogleCalendar,
+    deleteScheduleFromGoogleCalendar,
+    isGoogleCalendarConnected,
+    t,
+  } = useMinistry();
 
   const [title, setTitle] = useState('');
   const [dateStr, setDateStr] = useState(() => safeFormatDateInput(initialDate));
@@ -30,6 +38,10 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditRecurringPrompt, setShowEditRecurringPrompt] = useState(false);
   const [pendingSaveData, setPendingSaveData] = useState<Partial<ScheduledEvent> | null>(null);
+  const [syncToGoogleCalendar, setSyncToGoogleCalendar] = useState<boolean>(true);
+  const [showGoogleConfirm, setShowGoogleConfirm] = useState<boolean>(false);
+  const [pendingPayloadToSync, setPendingPayloadToSync] = useState<{ payload: Partial<ScheduledEvent>; editMode?: 'THIS_OCCURRENCE' | 'ALL_OCCURRENCES' } | null>(null);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   const isRecurring = Boolean(
     eventToEdit && (
@@ -162,12 +174,24 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
       return;
     }
 
+    if (isGoogleCalendarConnected && syncToGoogleCalendar) {
+      setPendingPayloadToSync({ payload });
+      setShowGoogleConfirm(true);
+      return;
+    }
+
     saveEvent(payload);
     onClose();
   };
 
   const handleApplyEditMode = (mode: 'THIS_OCCURRENCE' | 'ALL_OCCURRENCES') => {
     if (pendingSaveData) {
+      if (isGoogleCalendarConnected && syncToGoogleCalendar) {
+        setPendingPayloadToSync({ payload: pendingSaveData, editMode: mode });
+        setShowEditRecurringPrompt(false);
+        setShowGoogleConfirm(true);
+        return;
+      }
       saveEvent(pendingSaveData, mode, occurrenceDateKey);
     }
     setShowEditRecurringPrompt(false);
@@ -175,8 +199,32 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
     onClose();
   };
 
+  const handleConfirmGoogleSyncSave = async () => {
+    if (!pendingPayloadToSync) return;
+    setIsSyncing(true);
+    try {
+      const saved = saveEvent(
+        pendingPayloadToSync.payload,
+        pendingPayloadToSync.editMode,
+        occurrenceDateKey
+      );
+      await syncScheduleToGoogleCalendar(saved);
+    } catch (err) {
+      console.error('Error syncing to Google Calendar:', err);
+    } finally {
+      setIsSyncing(false);
+      setShowGoogleConfirm(false);
+      setPendingPayloadToSync(null);
+      setPendingSaveData(null);
+      onClose();
+    }
+  };
+
   const handleDeleteOccurrence = () => {
     if (eventToEdit) {
+      if (eventToEdit.googleCalendarEventId) {
+        deleteScheduleFromGoogleCalendar(eventToEdit.googleCalendarEventId).catch(() => {});
+      }
       deleteEvent(eventToEdit.id, 'THIS_OCCURRENCE', occurrenceDateKey);
       setShowDeleteConfirm(false);
       onClose();
@@ -185,6 +233,9 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
 
   const handleDeleteAll = () => {
     if (eventToEdit) {
+      if (eventToEdit.googleCalendarEventId) {
+        deleteScheduleFromGoogleCalendar(eventToEdit.googleCalendarEventId).catch(() => {});
+      }
       deleteEvent(eventToEdit.id, 'ALL_OCCURRENCES');
       setShowDeleteConfirm(false);
       onClose();
@@ -369,6 +420,34 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
             />
           </div>
 
+          {/* Google Calendar Sync Toggle */}
+          {isGoogleCalendarConnected && (
+            <div className="flex items-center justify-between p-3 rounded-2xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-950/20">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400">
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">
+                    {t.calendar.syncToGoogleCalendar || 'Sync to Google Calendar'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Add or update this arrangement on your Google Calendar
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={syncToGoogleCalendar}
+                  onChange={e => setSyncToGoogleCalendar(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+          )}
+
           {/* Buttons */}
           <div className="flex items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
             {eventToEdit && (
@@ -506,6 +585,30 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
           </div>
         </div>
       )}
+
+      {/* Google Calendar Sync Confirmation Modal */}
+      <GoogleCalendarConfirmModal
+        isOpen={showGoogleConfirm}
+        title="Sync to Google Calendar?"
+        description={`Add or update "${(pendingPayloadToSync?.payload?.title || title || 'Arrangement').trim()}" in your primary Google Calendar?`}
+        actionLabel="Confirm & Sync"
+        actionType="sync"
+        isLoading={isSyncing}
+        onConfirm={handleConfirmGoogleSyncSave}
+        onCancel={() => {
+          setShowGoogleConfirm(false);
+          if (pendingPayloadToSync) {
+            saveEvent(
+              pendingPayloadToSync.payload,
+              pendingPayloadToSync.editMode,
+              occurrenceDateKey
+            );
+          }
+          setPendingPayloadToSync(null);
+          setPendingSaveData(null);
+          onClose();
+        }}
+      />
     </>
   );
 };

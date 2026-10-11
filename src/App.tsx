@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, X, Calendar as CalendarIcon } from 'lucide-react';
+import { Bell, X, Calendar as CalendarIcon, CheckCircle2, Clock } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { MinistryProvider, useMinistry } from './context/MinistryContext.tsx';
 import { Header } from './components/Header.tsx';
@@ -143,13 +143,27 @@ const AppContent: React.FC = () => {
       {/* Active In-App Notification Toast */}
       {activeNotification && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md animate-in slide-in-from-top duration-300">
-          <div className="rounded-2xl bg-amber-500 text-white p-4 shadow-xl flex items-start justify-between gap-3 border border-amber-400/50">
+          <div
+            className={`rounded-2xl text-white p-4 shadow-xl flex items-start justify-between gap-3 border ${
+              activeNotification.type === 'entry'
+                ? 'bg-emerald-600 border-emerald-400/50'
+                : activeNotification.type === 'event'
+                ? 'bg-amber-500 border-amber-400/50'
+                : 'bg-blue-600 border-blue-400/50'
+            }`}
+          >
             <div className="flex items-start gap-3">
               <div className="rounded-xl bg-white/20 p-2 mt-0.5 shrink-0">
-                <Bell className="h-5 w-5" />
+                {activeNotification.type === 'entry' ? (
+                  <CheckCircle2 className="h-5 w-5" />
+                ) : activeNotification.type === 'event' ? (
+                  <CalendarIcon className="h-5 w-5" />
+                ) : (
+                  <Bell className="h-5 w-5" />
+                )}
               </div>
               <div className="space-y-0.5">
-                <p className="text-xs font-semibold uppercase tracking-wider text-amber-100">
+                <p className="text-xs font-semibold uppercase tracking-wider opacity-90">
                   {activeNotification.title}
                 </p>
                 <p className="text-sm font-bold leading-snug">
@@ -158,19 +172,33 @@ const AppContent: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                onClick={() => {
-                  setActiveTab('calendar');
-                  dismissActiveNotification();
-                }}
-                className="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-xs font-bold transition-colors cursor-pointer"
-              >
-                <CalendarIcon className="h-3.5 w-3.5 inline mr-1" />
-                View
-              </button>
+              {activeNotification.type === 'event' && (
+                <button
+                  onClick={() => {
+                    setActiveTab('calendar');
+                    dismissActiveNotification();
+                  }}
+                  className="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  <CalendarIcon className="h-3.5 w-3.5 inline mr-1" />
+                  View
+                </button>
+              )}
+              {activeNotification.type === 'entry' && (
+                <button
+                  onClick={() => {
+                    setActiveTab('activity');
+                    dismissActiveNotification();
+                  }}
+                  className="rounded-lg bg-white/20 hover:bg-white/30 px-2.5 py-1 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  <Clock className="h-3.5 w-3.5 inline mr-1" />
+                  View
+                </button>
+              )}
               <button
                 onClick={dismissActiveNotification}
-                className="rounded-lg p-1 text-amber-100 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                className="rounded-lg p-1 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                 title="Dismiss"
               >
                 <X className="h-4 w-4" />

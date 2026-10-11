@@ -183,6 +183,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       {/* Primary Action Button: + Add Ministry Entry (Compact Mobile Touch Target) */}
       <div>
         <button
+          type="button"
+          id="home-record-entry-btn"
           onClick={onOpenNewEntry}
           className="w-full rounded-xl sm:rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] py-3 sm:py-3.5 px-4 text-sm sm:text-base font-semibold text-white shadow-xs shadow-blue-500/25 border border-blue-400/30 transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
         >

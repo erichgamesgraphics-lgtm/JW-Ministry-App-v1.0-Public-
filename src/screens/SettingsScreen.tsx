@@ -23,10 +23,14 @@ import {
   FileText,
   Calendar,
   Clock,
+  RefreshCw,
+  LogOut,
 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { PublisherStatusType, SupportedLanguage } from '../types.ts';
 import { JWMinistryLogo } from '../components/JWMinistryLogo.tsx';
+import { GoogleSignInButton } from '../components/GoogleSignInButton.tsx';
+import { GoogleCalendarConfirmModal } from '../components/GoogleCalendarConfirmModal.tsx';
 
 interface SettingsScreenProps {
   onShowWelcome?: () => void;
@@ -35,6 +39,7 @@ interface SettingsScreenProps {
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome }) => {
   const {
     entries,
+    events,
     settings,
     updatePublisherStatus,
     updateTheme,
@@ -47,6 +52,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
     restoreFromMTBackupFile,
     language,
     t,
+    isGoogleCalendarConnected,
+    googleUser,
+    connectGoogleCalendar,
+    disconnectGoogleCalendar,
+    syncAllSchedulesToGoogleCalendar,
+    importFromGoogleCalendar,
   } = useMinistry();
 
   const [showGoalModal, setShowGoalModal] = useState<boolean>(false);
@@ -65,6 +76,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState<boolean>(false);
+  const [isGoogleCalendarSyncing, setIsGoogleCalendarSyncing] = useState<boolean>(false);
+  const [showSyncAllConfirm, setShowSyncAllConfirm] = useState<boolean>(false);
+  const [showImportConfirm, setShowImportConfirm] = useState<boolean>(false);
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState<boolean>(false);
 
   const filteredCsvEntries = useMemo(() => {
     const now = new Date();
@@ -126,6 +141,58 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
     setErrorMessage(msg);
     setSuccessMessage(null);
     setTimeout(() => setErrorMessage(null), 4000);
+  };
+
+  const handleConnectGoogleCalendar = async () => {
+    try {
+      setIsGoogleCalendarSyncing(true);
+      const success = await connectGoogleCalendar();
+      if (success) {
+        showNotification('Google Calendar connected successfully!');
+      } else {
+        showError('Could not connect to Google Calendar. Please try again.');
+      }
+    } catch (e: any) {
+      showError(e?.message || 'Google Calendar connection error');
+    } finally {
+      setIsGoogleCalendarSyncing(false);
+    }
+  };
+
+  const handleConfirmSyncAll = async () => {
+    try {
+      setIsGoogleCalendarSyncing(true);
+      const res = await syncAllSchedulesToGoogleCalendar();
+      setShowSyncAllConfirm(false);
+      showNotification(t.settings.googleCalendarSyncSuccess || `Synced ${res.synced} arrangement(s) to Google Calendar!`);
+    } catch (e: any) {
+      showError(e?.message || 'Failed to sync with Google Calendar');
+    } finally {
+      setIsGoogleCalendarSyncing(false);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    try {
+      setIsGoogleCalendarSyncing(true);
+      const res = await importFromGoogleCalendar();
+      setShowImportConfirm(false);
+      showNotification(`Imported ${res.importedCount} event(s) from Google Calendar!`);
+    } catch (e: any) {
+      showError(e?.message || 'Failed to import from Google Calendar');
+    } finally {
+      setIsGoogleCalendarSyncing(false);
+    }
+  };
+
+  const handleConfirmDisconnect = async () => {
+    try {
+      await disconnectGoogleCalendar();
+      setShowDisconnectConfirm(false);
+      showNotification('Google Calendar disconnected.');
+    } catch (e: any) {
+      showError(e?.message || 'Error disconnecting');
+    }
   };
 
   const handleOpenGoalModal = () => {
@@ -575,7 +642,109 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION 5: ABOUT                                                          */}
+      {/* SECTION 5: GOOGLE CALENDAR                                                */}
+      {/* ========================================================================= */}
+      <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-5 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
+              <Calendar className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                {t.settings.googleCalendarTitle || 'Google Calendar Integration'}
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t.settings.googleCalendarDesc || 'Sync your scheduled ministry arrangements with Google Calendar'}
+              </p>
+            </div>
+          </div>
+          {isGoogleCalendarConnected && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:text-blue-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+              Connected
+            </span>
+          )}
+        </div>
+
+        {isGoogleCalendarConnected ? (
+          <div className="space-y-3">
+            {/* User Profile Card */}
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3 min-w-0">
+                {googleUser?.photoURL ? (
+                  <img
+                    src={googleUser.photoURL}
+                    alt=""
+                    className="h-10 w-10 rounded-full border border-slate-200 dark:border-slate-700 object-cover shrink-0"
+                  />
+                ) : (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-sm shrink-0">
+                    {googleUser?.displayName?.[0] || googleUser?.email?.[0] || 'G'}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                    {googleUser?.displayName || 'Google Account'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                    {googleUser?.email || ''}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowDisconnectConfirm(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
+                title={t.settings.googleCalendarDisconnect || 'Disconnect'}
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t.settings.googleCalendarDisconnect || 'Disconnect'}</span>
+              </button>
+            </div>
+
+            {/* Action buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                disabled={isGoogleCalendarSyncing}
+                onClick={() => setShowSyncAllConfirm(true)}
+                className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isGoogleCalendarSyncing ? 'animate-spin' : ''}`} />
+                <span>{isGoogleCalendarSyncing ? (t.settings.googleCalendarSyncing || 'Syncing…') : (t.settings.googleCalendarSyncNow || 'Sync Schedules Now')}</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isGoogleCalendarSyncing}
+                onClick={() => setShowImportConfirm(true)}
+                className="flex items-center justify-center gap-2 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <Calendar className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                <span>{t.settings.googleCalendarImport || 'Import from Google Calendar'}</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 text-center space-y-3">
+            <p className="text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
+              Connect your Google account to automatically synchronize your ministry schedules, return visits arrangements, and field service reminders with Google Calendar across all your devices.
+            </p>
+            <div className="flex justify-center pt-1">
+              <GoogleSignInButton
+                onClick={handleConnectGoogleCalendar}
+                disabled={isGoogleCalendarSyncing}
+                label={t.settings.googleCalendarConnect || 'Connect Google Calendar'}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SECTION 6: ABOUT                                                          */}
       {/* ========================================================================= */}
       <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#131D31] p-5 shadow-xs text-center space-y-3">
         <div className="flex justify-center">
@@ -988,6 +1157,42 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
           </div>
         </div>
       )}
+
+      {/* Google Calendar Sync All Confirmation */}
+      <GoogleCalendarConfirmModal
+        isOpen={showSyncAllConfirm}
+        title="Sync Schedules to Google Calendar?"
+        description={`Are you sure you want to sync ${events.length} scheduled ministry arrangement(s) to your primary Google Calendar?`}
+        affectedItems={events.slice(0, 5).map(e => `${e.title || 'Arrangement'} (${new Date(e.dateMillis).toLocaleDateString()})`)}
+        actionLabel="Sync to Google Calendar"
+        actionType="sync"
+        isLoading={isGoogleCalendarSyncing}
+        onConfirm={handleConfirmSyncAll}
+        onCancel={() => setShowSyncAllConfirm(false)}
+      />
+
+      {/* Google Calendar Import Confirmation */}
+      <GoogleCalendarConfirmModal
+        isOpen={showImportConfirm}
+        title="Import from Google Calendar?"
+        description="This will import upcoming events from your Google Calendar into your Ministry Tracker calendar."
+        actionLabel="Import Events"
+        actionType="sync"
+        isLoading={isGoogleCalendarSyncing}
+        onConfirm={handleConfirmImport}
+        onCancel={() => setShowImportConfirm(false)}
+      />
+
+      {/* Google Calendar Disconnect Confirmation */}
+      <GoogleCalendarConfirmModal
+        isOpen={showDisconnectConfirm}
+        title="Disconnect Google Calendar?"
+        description="This will disconnect your Google account from Ministry Tracker. Your existing local schedules and previous Google Calendar events will remain intact."
+        actionLabel="Disconnect"
+        actionType="delete"
+        onConfirm={handleConfirmDisconnect}
+        onCancel={() => setShowDisconnectConfirm(false)}
+      />
     </div>
   );
 };

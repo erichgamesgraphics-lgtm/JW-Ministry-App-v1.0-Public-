@@ -38,10 +38,24 @@ import {
   mergeMinistryData,
   DecryptedBackupPayload,
 } from '../utils/backupPackage.ts';
+import {
+  initAuth,
+  googleSignIn,
+  googleSignOut,
+  getAccessToken,
+  subscribeToAuth,
+} from '../services/googleAuth.ts';
+import {
+  createGoogleCalendarEvent,
+  updateGoogleCalendarEvent,
+  deleteGoogleCalendarEvent,
+  listGoogleCalendarEvents,
+} from '../services/googleCalendarService.ts';
 
-interface InAppNotification {
+export interface InAppNotification {
   title: string;
   body: string;
+  type?: 'event' | 'entry' | 'general';
 }
 
 interface MinistryContextType {
@@ -94,6 +108,7 @@ interface MinistryContextType {
   // In-app notifications
   activeNotification: InAppNotification | null;
   dismissActiveNotification: () => void;
+  showNotificationToast: (title: string, body: string, type?: 'event' | 'entry' | 'general', autoDismissMs?: number) => void;
   
   // Settings & Status
   updateSettings: (partial: Partial<UserSettings>) => void;
@@ -129,6 +144,17 @@ interface MinistryContextType {
   restoreBackup: (json: string) => boolean;
   clearAllData: () => void;
   getReportsForPeriod: (periodIndex: number) => ReportsData;
+
+  // Google Calendar Integration
+  isGoogleCalendarConnected: boolean;
+  googleUser: { displayName: string | null; email: string | null; photoURL: string | null } | null;
+  hasGoogleCalendarToken: boolean;
+  connectGoogleCalendar: () => Promise<boolean>;
+  disconnectGoogleCalendar: () => Promise<void>;
+  syncScheduleToGoogleCalendar: (event: ScheduledEvent) => Promise<boolean>;
+  syncAllSchedulesToGoogleCalendar: () => Promise<{ synced: number; failed: number }>;
+  deleteScheduleFromGoogleCalendar: (calendarEventId: string) => Promise<boolean>;
+  importFromGoogleCalendar: () => Promise<{ importedCount: number }>;
 }
 
 const MinistryContext = createContext<MinistryContextType | undefined>(undefined);
@@ -148,6 +174,31 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [lastBackupAt, setLastBackupAt] = useState<number>(0);
   const [discoveredBackup, setDiscoveredBackup] = useState<DiscoveredBackupInfo | null>(null);
   const identity = useMemo(() => getOrCreateInstallationIdentity(), []);
+
+  // Google Calendar Integration State
+  const [googleUser, setGoogleUser] = useState<{
+    displayName: string | null;
+    email: string | null;
+    photoURL: string | null;
+  } | null>(null);
+  const [hasGoogleCalendarToken, setHasGoogleCalendarToken] = useState<boolean>(false);
+
+  useEffect(() => {
+    const unsub = subscribeToAuth((user, token) => {
+      if (user) {
+        setGoogleUser({
+          displayName: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+        });
+      } else {
+        setGoogleUser(null);
+      }
+      setHasGoogleCalendarToken(Boolean(token));
+    });
+    initAuth();
+    return () => unsub();
+  }, []);
 
   // Listen to backup status changes
   useEffect(() => {
@@ -264,6 +315,15 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const dismissActiveNotification = useCallback(() => {
     setActiveNotification(null);
+  }, []);
+
+  const showNotificationToast = useCallback((title: string, body: string, type: 'event' | 'entry' | 'general' = 'general', autoDismissMs: number = 3500) => {
+    setActiveNotification({ title, body, type });
+    if (autoDismissMs > 0) {
+      setTimeout(() => {
+        setActiveNotification(prev => (prev?.title === title ? null : prev));
+      }, autoDismissMs);
+    }
   }, []);
 
   // Apply theme class to document element and listen for system theme changes
@@ -1104,6 +1164,207 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, [entries, dashboardStats.streakMonths]);
 
+  // Google Calendar Operations
+  const connectGoogleCalendar = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await googleSignIn();
+      if (res?.accessToken) {
+        setHasGoogleCalendarToken(true);
+        setGoogleUser({
+          displayName: res.user.displayName,
+          email: res.user.email,
+          photoURL: res.user.photoURL,
+        });
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Failed to connect Google Calendar:', err);
+      return false;
+    }
+  }, []);
+
+  const disconnectGoogleCalendar = useCallback(async (): Promise<void> => {
+    try {
+      await googleSignOut();
+      setGoogleUser(null);
+      setHasGoogleCalendarToken(false);
+    } catch (err) {
+      console.error('Failed to disconnect Google Calendar:', err);
+    }
+  }, []);
+
+  const syncScheduleToGoogleCalendar = useCallback(async (targetEvent: ScheduledEvent): Promise<boolean> => {
+    try {
+      let token = await getAccessToken();
+      if (!token) {
+        const authRes = await googleSignIn();
+        token = authRes.accessToken;
+      }
+      if (!token) return false;
+
+      let gEvent;
+      if (targetEvent.googleCalendarEventId) {
+        gEvent = await updateGoogleCalendarEvent(token, targetEvent.googleCalendarEventId, targetEvent);
+      } else {
+        gEvent = await createGoogleCalendarEvent(token, targetEvent);
+      }
+
+      setEvents(prev =>
+        prev.map(ev =>
+          ev.id === targetEvent.id
+            ? {
+                ...ev,
+                googleCalendarEventId: gEvent.id,
+                syncStatus: 'synced',
+                lastSyncedAt: Date.now(),
+              }
+            : ev
+        )
+      );
+      return true;
+    } catch (e) {
+      console.error('Error syncing event to Google Calendar:', e);
+      setEvents(prev =>
+        prev.map(ev =>
+          ev.id === targetEvent.id
+            ? {
+                ...ev,
+                syncStatus: 'error',
+              }
+            : ev
+        )
+      );
+      return false;
+    }
+  }, []);
+
+  const syncAllSchedulesToGoogleCalendar = useCallback(async (): Promise<{ synced: number; failed: number }> => {
+    try {
+      let token = await getAccessToken();
+      if (!token) {
+        const authRes = await googleSignIn();
+        token = authRes.accessToken;
+      }
+      if (!token) return { synced: 0, failed: 0 };
+
+      let synced = 0;
+      let failed = 0;
+
+      for (const ev of events) {
+        try {
+          let gEvent;
+          if (ev.googleCalendarEventId) {
+            gEvent = await updateGoogleCalendarEvent(token, ev.googleCalendarEventId, ev);
+          } else {
+            gEvent = await createGoogleCalendarEvent(token, ev);
+          }
+          setEvents(prev =>
+            prev.map(item =>
+              item.id === ev.id
+                ? {
+                    ...item,
+                    googleCalendarEventId: gEvent.id,
+                    syncStatus: 'synced',
+                    lastSyncedAt: Date.now(),
+                  }
+                : item
+            )
+          );
+          synced++;
+        } catch (err) {
+          console.error('Failed to sync event:', ev.id, err);
+          failed++;
+        }
+      }
+
+      return { synced, failed };
+    } catch (e) {
+      console.error('Bulk sync error:', e);
+      return { synced: 0, failed: events.length };
+    }
+  }, [events]);
+
+  const deleteScheduleFromGoogleCalendar = useCallback(async (calendarEventId: string): Promise<boolean> => {
+    try {
+      const token = await getAccessToken();
+      if (!token) return false;
+      await deleteGoogleCalendarEvent(token, calendarEventId);
+      return true;
+    } catch (e) {
+      console.error('Failed to delete Google Calendar event:', e);
+      return false;
+    }
+  }, []);
+
+  const importFromGoogleCalendar = useCallback(async (): Promise<{ importedCount: number }> => {
+    try {
+      let token = await getAccessToken();
+      if (!token) {
+        const authRes = await googleSignIn();
+        token = authRes.accessToken;
+      }
+      if (!token) return { importedCount: 0 };
+
+      const now = new Date();
+      const timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const timeMax = new Date(now.getFullYear(), now.getMonth() + 3, 28);
+
+      const gEvents = await listGoogleCalendarEvents(token, timeMin, timeMax);
+      let imported = 0;
+
+      setEvents(prev => {
+        const existingGoogleIds = new Set(prev.map(e => e.googleCalendarEventId).filter(Boolean));
+        const newItems: ScheduledEvent[] = [];
+
+        for (const ge of gEvents) {
+          if (!ge.id || existingGoogleIds.has(ge.id)) continue;
+          const startMillis = ge.start.dateTime
+            ? new Date(ge.start.dateTime).getTime()
+            : ge.start.date
+            ? new Date(`${ge.start.date}T09:30:00`).getTime()
+            : Date.now();
+
+          const endMillis = ge.end.dateTime
+            ? new Date(ge.end.dateTime).getTime()
+            : ge.end.date
+            ? new Date(`${ge.end.date}T11:30:00`).getTime()
+            : startMillis + 2 * 3600 * 1000;
+
+          const dateObj = new Date(startMillis);
+          const dateMillis = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12, 0, 0).getTime();
+
+          const newEv: ScheduledEvent = {
+            id: Date.now() + Math.floor(Math.random() * 10000) + imported,
+            title: ge.summary || 'Google Calendar Event',
+            dateMillis,
+            startTimeMillis: startMillis,
+            endTimeMillis: endMillis,
+            location: ge.location || '',
+            description: (ge.description || '').replace('\n\n[Created via Ministry Tracker]', '').trim(),
+            reminderMinutesBefore: 15,
+            repeatOption: 'NONE',
+            isCompleted: false,
+            createdAt: Date.now(),
+            googleCalendarEventId: ge.id,
+            syncStatus: 'synced',
+            lastSyncedAt: Date.now(),
+          };
+
+          newItems.push(newEv);
+          imported++;
+        }
+
+        return [...newItems, ...prev];
+      });
+
+      return { importedCount: imported };
+    } catch (err) {
+      console.error('Import from Google Calendar error:', err);
+      return { importedCount: 0 };
+    }
+  }, []);
+
   const value = {
     isLoaded,
     entries,
@@ -1138,6 +1399,7 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     upcomingArrangements,
     activeNotification,
     dismissActiveNotification,
+    showNotificationToast,
     updateSettings,
     updatePublisherStatus,
     updateTheme,
@@ -1167,6 +1429,15 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     restoreBackup,
     clearAllData,
     getReportsForPeriod,
+    isGoogleCalendarConnected: Boolean(googleUser),
+    googleUser,
+    hasGoogleCalendarToken,
+    connectGoogleCalendar,
+    disconnectGoogleCalendar,
+    syncScheduleToGoogleCalendar,
+    syncAllSchedulesToGoogleCalendar,
+    deleteScheduleFromGoogleCalendar,
+    importFromGoogleCalendar,
   };
 
   return (

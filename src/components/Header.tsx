@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sun, Moon, Sparkles, Settings, BarChart2 } from 'lucide-react';
+import { Sun, Moon, Sparkles, Settings, BarChart2, Plus } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { JWMinistryLogo } from './JWMinistryLogo.tsx';
 
@@ -9,7 +9,7 @@ interface HeaderProps {
   onOpenReports?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onOpenReports }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenNewEntry, onOpenSettings, onOpenReports }) => {
   const { settings, updateTheme, t } = useMinistry();
 
   const handleToggleTheme = () => {
@@ -62,8 +62,22 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings, onOpenReports })
           </div>
         </div>
 
-        {/* Right: Actions [ Theme ] [ Settings ] [ Reports ] */}
+        {/* Right: Actions [ Record Entry ] [ Theme ] [ Settings ] [ Reports ] */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Quick Record Entry Button */}
+          {onOpenNewEntry && (
+            <button
+              id="header-record-entry-btn"
+              onClick={onOpenNewEntry}
+              className="flex h-9 items-center gap-1.5 px-2.5 sm:px-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-semibold shadow-xs border border-blue-400/30 transition-all cursor-pointer"
+              title={t.home.logService}
+              aria-label={t.home.logService}
+            >
+              <Plus className="h-4 w-4 stroke-[2.5]" />
+              <span className="hidden sm:inline">{t.home.logService}</span>
+            </button>
+          )}
+
           {/* Theme Switcher */}
           <button
             id="theme-toggle-btn"
