@@ -52,10 +52,9 @@ import {
   listGoogleCalendarEvents,
 } from '../services/googleCalendarService.ts';
 
-export interface InAppNotification {
+interface InAppNotification {
   title: string;
   body: string;
-  type?: 'event' | 'entry' | 'general';
 }
 
 interface MinistryContextType {
@@ -108,7 +107,6 @@ interface MinistryContextType {
   // In-app notifications
   activeNotification: InAppNotification | null;
   dismissActiveNotification: () => void;
-  showNotificationToast: (title: string, body: string, type?: 'event' | 'entry' | 'general', autoDismissMs?: number) => void;
   
   // Settings & Status
   updateSettings: (partial: Partial<UserSettings>) => void;
@@ -315,15 +313,6 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const dismissActiveNotification = useCallback(() => {
     setActiveNotification(null);
-  }, []);
-
-  const showNotificationToast = useCallback((title: string, body: string, type: 'event' | 'entry' | 'general' = 'general', autoDismissMs: number = 3500) => {
-    setActiveNotification({ title, body, type });
-    if (autoDismissMs > 0) {
-      setTimeout(() => {
-        setActiveNotification(prev => (prev?.title === title ? null : prev));
-      }, autoDismissMs);
-    }
   }, []);
 
   // Apply theme class to document element and listen for system theme changes
@@ -1399,7 +1388,6 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     upcomingArrangements,
     activeNotification,
     dismissActiveNotification,
-    showNotificationToast,
     updateSettings,
     updatePublisherStatus,
     updateTheme,

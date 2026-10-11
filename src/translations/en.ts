@@ -247,11 +247,6 @@ export const en: TranslationSchema = {
     updateEntry: 'Update Entry',
     hoursUnit: 'Hours',
     minutesUnit: 'Minutes',
-    durationZeroError: 'Duration must be greater than 0 minutes.',
-    dateInvalidError: 'Please select a valid date.',
-    entrySavedSuccess: 'Ministry entry recorded successfully!',
-    entryUpdatedSuccess: 'Ministry entry updated successfully!',
-    saving: 'Saving...',
   },
   scheduleModal: {
     newTitle: 'Schedule Ministry',

@@ -244,11 +244,6 @@ export interface TranslationSchema {
     updateEntry: string;
     hoursUnit: string;
     minutesUnit: string;
-    durationZeroError?: string;
-    dateInvalidError?: string;
-    entrySavedSuccess?: string;
-    entryUpdatedSuccess?: string;
-    saving?: string;
   };
   scheduleModal: {
     newTitle: string;

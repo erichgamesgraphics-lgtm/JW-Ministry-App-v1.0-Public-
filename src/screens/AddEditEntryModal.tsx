@@ -8,10 +8,7 @@ import {
   Minus,
   MapPin,
   FileText,
-  Trash2,
-  AlertCircle,
-  CheckCircle2,
-  Loader2
+  Trash2
 } from 'lucide-react';
 import { MinistryEntry, MinistryTypeCategory } from '../types.ts';
 import { useMinistry } from '../context/MinistryContext.tsx';
@@ -25,35 +22,13 @@ interface AddEditEntryModalProps {
   initialDate?: Date;
 }
 
-// Calculate minute difference handling overnight wrap
-function calculateMinutesFromTimes(start: string, end: string): number {
-  if (!start || !end) return 0;
-  const [sh, sm] = start.split(':').map(Number);
-  const [eh, em] = end.split(':').map(Number);
-  if (!Number.isFinite(sh) || !Number.isFinite(sm) || !Number.isFinite(eh) || !Number.isFinite(em)) return 0;
-  let mins = (eh * 60 + em) - (sh * 60 + sm);
-  if (mins < 0) mins += 24 * 60; // overnight
-  return mins;
-}
-
-// Add minutes to time string HH:mm
-function addMinutesToTime(start: string, minutesToAdd: number): string {
-  if (!start) return '10:30';
-  const [sh, sm] = start.split(':').map(Number);
-  if (!Number.isFinite(sh) || !Number.isFinite(sm)) return '10:30';
-  const total = ((sh * 60 + sm + minutesToAdd) % (24 * 60) + (24 * 60)) % (24 * 60);
-  const eh = Math.floor(total / 60);
-  const em = total % 60;
-  return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
-}
-
 export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
   isOpen,
   onClose,
   entryToEdit,
   initialDate,
 }) => {
-  const { saveEntry, deleteEntry, language, t, showNotificationToast } = useMinistry();
+  const { saveEntry, deleteEntry, language, t } = useMinistry();
 
   const [date, setDate] = useState<Date>(() => (initialDate && !isNaN(initialDate.getTime()) ? initialDate : new Date()));
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -63,7 +38,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:30');
 
-  // Direct duration state
+  // Direct duration state (in case user prefers direct hours/minutes)
   const [hours, setHours] = useState(1);
   const [minutes, setMinutes] = useState(30);
 
@@ -75,22 +50,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
   const [notes, setNotes] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Submission & Validation States
-  const [validationError, setValidationError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-
-  // Initialize or reset state when modal opens or entryToEdit changes
   useEffect(() => {
-    if (!isOpen) {
-      setValidationError(null);
-      setIsSubmitting(false);
-      setIsSuccess(false);
-      setShowDatePicker(false);
-      setShowDeleteConfirm(false);
-      return;
-    }
-
     if (entryToEdit) {
       const d = new Date(entryToEdit.dateMillis);
       setDate(isNaN(d.getTime()) ? new Date() : d);
@@ -111,11 +71,13 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
           setEndTime(e.toTimeString().slice(0, 5));
         } else {
           setStartTime('09:00');
-          setEndTime(addMinutesToTime('09:00', dur));
+          setEndTime('10:30');
         }
       } else {
         setStartTime('09:00');
-        setEndTime(addMinutesToTime('09:00', dur));
+        const endHour = (9 + h + Math.floor((30 + m) / 60)) % 24;
+        const endMin = (30 + m) % 60;
+        setEndTime(`${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`);
       }
 
       setMinistryType(entryToEdit.ministryType || 'HOUSE_TO_HOUSE');
@@ -138,14 +100,25 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
       setLocation('');
       setNotes('');
     }
-
-    setValidationError(null);
-    setIsSubmitting(false);
-    setIsSuccess(false);
     setShowDeleteConfirm(false);
   }, [entryToEdit, initialDate, isOpen]);
 
-  // Lock body scroll when modal is open
+  // Recalculate duration when startTime / endTime changes if manual mode is enabled
+  useEffect(() => {
+    if (isManualDuration && startTime && endTime) {
+      const [sh, sm] = startTime.split(':').map(Number);
+      const [eh, em] = endTime.split(':').map(Number);
+      if (Number.isFinite(sh) && Number.isFinite(sm) && Number.isFinite(eh) && Number.isFinite(em)) {
+        let totalMins = (eh * 60 + em) - (sh * 60 + sm);
+        if (totalMins < 0) totalMins += 24 * 60; // handle overnight
+        const calcH = Math.floor(totalMins / 60);
+        const calcM = totalMins % 60;
+        setHours(Math.max(0, calcH));
+        setMinutes(Math.max(0, Math.min(59, calcM)));
+      }
+    }
+  }, [startTime, endTime, isManualDuration]);
+
   useEffect(() => {
     if (isOpen) {
       const originalStyle = document.body.style.overflow;
@@ -158,48 +131,10 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Handlers for Start/End time changes (syncs to hours & minutes)
-  const handleStartTimeChange = (val: string) => {
-    setStartTime(val);
-    setValidationError(null);
-    const diff = calculateMinutesFromTimes(val, endTime);
-    setHours(Math.floor(diff / 60));
-    setMinutes(diff % 60);
-  };
-
-  const handleEndTimeChange = (val: string) => {
-    setEndTime(val);
-    setValidationError(null);
-    const diff = calculateMinutesFromTimes(startTime, val);
-    setHours(Math.floor(diff / 60));
-    setMinutes(diff % 60);
-  };
-
-  // Handlers for direct Hours / Minutes changes (syncs to endTime)
-  const handleHoursChange = (hVal: number) => {
-    const safeH = Math.max(0, Math.min(24, Number.isFinite(hVal) ? hVal : 0));
-    setHours(safeH);
-    setValidationError(null);
-    const total = safeH * 60 + minutes;
-    setEndTime(addMinutesToTime(startTime, total));
-  };
-
-  const handleMinutesChange = (mVal: number) => {
-    const safeM = Math.max(0, Math.min(59, Number.isFinite(mVal) ? mVal : 0));
-    setMinutes(safeM);
-    setValidationError(null);
-    const total = hours * 60 + safeM;
-    setEndTime(addMinutesToTime(startTime, total));
-  };
-
-  const currentCalculatedMinutes = isManualDuration
-    ? calculateMinutesFromTimes(startTime, endTime)
-    : Math.max(0, hours * 60 + minutes);
-
-  const durationSummaryFormatted = formatDurationLocalized(
-    Math.max(0, currentCalculatedMinutes),
-    language
-  );
+  const safeHours = Number.isFinite(hours) && hours >= 0 ? Math.floor(hours) : 0;
+  const safeMinutes = Number.isFinite(minutes) && minutes >= 0 ? Math.floor(minutes) : 0;
+  const totalCalculatedMinutes = Math.max(1, safeHours * 60 + safeMinutes);
+  const durationSummaryFormatted = formatDurationLocalized(totalCalculatedMinutes, language);
 
   const safeDateObj = date && !isNaN(date.getTime()) ? date : new Date();
   const dateFormatted = formatDateLocalized(safeDateObj, language, {
@@ -211,102 +146,51 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
 
-    // 1. Validate Date
-    if (!date || isNaN(date.getTime())) {
-      setValidationError(t.entryModal.dateInvalidError || 'Please select a valid date.');
-      return;
+    const saveDate = date && !isNaN(date.getTime()) ? date : new Date();
+    const finalMinutes = Math.max(1, totalCalculatedMinutes);
+
+    // Calculate safe start and end times
+    let startMillis = 0;
+    let endMillis = 0;
+    if (startTime && endTime) {
+      const [sh, sm] = startTime.split(':').map(Number);
+      const [eh, em] = endTime.split(':').map(Number);
+      if (Number.isFinite(sh) && Number.isFinite(sm)) {
+        startMillis = new Date(saveDate.getFullYear(), saveDate.getMonth(), saveDate.getDate(), sh, sm, 0).getTime();
+      }
+      if (Number.isFinite(eh) && Number.isFinite(em)) {
+        endMillis = new Date(saveDate.getFullYear(), saveDate.getMonth(), saveDate.getDate(), eh, em, 0).getTime();
+        if (endMillis < startMillis) {
+          endMillis += 24 * 60 * 60 * 1000;
+        }
+      }
     }
 
-    // 2. Validate Duration
-    const totalMins = isManualDuration
-      ? calculateMinutesFromTimes(startTime, endTime)
-      : Math.max(0, hours * 60 + minutes);
-
-    if (totalMins <= 0) {
-      setValidationError(
-        t.entryModal.durationZeroError || 'Duration must be greater than 0 minutes.'
-      );
-      return;
+    if (!startMillis || isNaN(startMillis)) {
+      startMillis = saveDate.getTime();
+      endMillis = startMillis + finalMinutes * 60 * 1000;
     }
 
-    setValidationError(null);
-    setIsSubmitting(true);
-
-    try {
-      const saveDate = date && !isNaN(date.getTime()) ? date : new Date();
-
-      // Normalize date to midday for consistent date matching
-      const entryDateMillis = new Date(
-        saveDate.getFullYear(),
-        saveDate.getMonth(),
-        saveDate.getDate(),
-        12,
-        0,
-        0
-      ).getTime();
-
-      // Parse start time
-      const [sh, sm] = (startTime || '09:00').split(':').map(Number);
-      const startMillis = new Date(
-        saveDate.getFullYear(),
-        saveDate.getMonth(),
-        saveDate.getDate(),
-        Number.isFinite(sh) ? sh : 9,
-        Number.isFinite(sm) ? sm : 0,
-        0
-      ).getTime();
-
-      const endMillis = startMillis + totalMins * 60 * 1000;
-
-      saveEntry({
-        id: entryToEdit ? entryToEdit.id : undefined,
-        dateMillis: entryDateMillis,
-        startTimeMillis: startMillis,
-        endTimeMillis: endMillis,
-        durationMinutes: totalMins,
-        ministryType: ministryType || 'HOUSE_TO_HOUSE',
-        returnVisits: Math.max(0, Number(returnVisits) || 0),
-        bibleStudies: Math.max(0, Number(bibleStudies) || 0),
-        placements: Math.max(0, Number(placements) || 0),
-        location: (location || '').trim(),
-        notes: (notes || '').trim(),
-      });
-
-      setIsSuccess(true);
-
-      // Trigger clear success notification toast in app
-      showNotificationToast(
-        entryToEdit
-          ? (t.entryModal.entryUpdatedSuccess || 'Ministry entry updated successfully!')
-          : (t.entryModal.entrySavedSuccess || 'Ministry entry recorded successfully!'),
-        `${formatDurationLocalized(totalMins, language)} • ${dateFormatted}`,
-        'entry',
-        3500
-      );
-
-      // Close after brief visual confirmation
-      setTimeout(() => {
-        setIsSubmitting(false);
-        onClose();
-      }, 400);
-    } catch (err) {
-      console.error('Error saving ministry entry:', err);
-      setIsSubmitting(false);
-      setValidationError('Failed to save ministry entry. Please check your inputs and try again.');
-    }
+    saveEntry({
+      id: entryToEdit ? entryToEdit.id : undefined,
+      dateMillis: saveDate.getTime(),
+      startTimeMillis: startMillis,
+      endTimeMillis: endMillis,
+      durationMinutes: finalMinutes,
+      ministryType: ministryType || 'HOUSE_TO_HOUSE',
+      returnVisits: Math.max(0, Number(returnVisits) || 0),
+      bibleStudies: Math.max(0, Number(bibleStudies) || 0),
+      placements: Math.max(0, Number(placements) || 0),
+      location: (location || '').trim(),
+      notes: (notes || '').trim(),
+    });
+    onClose();
   };
 
   const handleDelete = () => {
     if (entryToEdit) {
       deleteEntry(entryToEdit.id);
-      showNotificationToast(
-        t.entryModal.deleteConfirmTitle || 'Entry Deleted',
-        'Ministry entry was removed from records.',
-        'entry',
-        3000
-      );
       onClose();
     }
   };
@@ -322,77 +206,47 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        className="fixed inset-0 bg-black/60 dark:bg-black/75 backdrop-blur-xs select-none"
-      />
-
-      {/* Modal Dialog Card */}
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto overscroll-contain rounded-3xl bg-slate-50 dark:bg-[#0B1120] shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 z-10"
-      >
-        {/* Top App Bar with Back Arrow */}
-        <div className="flex items-center justify-between pb-3">
-          <button
-            type="button"
-            id="btn-close-entry-modal"
+    <>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          {/* Backdrop */}
+          <div
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white dark:bg-[#131D31] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all cursor-pointer select-none"
-            title={t.common.back}
+            className="fixed inset-0 bg-black/60 dark:bg-black/75 backdrop-blur-xs"
+          />
+
+          {/* Modal Panel */}
+          <div
+            className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto overscroll-contain rounded-3xl bg-slate-50 dark:bg-[#0B1120] shadow-2xl border border-slate-200 dark:border-slate-800 p-5 z-10"
           >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
+            {/* Top App Bar with Back Arrow */}
+            <div className="flex items-center justify-between pb-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white dark:bg-[#131D31] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all cursor-pointer select-none"
+                title={t.common.back}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
 
-          <h1 className="text-lg font-bold text-slate-900 dark:text-white">
-            {entryToEdit ? t.entryModal.titleEdit : t.entryModal.titleAdd}
-          </h1>
+              <h1 className="text-lg font-bold text-slate-900 dark:text-white">
+                {entryToEdit ? t.entryModal.titleEdit : t.entryModal.titleAdd}
+              </h1>
 
-          {entryToEdit ? (
-            <button
-              type="button"
-              id="btn-delete-entry-modal"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="p-2 text-red-600 hover:text-red-700 active:scale-95 transition-all cursor-pointer"
-              title={t.common.delete}
-            >
-              <Trash2 className="h-5 w-5" />
-            </button>
-          ) : (
-            <div className="w-10" />
-          )}
-        </div>
-
-        {/* Validation Error Alert Banner */}
-        {validationError && (
-          <div className="mb-4 rounded-2xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-900/50 p-3.5 flex items-start gap-2.5 text-xs text-red-700 dark:text-red-300 animate-in fade-in duration-200">
-            <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400 mt-0.5" />
-            <div className="flex-1 font-semibold leading-relaxed">
-              {validationError}
+              {entryToEdit ? (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="p-2 text-red-600 hover:text-red-700 active:scale-95 transition-all cursor-pointer"
+                  title={t.common.delete}
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
+              ) : (
+                <div className="w-10" />
+              )}
             </div>
-            <button
-              type="button"
-              onClick={() => setValidationError(null)}
-              className="text-red-500 hover:text-red-700 text-xs font-bold px-1"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        {/* Success Confirmation Banner */}
-        {isSuccess && (
-          <div className="mb-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 p-3.5 flex items-center gap-2.5 text-xs text-emerald-800 dark:text-emerald-200 animate-in fade-in duration-200">
-            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <span className="font-bold">
-              {entryToEdit
-                ? (t.entryModal.entryUpdatedSuccess || 'Ministry entry updated successfully!')
-                : (t.entryModal.entrySavedSuccess || 'Ministry entry recorded successfully!')}
-            </span>
-          </div>
-        )}
 
         <form onSubmit={handleSave} className="space-y-4 mt-2">
           {/* Section: Date */}
@@ -412,7 +266,6 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
 
               <button
                 type="button"
-                id="btn-change-date"
                 onClick={() => setShowDatePicker(!showDatePicker)}
                 className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
               >
@@ -421,7 +274,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
             </div>
 
             {showDatePicker && (
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#131D31] p-3 animate-in fade-in duration-150">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#131D31] p-3">
                 <input
                   type="date"
                   value={safeFormatDateInput(date)}
@@ -432,7 +285,6 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
                       if (parts.length === 3 && parts.every(n => Number.isFinite(n) && n > 0)) {
                         setDate(new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0));
                         setShowDatePicker(false);
-                        setValidationError(null);
                       }
                     }
                   }}
@@ -446,16 +298,14 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between px-1">
               <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                {isManualDuration ? t.entryModal.timeModeManual : t.entryModal.timeModeDirect}
+                {t.entryModal.manualDuration}
               </label>
               <button
                 type="button"
-                id="btn-toggle-duration-mode"
                 onClick={() => setIsManualDuration(!isManualDuration)}
                 className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
                   isManualDuration ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700'
                 }`}
-                title={isManualDuration ? t.entryModal.timeModeDirect : t.entryModal.timeModeManual}
               >
                 <span
                   className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
@@ -474,12 +324,12 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
                       {t.entryModal.startTime}
                     </span>
                     <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-blue-600 shrink-0" />
+                      <Clock className="h-4 w-4 text-blue-600" />
                       <input
                         type="time"
                         value={startTime}
-                        onChange={e => handleStartTimeChange(e.target.value)}
-                        className="bg-transparent text-sm font-bold text-slate-900 dark:text-white focus:outline-hidden w-full cursor-pointer"
+                        onChange={e => setStartTime(e.target.value)}
+                        className="bg-transparent text-sm font-bold text-slate-900 dark:text-white focus:outline-hidden w-full"
                       />
                     </div>
                   </div>
@@ -489,12 +339,12 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
                       {t.entryModal.endTime}
                     </span>
                     <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-blue-600 shrink-0" />
+                      <Clock className="h-4 w-4 text-blue-600" />
                       <input
                         type="time"
                         value={endTime}
-                        onChange={e => handleEndTimeChange(e.target.value)}
-                        className="bg-transparent text-sm font-bold text-slate-900 dark:text-white focus:outline-hidden w-full cursor-pointer"
+                        onChange={e => setEndTime(e.target.value)}
+                        className="bg-transparent text-sm font-bold text-slate-900 dark:text-white focus:outline-hidden w-full"
                       />
                     </div>
                   </div>
@@ -508,7 +358,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
                       min="0"
                       max="24"
                       value={hours}
-                      onChange={e => handleHoursChange(parseInt(e.target.value) || 0)}
+                      onChange={e => setHours(Math.max(0, parseInt(e.target.value) || 0))}
                       className="w-20 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 text-center text-base font-bold text-slate-900 dark:text-white"
                     />
                   </div>
@@ -521,7 +371,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
                       max="59"
                       step="5"
                       value={minutes}
-                      onChange={e => handleMinutesChange(parseInt(e.target.value) || 0)}
+                      onChange={e => setMinutes(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
                       className="w-20 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-2 text-center text-base font-bold text-slate-900 dark:text-white"
                     />
                   </div>
@@ -533,7 +383,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
                 <span className="font-semibold text-slate-600 dark:text-slate-300">
                   {t.entryModal.totalDuration}
                 </span>
-                <span className={`font-bold ${currentCalculatedMinutes <= 0 ? 'text-red-500' : 'text-blue-600 dark:text-blue-400'}`}>
+                <span className="font-bold text-blue-600 dark:text-blue-400">
                   {durationSummaryFormatted}
                 </span>
               </div>
@@ -552,10 +402,7 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
                   <button
                     key={key}
                     type="button"
-                    onClick={() => {
-                      setMinistryType(key);
-                      setValidationError(null);
-                    }}
+                    onClick={() => setMinistryType(key)}
                     className={`flex items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-xs'
@@ -691,32 +538,14 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
             </div>
           </div>
 
-          {/* Bottom Save Button with Duplication Guard */}
+          {/* Bottom Save Button */}
           <div className="pt-2">
             <button
               type="submit"
-              id="btn-save-entry"
-              disabled={isSubmitting}
-              className={`w-full rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] py-3.5 sm:py-4 px-6 text-base font-semibold text-white shadow-xs shadow-blue-500/25 border border-blue-400/30 transition-all flex items-center justify-center gap-2 select-none ${
-                isSubmitting ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
-              }`}
+              className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] py-3.5 sm:py-4 px-6 text-base font-semibold text-white shadow-xs shadow-blue-500/25 border border-blue-400/30 transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>{t.entryModal.saving || 'Saving...'}</span>
-                </>
-              ) : isSuccess ? (
-                <>
-                  <CheckCircle2 className="h-5 w-5 stroke-[2.5]" />
-                  <span>{entryToEdit ? t.entryModal.updateEntry : t.entryModal.saveEntry}</span>
-                </>
-              ) : (
-                <>
-                  <Check className="h-5 w-5 stroke-[2.5]" />
-                  <span>{entryToEdit ? t.entryModal.updateEntry : t.entryModal.saveEntry}</span>
-                </>
-              )}
+              <Check className="h-5 w-5 stroke-[2.5]" />
+              <span>{entryToEdit ? t.entryModal.updateEntry : t.entryModal.saveEntry}</span>
             </button>
           </div>
         </form>
@@ -753,7 +582,9 @@ export const AddEditEntryModal: React.FC<AddEditEntryModalProps> = ({
             </div>
           </div>
         )}
-      </div>
-    </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };

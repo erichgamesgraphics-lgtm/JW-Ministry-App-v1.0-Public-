@@ -247,11 +247,6 @@ export const pa: TranslationSchema = {
     updateEntry: 'ਐਂਟਰੀ ਅੱਪਡੇਟ ਕਰੋ',
     hoursUnit: 'ਘੰਟੇ',
     minutesUnit: 'ਮਿੰਟ',
-    durationZeroError: 'ਮਿਆਦ 0 ਮਿੰਟ ਤੋਂ ਵੱਧ ਹੋਣੀ ਚਾਹੀਦੀ ਹੈ।',
-    dateInvalidError: 'ਕਿਰਪਾ ਕਰਕੇ ਇੱਕ ਵੈਧ ਮਿਤੀ ਚੁਣੋ।',
-    entrySavedSuccess: 'ਸੇਵਕਾਈ ਐਂਟਰੀ ਸਫਲਤਾਪੂਰਵਕ ਦਰਜ ਕੀਤੀ ਗਈ!',
-    entryUpdatedSuccess: 'ਸੇਵਕਾਈ ਐਂਟਰੀ ਸਫਲਤਾਪੂਰਵਕ ਅੱਪਡੇਟ ਕੀਤੀ ਗਈ!',
-    saving: 'ਸੰਭਾਲਿਆ ਜਾ ਰਿਹਾ ਹੈ...',
   },
   scheduleModal: {
     newTitle: 'ਸੇਵਕਾਈ ਨਿਰਧਾਰਤ ਕਰੋ',

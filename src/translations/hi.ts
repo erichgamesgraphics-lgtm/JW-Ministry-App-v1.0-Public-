@@ -247,11 +247,6 @@ export const hi: TranslationSchema = {
     updateEntry: 'प्रविष्टि अपडेट करें',
     hoursUnit: 'घंटे',
     minutesUnit: 'मिनट',
-    durationZeroError: 'अवधि 0 मिनट से अधिक होनी चाहिए।',
-    dateInvalidError: 'कृपया एक वैध तिथि चुनें।',
-    entrySavedSuccess: 'सेवकाई प्रविष्टि सफलतापूर्वक दर्ज की गई!',
-    entryUpdatedSuccess: 'सेवकाई प्रविष्टि सफलतापूर्वक अपडेट की गई!',
-    saving: 'सहेजा जा रहा है...',
   },
   scheduleModal: {
     newTitle: 'सेवकाई निर्धारित करें',

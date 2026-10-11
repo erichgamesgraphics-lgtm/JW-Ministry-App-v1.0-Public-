@@ -247,11 +247,6 @@ export const hy: TranslationSchema = {
     updateEntry: 'Թարմացնել Գրառումը',
     hoursUnit: 'Ժամ',
     minutesUnit: 'Րոպե',
-    durationZeroError: 'Տևողությունը պետք է լինի 0 րոպեից ավելի:',
-    dateInvalidError: 'Խնդրում ենք ընտրել վավեր ամսաթիվ:',
-    entrySavedSuccess: 'Ծառայության գրառումը հաջողությամբ պահպանվեց:',
-    entryUpdatedSuccess: 'Ծառայության գրառումը հաջողությամբ թարմացվեց:',
-    saving: 'Պահպանվում է...',
   },
   scheduleModal: {
     newTitle: 'Ծրագրել Ծառայություն',

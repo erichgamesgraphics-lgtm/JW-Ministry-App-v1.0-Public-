@@ -277,11 +277,6 @@ export const ru: TranslationSchema = {
     updateEntry: 'Обновить запись',
     hoursUnit: 'Часы',
     minutesUnit: 'Минуты',
-    durationZeroError: 'Продолжительность должна быть больше 0 минут.',
-    dateInvalidError: 'Пожалуйста, выберите корректную дату.',
-    entrySavedSuccess: 'Запись служения успешно сохранена!',
-    entryUpdatedSuccess: 'Запись служения успешно обновлена!',
-    saving: 'Сохранение...',
   },
   scheduleModal: {
     newTitle: 'Запланировать служение',

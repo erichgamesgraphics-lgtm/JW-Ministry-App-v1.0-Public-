@@ -328,8 +328,6 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
         </button>
 
         <button
-          type="button"
-          id="calendar-record-entry-btn"
           onClick={() => onOpenNewEntry ? onOpenNewEntry(selectedDate) : onOpenNewSchedule(selectedDate)}
           className="flex items-center justify-center gap-2 rounded-2xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#131D31]/80 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-[0.98] text-blue-600 dark:text-blue-400 font-semibold py-3.5 px-4 text-xs sm:text-sm backdrop-blur-md transition-all cursor-pointer select-none"
         >
