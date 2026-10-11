@@ -203,10 +203,6 @@ export interface TranslationSchema {
     recurringMonthlyBadge: string;
     recurringYearlyBadge: string;
     upcomingSectionTitle: string;
-    googleCalendarSynced?: string;
-    syncToGoogleCalendar?: string;
-    syncAllToGoogleCalendar?: string;
-    importFromGoogleCalendar?: string;
   };
   entryModal: {
     newTitle: string;
@@ -440,15 +436,6 @@ export interface TranslationSchema {
     clearDataCancel: string;
     clearDataConfirmBtn: string;
     sectionAbout: string;
-    googleCalendarTitle?: string;
-    googleCalendarDesc?: string;
-    googleCalendarConnect?: string;
-    googleCalendarDisconnect?: string;
-    googleCalendarConnectedAs?: string;
-    googleCalendarSyncNow?: string;
-    googleCalendarSyncing?: string;
-    googleCalendarSyncSuccess?: string;
-    googleCalendarImport?: string;
     version: string;
     aboutVersion: string;
     aboutSecure: string;

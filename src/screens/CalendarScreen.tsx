@@ -10,9 +10,7 @@ import {
   Trash2,
   Edit2,
   Repeat,
-  RefreshCw,
 } from 'lucide-react';
-import { GoogleCalendarConfirmModal } from '../components/GoogleCalendarConfirmModal.tsx';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { ScheduledEvent, ExpandedCalendarEvent, MinistryEntry } from '../types.ts';
 import { formatDurationLocalized, formatDateLocalized, formatMonthYearLocalized, formatTimeLocalized } from '../translations/index.ts';
@@ -39,20 +37,11 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
     deleteEntry,
     language,
     t,
-    isGoogleCalendarConnected,
-    googleUser,
-    connectGoogleCalendar,
-    syncScheduleToGoogleCalendar,
-    syncAllSchedulesToGoogleCalendar,
   } = useMinistry();
 
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [eventToDelete, setEventToDelete] = useState<ExpandedCalendarEvent | null>(null);
-  const [eventToSyncWithGoogle, setEventToSyncWithGoogle] = useState<ExpandedCalendarEvent | null>(null);
-  const [showSyncAllModal, setShowSyncAllModal] = useState<boolean>(false);
-  const [isGoogleSyncing, setIsGoogleSyncing] = useState<boolean>(false);
-  const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (eventToDelete) {
@@ -197,34 +186,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
           {t.calendar.title}
         </h1>
-
-        {isGoogleCalendarConnected ? (
-          <button
-            onClick={() => setShowSyncAllModal(true)}
-            disabled={isGoogleSyncing}
-            className="flex items-center gap-1.5 py-1.5 px-3 rounded-2xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/80 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold text-xs hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors cursor-pointer"
-            title={t.calendar.syncAllToGoogleCalendar || 'Sync all to Google Calendar'}
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isGoogleSyncing ? 'animate-spin' : ''}`} />
-            <span>Google Calendar</span>
-          </button>
-        ) : (
-          <button
-            onClick={connectGoogleCalendar}
-            className="flex items-center gap-1.5 py-1.5 px-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors cursor-pointer"
-          >
-            <CalendarIcon className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-            <span>Google Calendar</span>
-          </button>
-        )}
       </div>
-
-      {syncToastMessage && (
-        <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-semibold flex items-center justify-between animate-in fade-in">
-          <span>{syncToastMessage}</span>
-          <button onClick={() => setSyncToastMessage(null)} className="text-emerald-600 hover:text-emerald-800 font-bold ml-2">✕</button>
-        </div>
-      )}
 
       {/* Main Calendar Card */}
       <div
@@ -381,12 +343,6 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                             <span>{repeatLabel}</span>
                           </div>
                         )}
-                        {ev.googleCalendarEventId && (
-                          <div className="inline-flex items-center gap-1 rounded-md bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 px-2 py-0.5 text-xs font-semibold" title={t.calendar.googleCalendarSynced || 'Synced with Google Calendar'}>
-                            <CalendarIcon className="h-3 w-3 text-sky-500" />
-                            <span>Google</span>
-                          </div>
-                        )}
                       </div>
                       <h3 className={`text-base font-bold ${ev.isCompleted ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>
                         {ev.title}
@@ -412,17 +368,6 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                         title={t.common.save}
                       >
                         <CheckCircle2 className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => setEventToSyncWithGoogle(ev)}
-                        className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
-                          ev.googleCalendarEventId
-                            ? 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40'
-                            : 'text-slate-400 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800'
-                        }`}
-                        title={ev.googleCalendarEventId ? (t.calendar.googleCalendarSynced || 'Synced with Google Calendar') : (t.calendar.syncToGoogleCalendar || 'Sync to Google Calendar')}
-                      >
-                        <CalendarIcon className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => onOpenEditSchedule(ev)}
@@ -542,51 +487,6 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
           </div>
         </div>
       )}
-
-      {/* Google Calendar Single Event Sync Confirmation */}
-      <GoogleCalendarConfirmModal
-        isOpen={Boolean(eventToSyncWithGoogle)}
-        title="Sync to Google Calendar?"
-        description={
-          eventToSyncWithGoogle
-            ? `Sync arrangement "${eventToSyncWithGoogle.title}" with your primary Google Calendar?`
-            : ''
-        }
-        actionLabel="Sync Event"
-        actionType="sync"
-        isLoading={isGoogleSyncing}
-        onConfirm={async () => {
-          if (!eventToSyncWithGoogle) return;
-          setIsGoogleSyncing(true);
-          const ok = await syncScheduleToGoogleCalendar(eventToSyncWithGoogle);
-          setIsGoogleSyncing(false);
-          setEventToSyncWithGoogle(null);
-          if (ok) {
-            setSyncToastMessage('Arrangement synced to Google Calendar!');
-            setTimeout(() => setSyncToastMessage(null), 3000);
-          }
-        }}
-        onCancel={() => setEventToSyncWithGoogle(null)}
-      />
-
-      {/* Google Calendar Bulk Sync Confirmation */}
-      <GoogleCalendarConfirmModal
-        isOpen={showSyncAllModal}
-        title="Sync All to Google Calendar?"
-        description="Sync all your scheduled preaching arrangements with your primary Google Calendar?"
-        actionLabel="Sync All"
-        actionType="sync"
-        isLoading={isGoogleSyncing}
-        onConfirm={async () => {
-          setIsGoogleSyncing(true);
-          const res = await syncAllSchedulesToGoogleCalendar();
-          setIsGoogleSyncing(false);
-          setShowSyncAllModal(false);
-          setSyncToastMessage(`Synced ${res.synced} arrangement(s) to Google Calendar!`);
-          setTimeout(() => setSyncToastMessage(null), 3000);
-        }}
-        onCancel={() => setShowSyncAllModal(false)}
-      />
     </div>
   );
 };
