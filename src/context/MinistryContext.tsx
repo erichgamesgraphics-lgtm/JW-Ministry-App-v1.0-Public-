@@ -38,6 +38,17 @@ import {
   mergeMinistryData,
   DecryptedBackupPayload,
 } from '../utils/backupPackage.ts';
+import {
+  testConnection,
+  initAuth,
+  firestoreSync,
+  signInWithGoogle as firebaseSignInWithGoogle,
+  logOut as firebaseLogOut,
+  getAccessToken,
+  setAccessToken,
+} from '../services/firebase.ts';
+import { googleCalendarApi } from '../services/googleCalendar.ts';
+import { User as FirebaseUser } from 'firebase/auth';
 
 interface InAppNotification {
   title: string;
@@ -129,6 +140,21 @@ interface MinistryContextType {
   restoreBackup: (json: string) => boolean;
   clearAllData: () => void;
   getReportsForPeriod: (periodIndex: number) => ReportsData;
+
+  // Firebase Cloud Sync
+  firebaseUser: FirebaseUser | null;
+  isFirebaseConnected: boolean;
+  signInWithGoogle: () => Promise<any>;
+  logOutFirebase: () => Promise<void>;
+
+  // Google Calendar Integration
+  googleCalendarToken: string | null;
+  isGoogleCalendarConnected: boolean;
+  calendarSyncStatus: 'idle' | 'syncing' | 'synced' | 'error';
+  lastCalendarSyncAt: number;
+  connectGoogleCalendar: () => Promise<boolean>;
+  syncWithGoogleCalendar: () => Promise<boolean>;
+  disconnectGoogleCalendar: () => void;
 }
 
 const MinistryContext = createContext<MinistryContextType | undefined>(undefined);
@@ -148,6 +174,111 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [lastBackupAt, setLastBackupAt] = useState<number>(0);
   const [discoveredBackup, setDiscoveredBackup] = useState<DiscoveredBackupInfo | null>(null);
   const identity = useMemo(() => getOrCreateInstallationIdentity(), []);
+
+  // Firebase Auth and Connection State
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(true);
+
+  // Initialize Firebase connection test and auth listener
+  useEffect(() => {
+    testConnection()
+      .then(() => setIsFirebaseConnected(true))
+      .catch(() => setIsFirebaseConnected(false));
+
+    const unsubscribe = initAuth((user) => {
+      setFirebaseUser(user);
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  // When user is authenticated, sync remote cloud data if local is empty
+  useEffect(() => {
+    if (!firebaseUser?.uid || !isLoaded) return;
+    const uid = firebaseUser.uid;
+
+    firestoreSync.loadEntries(uid).then((cloudEntries) => {
+      if (cloudEntries.length > 0 && entries.length === 0) {
+        setEntries(cloudEntries);
+      }
+    }).catch(console.warn);
+
+    firestoreSync.loadEvents(uid).then((cloudEvents) => {
+      if (cloudEvents.length > 0 && events.length === 0) {
+        setEvents(cloudEvents);
+      }
+    }).catch(console.warn);
+
+    firestoreSync.loadNotes(uid).then((cloudNotes) => {
+      if (cloudNotes.length > 0 && notes.length === 0) {
+        setNotes(cloudNotes);
+      }
+    }).catch(console.warn);
+  }, [firebaseUser?.uid, isLoaded]);
+
+  // Debounced auto sync to Firestore whenever user data changes
+  useEffect(() => {
+    if (!isLoaded || !firebaseUser?.uid) return;
+    const timeout = setTimeout(() => {
+      firestoreSync.syncAllToCloud(firebaseUser.uid, entries, events, notes, settings).catch(console.warn);
+    }, 1500);
+    return () => clearTimeout(timeout);
+  }, [entries, events, notes, settings, firebaseUser?.uid, isLoaded]);
+
+  // Google Calendar Integration State
+  const [googleCalendarToken, setGoogleCalendarToken] = useState<string | null>(() => getAccessToken());
+  const [calendarSyncStatus, setCalendarSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const [lastCalendarSyncAt, setLastCalendarSyncAt] = useState<number>(0);
+
+  const isGoogleCalendarConnected = Boolean(googleCalendarToken);
+
+  const connectGoogleCalendar = useCallback(async (): Promise<boolean> => {
+    try {
+      setCalendarSyncStatus('syncing');
+      const res = await firebaseSignInWithGoogle();
+      if (res.accessToken) {
+        setGoogleCalendarToken(res.accessToken);
+        const syncResult = await googleCalendarApi.syncArrangements(res.accessToken, events);
+        setEvents(syncResult.updatedEvents);
+        setCalendarSyncStatus('synced');
+        setLastCalendarSyncAt(Date.now());
+        return true;
+      }
+      setCalendarSyncStatus('idle');
+      return false;
+    } catch (e) {
+      console.error('Failed to connect Google Calendar:', e);
+      setCalendarSyncStatus('error');
+      return false;
+    }
+  }, [events]);
+
+  const syncWithGoogleCalendar = useCallback(async (): Promise<boolean> => {
+    const token = googleCalendarToken || getAccessToken();
+    if (!token) {
+      return connectGoogleCalendar();
+    }
+    try {
+      setCalendarSyncStatus('syncing');
+      const syncResult = await googleCalendarApi.syncArrangements(token, events);
+      setEvents(syncResult.updatedEvents);
+      setCalendarSyncStatus('synced');
+      setLastCalendarSyncAt(Date.now());
+      return true;
+    } catch (e) {
+      console.error('Failed to sync with Google Calendar:', e);
+      setCalendarSyncStatus('error');
+      return false;
+    }
+  }, [googleCalendarToken, events, connectGoogleCalendar]);
+
+  const disconnectGoogleCalendar = useCallback(() => {
+    setAccessToken(null);
+    setGoogleCalendarToken(null);
+    setCalendarSyncStatus('idle');
+  }, []);
 
   // Listen to backup status changes
   useEffect(() => {
@@ -588,8 +719,25 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       isCompleted: false,
     }, now);
     setEvents(prev => [newEvent, ...prev]);
+
+    // Background push to Google Calendar if connected
+    const calToken = googleCalendarToken || getAccessToken();
+    if (calToken) {
+      googleCalendarApi.createEvent(calToken, newEvent).then(created => {
+        if (created.id) {
+          setEvents(prev =>
+            prev.map(ev =>
+              ev.id === newEvent.id
+                ? { ...ev, googleCalendarEventId: created.id, syncStatus: 'synced', lastSyncedAt: Date.now() }
+                : ev
+            )
+          );
+        }
+      }).catch(console.warn);
+    }
+
     return newEvent;
-  }, []);
+  }, [googleCalendarToken]);
 
   const deleteEvent = useCallback((
     id: number,
@@ -623,10 +771,17 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return;
     }
 
+    // Google Calendar deletion sync
+    const calToken = googleCalendarToken || getAccessToken();
+    const evToDelete = events.find(ev => ev.id === id);
+    if (calToken && evToDelete?.googleCalendarEventId) {
+      googleCalendarApi.deleteEvent(calToken, evToDelete.googleCalendarEventId).catch(console.warn);
+    }
+
     // Mode B: Delete the entire series or single event (and any detached instances)
     setEvents(prev => prev.filter(ev => ev.id !== id && ev.parentEventId !== id));
     cancelNotificationsForEvent(id);
-  }, []);
+  }, [events, googleCalendarToken]);
 
   const toggleEventCompleted = useCallback((id: number, targetOccurrenceDate?: string) => {
     setEvents(prev =>
@@ -1167,6 +1322,17 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     restoreBackup,
     clearAllData,
     getReportsForPeriod,
+    firebaseUser,
+    isFirebaseConnected,
+    signInWithGoogle: firebaseSignInWithGoogle,
+    logOutFirebase: firebaseLogOut,
+    googleCalendarToken,
+    isGoogleCalendarConnected,
+    calendarSyncStatus,
+    lastCalendarSyncAt,
+    connectGoogleCalendar,
+    syncWithGoogleCalendar,
+    disconnectGoogleCalendar,
   };
 
   return (

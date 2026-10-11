@@ -23,6 +23,7 @@ import {
   FileText,
   Calendar,
   Clock,
+  Cloud,
 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { PublisherStatusType, SupportedLanguage } from '../types.ts';
@@ -45,6 +46,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
     lastBackupAt,
     downloadMTBackupFile,
     restoreFromMTBackupFile,
+    firebaseUser,
+    isFirebaseConnected,
+    signInWithGoogle,
+    logOutFirebase,
     language,
     t,
   } = useMinistry();
@@ -443,6 +448,68 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
           {t.settings.sectionDataBackup}
         </h2>
+
+        {/* FIREBASE FIRESTORE CLOUD SYNC CARD */}
+        <div className="rounded-2xl border border-blue-100 dark:border-blue-900/50 bg-blue-50/70 dark:bg-blue-950/30 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-300">
+                <Cloud className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                  Firebase Cloud Sync
+                </h3>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
+                  {firebaseUser && !firebaseUser.isAnonymous
+                    ? (firebaseUser.email || firebaseUser.displayName || 'Google Account')
+                    : 'Cloud Firestore Active'}
+                </p>
+              </div>
+            </div>
+
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+              isFirebaseConnected
+                ? 'bg-emerald-100 dark:bg-emerald-900/80 text-emerald-700 dark:text-emerald-300'
+                : 'bg-amber-100 dark:bg-amber-900/80 text-amber-700 dark:text-amber-300'
+            }`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${isFirebaseConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+              {isFirebaseConnected ? 'Connected' : 'Offline'}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-blue-100/80 dark:border-blue-900/40 text-[11px] text-slate-600 dark:text-slate-300">
+            <span>
+              {firebaseUser && !firebaseUser.isAnonymous
+                ? 'Your ministry hours and arrangements are synced to your Google account.'
+                : 'Data automatically syncs across your devices.'}
+            </span>
+            {firebaseUser && !firebaseUser.isAnonymous ? (
+              <button
+                type="button"
+                onClick={logOutFirebase}
+                className="ml-2 shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await signInWithGoogle();
+                    showNotification('Signed in with Google successfully');
+                  } catch (e: any) {
+                    console.warn(e);
+                  }
+                }}
+                className="ml-2 shrink-0 rounded-lg bg-blue-600 hover:bg-blue-700 px-2.5 py-1 text-xs font-bold text-white transition-colors cursor-pointer shadow-xs"
+              >
+                Sign In
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* AUTOMATIC BACKUP CARD */}
         <div className="rounded-2xl border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/70 dark:bg-emerald-950/30 p-4 text-emerald-900 dark:text-emerald-100 space-y-2.5">

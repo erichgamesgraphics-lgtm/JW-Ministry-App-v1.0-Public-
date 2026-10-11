@@ -10,6 +10,7 @@ import {
   Trash2,
   Edit2,
   Repeat,
+  RefreshCw,
 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { ScheduledEvent, ExpandedCalendarEvent, MinistryEntry } from '../types.ts';
@@ -35,6 +36,10 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
     toggleEventCompleted,
     deleteEvent,
     deleteEntry,
+    isGoogleCalendarConnected,
+    calendarSyncStatus,
+    syncWithGoogleCalendar,
+    connectGoogleCalendar,
     language,
     t,
   } = useMinistry();
@@ -186,6 +191,55 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
           {t.calendar.title}
         </h1>
+      </div>
+
+      {/* Google Calendar Sync Bar */}
+      <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-[#131D31]/80 backdrop-blur-md px-4 py-2.5 shadow-xs">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+            <CalendarIcon className="h-4 w-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-900 dark:text-white">
+                Google Calendar
+              </span>
+              {isGoogleCalendarConnected ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 text-[10px] font-bold">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Connected
+                </span>
+              ) : (
+                <span className="text-[10px] text-slate-400 font-medium">
+                  Not connected
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {isGoogleCalendarConnected ? (
+          <button
+            type="button"
+            onClick={() => syncWithGoogleCalendar()}
+            disabled={calendarSyncStatus === 'syncing'}
+            className="flex items-center gap-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-300 px-3 py-1.5 text-xs font-bold transition-all cursor-pointer select-none"
+            title="Sync all arrangements to Google Calendar"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${calendarSyncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+            <span>{calendarSyncStatus === 'syncing' ? 'Syncing...' : 'Sync Now'}</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => connectGoogleCalendar()}
+            disabled={calendarSyncStatus === 'syncing'}
+            className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-3 py-1.5 text-xs font-bold transition-all cursor-pointer select-none shadow-xs"
+          >
+            <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
+            <span>Connect</span>
+          </button>
+        )}
       </div>
 
       {/* Main Calendar Card */}
@@ -343,6 +397,12 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                             <span>{repeatLabel}</span>
                           </div>
                         )}
+                        {ev.googleCalendarEventId && (
+                          <div className="inline-flex items-center gap-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-xs font-semibold">
+                            <CalendarIcon className="h-3 w-3" />
+                            <span>Google Calendar</span>
+                          </div>
+                        )}
                       </div>
                       <h3 className={`text-base font-bold ${ev.isCompleted ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-white'}`}>
                         {ev.title}
@@ -378,7 +438,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                       </button>
                       <button
                         onClick={() => {
-                          if (isRecurringEvent) {
+                          if (isRecurringEvent || ev.googleCalendarEventId) {
                             setEventToDelete(ev);
                           } else {
                             deleteEvent(ev.id);
@@ -456,25 +516,35 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
               <Trash2 className="h-6 w-6" />
             </div>
             <h3 className="mt-3 text-base font-bold text-slate-900 dark:text-white">
-              {t.scheduleModal.deleteRecurringTitle}
+              {eventToDelete.repeatOption && eventToDelete.repeatOption !== 'NONE'
+                ? t.scheduleModal.deleteRecurringTitle
+                : 'Delete Ministry Arrangement?'}
             </h3>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              {t.scheduleModal.deleteRecurringDesc}
+              {eventToDelete.repeatOption && eventToDelete.repeatOption !== 'NONE'
+                ? t.scheduleModal.deleteRecurringDesc
+                : eventToDelete.googleCalendarEventId
+                ? 'This arrangement is synced with your Google Calendar. Deleting it will also remove it from your Google Calendar.'
+                : 'Are you sure you want to delete this arrangement? This action cannot be undone.'}
             </p>
             <div className="mt-4 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={handleDeleteOccurrence}
-                className="w-full rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 py-2.5 px-3 text-xs font-bold text-red-600 dark:text-red-300 hover:bg-red-100 transition-colors cursor-pointer"
-              >
-                {t.scheduleModal.deleteThisOccurrence}
-              </button>
+              {eventToDelete.repeatOption && eventToDelete.repeatOption !== 'NONE' && (
+                <button
+                  type="button"
+                  onClick={handleDeleteOccurrence}
+                  className="w-full rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 py-2.5 px-3 text-xs font-bold text-red-600 dark:text-red-300 hover:bg-red-100 transition-colors cursor-pointer"
+                >
+                  {t.scheduleModal.deleteThisOccurrence}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleDeleteAll}
                 className="w-full rounded-xl bg-red-600 py-2.5 px-3 text-xs font-bold text-white shadow-xs hover:bg-red-700 transition-colors cursor-pointer"
               >
-                {t.scheduleModal.deleteAllOccurrences}
+                {eventToDelete.repeatOption && eventToDelete.repeatOption !== 'NONE'
+                  ? t.scheduleModal.deleteAllOccurrences
+                  : t.common.delete}
               </button>
               <button
                 type="button"

@@ -1,0 +1,129 @@
+{
+  "entities": {
+    "userProfile": {
+      "title": "User Profile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "createdAt"]
+    },
+    "ministryEntry": {
+      "title": "Ministry Entry",
+      "description": "A field ministry record of hours and activity",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "userId": { "type": "string" },
+        "dateMillis": { "type": "number" },
+        "startTimeMillis": { "type": "number" },
+        "endTimeMillis": { "type": "number" },
+        "durationMinutes": { "type": "number" },
+        "ministryType": { "type": "string" },
+        "returnVisits": { "type": "number" },
+        "bibleStudies": { "type": "number" },
+        "placements": { "type": "number" },
+        "location": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "userId", "dateMillis", "durationMinutes", "ministryType", "createdAt"]
+    },
+    "scheduledEvent": {
+      "title": "Scheduled Event",
+      "description": "A planned ministry service arrangement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "dateMillis": { "type": "number" },
+        "startTimeMillis": { "type": "number" },
+        "endTimeMillis": { "type": "number" },
+        "location": { "type": "string" },
+        "description": { "type": "string" },
+        "repeatOption": { "type": "string" },
+        "isCompleted": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "userId", "title", "dateMillis", "createdAt"]
+    },
+    "ministryNote": {
+      "title": "Ministry Note",
+      "description": "Territory or ministry service note",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "folderId": { "type": "string" },
+        "isPinned": { "type": "boolean" },
+        "isArchived": { "type": "boolean" },
+        "isDeleted": { "type": "boolean" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["id", "userId", "title", "createdAt", "updatedAt"]
+    },
+    "noteFolder": {
+      "title": "Note Folder",
+      "description": "Folder organizing ministry notes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "iconName": { "type": "string" },
+        "color": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "userId", "name", "createdAt"]
+    },
+    "userSettings": {
+      "title": "User Settings",
+      "description": "User preferences and ministry goals",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "publisherStatus": { "type": "string" },
+        "customGoalHours": { "type": "number" },
+        "themeMode": { "type": "string" },
+        "language": { "type": "string" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["userId", "publisherStatus"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "userProfile",
+      "description": "Stores user profile information"
+    },
+    "/users/{userId}/entries/{entryId}": {
+      "schema": "ministryEntry",
+      "description": "Individual ministry service entries"
+    },
+    "/users/{userId}/events/{eventId}": {
+      "schema": "scheduledEvent",
+      "description": "Scheduled ministry arrangements"
+    },
+    "/users/{userId}/notes/{noteId}": {
+      "schema": "ministryNote",
+      "description": "Ministry notes and territory records"
+    },
+    "/users/{userId}/folders/{folderId}": {
+      "schema": "noteFolder",
+      "description": "Folders for organizing notes"
+    },
+    "/users/{userId}/settings/current": {
+      "schema": "userSettings",
+      "description": "User preferences and goals"
+    }
+  }
+}

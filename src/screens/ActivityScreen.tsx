@@ -153,6 +153,7 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
       <div>
         <button
           type="button"
+          id="activity-record-entry-btn"
           onClick={onOpenNewEntry}
           className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] py-3.5 px-4 text-sm font-semibold text-white shadow-xs shadow-blue-500/25 border border-blue-400/30 transition-all flex items-center justify-center gap-2 cursor-pointer select-none"
         >
@@ -198,6 +199,17 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
             <p className="mt-1 text-xs text-slate-400">
               {searchQuery ? t.activity.noEntriesQuery : t.activity.noEntriesDesc}
             </p>
+            {!searchQuery && (
+              <button
+                type="button"
+                id="activity-empty-record-entry-btn"
+                onClick={onOpenNewEntry}
+                className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 px-4 py-2.5 text-xs font-bold hover:bg-blue-100 dark:hover:bg-blue-900/60 active:scale-95 transition-all cursor-pointer select-none"
+              >
+                <Plus className="h-4 w-4 stroke-[2.5]" />
+                <span>{t.home.logService}</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">

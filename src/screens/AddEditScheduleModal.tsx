@@ -17,7 +17,7 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
   eventToEdit,
   initialDate,
 }) => {
-  const { saveEvent, deleteEvent, t } = useMinistry();
+  const { saveEvent, deleteEvent, isGoogleCalendarConnected, connectGoogleCalendar, t } = useMinistry();
 
   const [title, setTitle] = useState('');
   const [dateStr, setDateStr] = useState(() => safeFormatDateInput(initialDate));

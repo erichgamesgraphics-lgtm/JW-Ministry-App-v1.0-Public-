@@ -51,9 +51,10 @@ const AppContent: React.FC = () => {
   const [eventToEdit, setEventToEdit] = useState<ScheduledEvent | ExpandedCalendarEvent | null>(null);
   const [initialScheduleDate, setInitialScheduleDate] = useState<Date | undefined>(undefined);
 
-  const handleOpenNewEntry = (date?: Date) => {
+  const handleOpenNewEntry = (date?: any) => {
     setEntryToEdit(null);
-    setInitialEntryDate(date && !isNaN(date.getTime()) ? date : new Date());
+    const validDate = date instanceof Date && !isNaN(date.getTime()) ? date : new Date();
+    setInitialEntryDate(validDate);
     setIsEntryModalOpen(true);
   };
 
@@ -69,9 +70,10 @@ const AppContent: React.FC = () => {
     setInitialEntryDate(undefined);
   };
 
-  const handleOpenNewSchedule = (date?: Date) => {
+  const handleOpenNewSchedule = (date?: any) => {
     setEventToEdit(null);
-    setInitialScheduleDate(date && !isNaN(date.getTime()) ? date : new Date());
+    const validDate = date instanceof Date && !isNaN(date.getTime()) ? date : new Date();
+    setInitialScheduleDate(validDate);
     setIsScheduleModalOpen(true);
   };
 
