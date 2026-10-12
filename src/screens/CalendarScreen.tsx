@@ -215,6 +215,11 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                 </span>
               )}
             </div>
+            {calendarSyncStatus === 'error' && (
+              <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                Sync issue. Tap below to reconnect.
+              </p>
+            )}
           </div>
         </div>
 
@@ -227,7 +232,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
             title="Sync all arrangements to Google Calendar"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${calendarSyncStatus === 'syncing' ? 'animate-spin' : ''}`} />
-            <span>{calendarSyncStatus === 'syncing' ? 'Syncing...' : 'Sync Now'}</span>
+            <span>{calendarSyncStatus === 'syncing' ? 'Syncing...' : calendarSyncStatus === 'error' ? 'Retry Sync' : 'Sync Now'}</span>
           </button>
         ) : (
           <button
@@ -237,7 +242,7 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
             className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-3 py-1.5 text-xs font-bold transition-all cursor-pointer select-none shadow-xs"
           >
             <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-            <span>Connect</span>
+            <span>{calendarSyncStatus === 'syncing' ? 'Connecting…' : 'Connect'}</span>
           </button>
         )}
       </div>

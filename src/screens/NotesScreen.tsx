@@ -20,6 +20,7 @@ import {
   RotateCcw,
   Sparkles,
   ChevronLeft,
+  Check,
 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';
 import { MinistryNote, NoteTypeCategory } from '../types.ts';

@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { createServer as createViteServer } from 'vite';
 import { MinistryAIService } from './server/services/MinistryAIService.js';
 import { BackupService } from './server/services/BackupService.js';
 
@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // JSON Body Parser Middleware
   app.use(express.json({ limit: '10mb' }));
@@ -225,23 +225,65 @@ async function startServer() {
   });
 
   // Vite development middleware or production static files
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req: Request, res: Response) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+  const candidateDirnames = [
+    __dirname,
+    path.join(__dirname, 'dist'),
+    path.join(process.cwd(), 'dist'),
+    process.cwd(),
+  ];
+  let distPath = candidateDirnames.find((dir) => fs.existsSync(path.join(dir, 'index.html'))) || path.join(process.cwd(), 'dist');
+  const hasDist = fs.existsSync(path.join(distPath, 'index.html'));
+  const isProduction = process.env.NODE_ENV === 'production' || hasDist;
+
+  let viteMounted = false;
+  if (!isProduction) {
+    try {
+      const { createServer: createViteServer } = await import('vite');
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
+      viteMounted = true;
+    } catch (viteErr) {
+      console.warn('Vite middleware could not be initialized, falling back to static delivery:', viteErr);
+      viteMounted = false;
+    }
+  }
+
+  if (!viteMounted) {
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath));
+    }
+    app.use((req: Request, res: Response) => {
+      const indexPath = path.join(distPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(200).send('<!DOCTYPE html><html><head><title>JW Ministry Tracker</title></head><body><div id="root"></div></body></html>');
+      }
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Ministry Tracker App running on http://0.0.0.0:${PORT}`);
   });
+
+  server.on('error', (err: any) => {
+    console.error('Server network error:', err);
+  });
+
+  // Graceful shutdown handling for Cloud Run and container platforms
+  const gracefulShutdown = () => {
+    console.log('Shutdown signal received: gracefully terminating HTTP server.');
+    server.close(() => {
+      console.log('HTTP server terminated cleanly.');
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', gracefulShutdown);
+  process.on('SIGINT', gracefulShutdown);
 }
 
 startServer().catch((err) => {

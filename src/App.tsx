@@ -14,6 +14,7 @@ import { NotesScreen } from './screens/NotesScreen.tsx';
 import { WelcomeScreen } from './screens/WelcomeScreen.tsx';
 import { AddEditEntryModal } from './screens/AddEditEntryModal.tsx';
 import { AddEditScheduleModal } from './screens/AddEditScheduleModal.tsx';
+import { UnauthorizedDomainModal } from './components/UnauthorizedDomainModal.tsx';
 import { JWMinistryLogo } from './components/JWMinistryLogo.tsx';
 import { MinistryEntry, ScheduledEvent, ExpandedCalendarEvent } from './types.ts';
 
@@ -270,6 +271,8 @@ const AppContent: React.FC = () => {
         eventToEdit={eventToEdit}
         initialDate={initialScheduleDate}
       />
+
+      <UnauthorizedDomainModal />
     </div>
   );
 };

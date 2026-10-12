@@ -1,4 +1,5 @@
 import { ScheduledEvent } from '../types.ts';
+import { setAccessToken } from './firebase.ts';
 
 export interface GoogleCalendarEventItem {
   id: string;
@@ -19,6 +20,40 @@ export interface GoogleCalendarEventItem {
   status?: string;
 }
 
+export class CalendarApiError extends Error {
+  code: string;
+  status: number;
+  constructor(message: string, code = 'CALENDAR_API_ERROR', status = 500) {
+    super(message);
+    this.name = 'CalendarApiError';
+    this.code = code;
+    this.status = status;
+  }
+}
+
+function parseCalendarError(status: number, errData: any): CalendarApiError {
+  const msg = errData?.error?.message || '';
+  if (status === 401) {
+    setAccessToken(null);
+    return new CalendarApiError('Google Calendar authorization expired. Please reconnect.', 'AUTH_EXPIRED', 401);
+  }
+  if (status === 403) {
+    if (msg.includes('Google Calendar API has not been used') || msg.includes('it is disabled')) {
+      return new CalendarApiError(
+        'Google Calendar API is not enabled on this Google Cloud project. Please enable it in Google Cloud Console: https://console.cloud.google.com/apis/library/calendar-json.googleapis.com',
+        'API_DISABLED_403',
+        403
+      );
+    }
+    return new CalendarApiError(
+      msg || 'Access denied (HTTP 403 Forbidden). Please grant permissions to manage Google Calendar events.',
+      'PERMISSION_DENIED_403',
+      403
+    );
+  }
+  return new CalendarApiError(msg || `Request failed with status ${status}`, 'REQUEST_FAILED', status);
+}
+
 export const googleCalendarApi = {
   /**
    * List events from user's primary Google Calendar
@@ -27,6 +62,10 @@ export const googleCalendarApi = {
     accessToken: string,
     options?: { timeMin?: string; timeMax?: string; maxResults?: number }
   ): Promise<GoogleCalendarEventItem[]> {
+    if (!accessToken) {
+      throw new CalendarApiError('Google Calendar access token is required', 'NO_TOKEN', 401);
+    }
+
     const params = new URLSearchParams({
       singleEvents: 'true',
       orderBy: 'startTime',
@@ -48,7 +87,7 @@ export const googleCalendarApi = {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Failed to fetch events: ${res.statusText}`);
+      throw parseCalendarError(res.status, err);
     }
 
     const data = await res.json();
@@ -62,6 +101,10 @@ export const googleCalendarApi = {
     accessToken: string,
     event: ScheduledEvent
   ): Promise<GoogleCalendarEventItem> {
+    if (!accessToken) {
+      throw new CalendarApiError('Google Calendar access token is required', 'NO_TOKEN', 401);
+    }
+
     const payload = formatCalendarPayload(event);
 
     const res = await fetch(
@@ -78,7 +121,7 @@ export const googleCalendarApi = {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Failed to create calendar event: ${res.statusText}`);
+      throw parseCalendarError(res.status, err);
     }
 
     return await res.json();
@@ -92,6 +135,10 @@ export const googleCalendarApi = {
     calendarEventId: string,
     event: ScheduledEvent
   ): Promise<GoogleCalendarEventItem> {
+    if (!accessToken) {
+      throw new CalendarApiError('Google Calendar access token is required', 'NO_TOKEN', 401);
+    }
+
     const payload = formatCalendarPayload(event);
 
     const res = await fetch(
@@ -107,8 +154,12 @@ export const googleCalendarApi = {
     );
 
     if (!res.ok) {
+      // If event was deleted in Google Calendar directly (404/410), fall back to creating a new one
+      if (res.status === 404 || res.status === 410) {
+        return this.createEvent(accessToken, event);
+      }
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Failed to update calendar event: ${res.statusText}`);
+      throw parseCalendarError(res.status, err);
     }
 
     return await res.json();
@@ -118,6 +169,8 @@ export const googleCalendarApi = {
    * Delete an event from Google Calendar
    */
   async deleteEvent(accessToken: string, calendarEventId: string): Promise<boolean> {
+    if (!accessToken || !calendarEventId) return false;
+
     const res = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(calendarEventId)}`,
       {
@@ -128,51 +181,54 @@ export const googleCalendarApi = {
       }
     );
 
-    if (!res.ok && res.status !== 404 && res.status !== 410) {
+    if (res.status === 404 || res.status === 410 || res.ok) {
+      return true;
+    }
+
+    if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Failed to delete calendar event: ${res.statusText}`);
+      throw parseCalendarError(res.status, err);
     }
 
     return true;
   },
 
   /**
-   * Sync local arrangements to Google Calendar
+   * Synchronize all local scheduled ministry arrangements to Google Calendar
    */
   async syncArrangements(
     accessToken: string,
-    events: ScheduledEvent[]
+    localEvents: ScheduledEvent[]
   ): Promise<{ syncedCount: number; updatedEvents: ScheduledEvent[] }> {
+    if (!accessToken) {
+      throw new CalendarApiError('No access token available for synchronization', 'NO_TOKEN', 401);
+    }
+
     let syncedCount = 0;
-    const updatedEvents = [...events];
+    const updatedEvents = [...localEvents];
 
     for (let i = 0; i < updatedEvents.length; i++) {
       const ev = updatedEvents[i];
       try {
         if (ev.googleCalendarEventId) {
-          // Update existing
-          await this.updateEvent(accessToken, ev.googleCalendarEventId, ev);
-          updatedEvents[i] = {
-            ...ev,
-            syncStatus: 'synced',
-            lastSyncedAt: Date.now(),
-          };
-          syncedCount++;
+          const updated = await this.updateEvent(accessToken, ev.googleCalendarEventId, ev);
+          if (updated && updated.id) {
+            updatedEvents[i] = { ...ev, googleCalendarEventId: updated.id };
+            syncedCount++;
+          }
         } else {
-          // Create new
           const created = await this.createEvent(accessToken, ev);
-          if (created.id) {
-            updatedEvents[i] = {
-              ...ev,
-              googleCalendarEventId: created.id,
-              syncStatus: 'synced',
-              lastSyncedAt: Date.now(),
-            };
+          if (created && created.id) {
+            updatedEvents[i] = { ...ev, googleCalendarEventId: created.id };
             syncedCount++;
           }
         }
-      } catch (e) {
-        console.warn(`Error syncing event ${ev.title} to Google Calendar:`, e);
+      } catch (e: any) {
+        console.warn(`Sync failed for event "${ev.title || ev.id}":`, e?.message || e);
+        // If 401 or 403, stop trying subsequent events and bubble error
+        if (e?.status === 401 || e?.status === 403) {
+          throw e;
+        }
       }
     }
 
@@ -180,48 +236,75 @@ export const googleCalendarApi = {
   },
 };
 
+/**
+ * Format a ScheduledEvent into Google Calendar API resource payload
+ */
 function formatCalendarPayload(event: ScheduledEvent) {
-  const startIso = new Date(event.startTimeMillis).toISOString();
-  const endIso = new Date(event.endTimeMillis).toISOString();
+  const fallbackDate = new Date();
+  const startTime = event.startTimeMillis
+    ? new Date(event.startTimeMillis)
+    : event.dateMillis
+    ? new Date(event.dateMillis)
+    : fallbackDate;
 
-  const recurrenceRules: string[] = [];
-  if (event.repeatOption === 'DAILY') {
-    recurrenceRules.push('RRULE:FREQ=DAILY');
-  } else if (event.repeatOption === 'WEEKLY') {
-    recurrenceRules.push('RRULE:FREQ=WEEKLY');
-  } else if (event.repeatOption === 'MONTHLY') {
-    recurrenceRules.push('RRULE:FREQ=MONTHLY');
-  } else if (event.repeatOption === 'YEARLY') {
-    recurrenceRules.push('RRULE:FREQ=YEARLY');
+  // Validate start date
+  const validStartTime = isNaN(startTime.getTime()) ? fallbackDate : startTime;
+
+  let endTime: Date;
+  if (event.endTimeMillis) {
+    const candidate = new Date(event.endTimeMillis);
+    endTime = !isNaN(candidate.getTime()) && candidate.getTime() > validStartTime.getTime()
+      ? candidate
+      : new Date(validStartTime.getTime() + 60 * 60 * 1000); // 1 hour duration
+  } else {
+    endTime = new Date(validStartTime.getTime() + 60 * 60 * 1000);
   }
 
-  const reminders = {
-    useDefault: event.reminderMinutesBefore <= 0,
-    overrides:
-      event.reminderMinutesBefore > 0
-        ? [{ method: 'popup', minutes: event.reminderMinutesBefore }]
-        : [],
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+  const typeLabels: Record<string, string> = {
+    PUBLIC_WITNESSING: 'Public Witnessing (Cart)',
+    DOOR_TO_DOOR: 'Door-to-Door Ministry',
+    INFORMAL_WITNESSING: 'Informal Witnessing',
+    RETURN_VISITS: 'Return Visits',
+    BIBLE_STUDY: 'Bible Study',
+    MEMORIAL: 'Memorial Campaign',
+    SPECIAL_CAMPAIGN: 'Special Preaching Campaign',
+    CONGREGATION_MEETING: 'Congregation Meeting',
+    CIRCUIT_ASSEMBLY: 'Circuit Assembly',
+    REGIONAL_CONVENTION: 'Regional Convention',
+    OTHER: 'Ministry Activity',
   };
 
-  const description = [
-    event.description || '',
-    '',
-    '— Scheduled via Ministry Tracker App',
-  ]
-    .filter(Boolean)
-    .join('\n');
+  const titlePrefix = event.eventType ? `[${typeLabels[event.eventType] || event.eventType}] ` : '';
+  const summary = `${titlePrefix}${event.title || 'Field Ministry Arrangement'}`.trim();
+
+  const descriptionParts: string[] = [];
+  if (event.description) descriptionParts.push(event.description);
+  if (event.eventType) descriptionParts.push(`Type: ${typeLabels[event.eventType] || event.eventType}`);
+  if (event.partner) descriptionParts.push(`Service Partner: ${event.partner}`);
+  if (event.meetingPoint) descriptionParts.push(`Meeting Point: ${event.meetingPoint}`);
+  if (event.territory) descriptionParts.push(`Territory / Group: ${event.territory}`);
+  descriptionParts.push('— Scheduled with JW Ministry Tracker');
 
   return {
-    summary: event.title || 'Ministry Arrangement',
-    description,
-    location: event.location || '',
+    summary,
+    description: descriptionParts.join('\n'),
+    location: event.meetingPoint || event.location || undefined,
     start: {
-      dateTime: startIso,
+      dateTime: validStartTime.toISOString(),
+      timeZone,
     },
     end: {
-      dateTime: endIso,
+      dateTime: endTime.toISOString(),
+      timeZone,
     },
-    recurrence: recurrenceRules.length > 0 ? recurrenceRules : undefined,
-    reminders,
+    reminders: {
+      useDefault: false,
+      overrides: [
+        { method: 'popup', minutes: 30 },
+        { method: 'popup', minutes: 120 },
+      ],
+    },
   };
 }

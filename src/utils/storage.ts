@@ -8,6 +8,7 @@ import {
   MINISTRY_TYPE_OPTIONS,
   MinistryNote,
   NoteFolder,
+  SupportedLanguage,
 } from '../types.ts';
 import { getInitialLanguage } from '../translations/index.ts';
 

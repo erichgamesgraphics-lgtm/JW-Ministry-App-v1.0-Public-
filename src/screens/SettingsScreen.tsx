@@ -497,10 +497,16 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
                 type="button"
                 onClick={async () => {
                   try {
-                    await signInWithGoogle();
-                    showNotification('Signed in with Google successfully');
+                    const res = await signInWithGoogle();
+                    if (res?.redirectInitiated) {
+                      showNotification('Redirecting to Google Sign-In…');
+                    } else if (res?.user) {
+                      showNotification('Signed in with Google successfully');
+                    }
                   } catch (e: any) {
-                    console.warn(e);
+                    if (e?.code !== 'auth/unauthorized-domain') {
+                      showNotification(e?.message || 'Sign in encountered an issue');
+                    }
                   }
                 }}
                 className="ml-2 shrink-0 rounded-lg bg-blue-600 hover:bg-blue-700 px-2.5 py-1 text-xs font-bold text-white transition-colors cursor-pointer shadow-xs"
@@ -525,7 +531,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onShowWelcome })
                 <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
                   {backupStatus === 'backing_up'
                     ? (t.settings.autoBackupBackingUp || 'Backing up…')
-                    : backupStatus === 'offline'
+                    : backupStatus === 'pending_offline'
                     ? (t.settings.autoBackupPendingOffline || 'Backup pending (offline)')
                     : (t.settings.autoBackupUpToDate || '✓ Backup up to date')}
                 </p>

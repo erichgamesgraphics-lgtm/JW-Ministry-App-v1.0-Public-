@@ -36,7 +36,6 @@ import {
 import {
   getOrCreateInstallationIdentity,
   mergeMinistryData,
-  DecryptedBackupPayload,
 } from '../utils/backupPackage.ts';
 import {
   testConnection,
@@ -105,6 +104,7 @@ interface MinistryContextType {
   // In-app notifications
   activeNotification: InAppNotification | null;
   dismissActiveNotification: () => void;
+  showNotificationToast: (title: string, message: string, type?: string, duration?: number) => void;
   
   // Settings & Status
   updateSettings: (partial: Partial<UserSettings>) => void;
@@ -185,9 +185,29 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .then(() => setIsFirebaseConnected(true))
       .catch(() => setIsFirebaseConnected(false));
 
-    const unsubscribe = initAuth((user) => {
-      setFirebaseUser(user);
-    });
+    const unsubscribe = initAuth(
+      (user) => {
+        setFirebaseUser(user);
+      },
+      (token) => {
+        if (token) {
+          setGoogleCalendarToken(token);
+          // Auto sync arrangements to Google Calendar on token arrival (e.g. returning from mobile redirect)
+          googleCalendarApi.syncArrangements(token, events)
+            .then((res) => {
+              setEvents(res.updatedEvents);
+              setCalendarSyncStatus('synced');
+              setLastCalendarSyncAt(Date.now());
+            })
+            .catch((err) => {
+              console.warn('Auto sync warning after redirect:', err);
+            });
+        }
+      },
+      (error) => {
+        console.warn('Auth initialization error:', error);
+      }
+    );
 
     return () => {
       if (unsubscribe) unsubscribe();
@@ -232,12 +252,16 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [calendarSyncStatus, setCalendarSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [lastCalendarSyncAt, setLastCalendarSyncAt] = useState<number>(0);
 
-  const isGoogleCalendarConnected = Boolean(googleCalendarToken);
+  const isGoogleCalendarConnected = Boolean(googleCalendarToken) ||
+    Boolean(firebaseUser && !firebaseUser.isAnonymous && firebaseUser.providerData?.some(p => p.providerId === 'google.com'));
 
   const connectGoogleCalendar = useCallback(async (): Promise<boolean> => {
     try {
       setCalendarSyncStatus('syncing');
-      const res = await firebaseSignInWithGoogle();
+      const res = await firebaseSignInWithGoogle(true);
+      if (res.redirectInitiated) {
+        return true;
+      }
       if (res.accessToken) {
         setGoogleCalendarToken(res.accessToken);
         const syncResult = await googleCalendarApi.syncArrangements(res.accessToken, events);
@@ -248,7 +272,7 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
       setCalendarSyncStatus('idle');
       return false;
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to connect Google Calendar:', e);
       setCalendarSyncStatus('error');
       return false;
@@ -267,8 +291,13 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setCalendarSyncStatus('synced');
       setLastCalendarSyncAt(Date.now());
       return true;
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to sync with Google Calendar:', e);
+      if (e?.code === 'AUTH_EXPIRED' || e?.status === 401) {
+        setGoogleCalendarToken(null);
+        setAccessToken(null);
+        return connectGoogleCalendar();
+      }
       setCalendarSyncStatus('error');
       return false;
     }
@@ -395,6 +424,18 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const dismissActiveNotification = useCallback(() => {
     setActiveNotification(null);
+  }, []);
+
+  const showNotificationToast = useCallback((title: string, message: string, _type?: string, duration = 3500) => {
+    setActiveNotification({
+      title,
+      body: message,
+    });
+    if (duration > 0) {
+      setTimeout(() => {
+        setActiveNotification(null);
+      }, duration);
+    }
   }, []);
 
   // Apply theme class to document element and listen for system theme changes
@@ -1293,6 +1334,7 @@ export const MinistryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     upcomingArrangements,
     activeNotification,
     dismissActiveNotification,
+    showNotificationToast,
     updateSettings,
     updatePublisherStatus,
     updateTheme,

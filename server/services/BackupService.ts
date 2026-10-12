@@ -24,7 +24,9 @@ export interface StoredBackupRecord {
   updatedAt: number;
 }
 
-const BACKUP_DIR = path.join(process.cwd(), 'data', 'backups');
+const BACKUP_DIR = (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)
+  ? path.join('/tmp', 'backups')
+  : path.join(process.cwd(), 'data', 'backups');
 const INDEX_FILE = path.join(BACKUP_DIR, 'index.json');
 
 function ensureDir() {

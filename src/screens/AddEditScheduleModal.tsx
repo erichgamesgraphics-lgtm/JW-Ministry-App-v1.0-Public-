@@ -370,19 +370,36 @@ export const AddEditScheduleModal: React.FC<AddEditScheduleModalProps> = ({
           </div>
 
           {/* Buttons */}
-          <div className="flex items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-            {eventToEdit && (
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 px-3.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors cursor-pointer"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span>{t.common.delete}</span>
-              </button>
-            )}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2">
+              {isGoogleCalendarConnected ? (
+                <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Syncs with Google Calendar
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => connectGoogleCalendar()}
+                  className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold hover:underline cursor-pointer"
+                >
+                  + Connect Google Calendar
+                </button>
+              )}
+            </div>
 
-            <div className="flex flex-1 items-center justify-end gap-2">
+            <div className="flex items-center justify-end gap-2">
+              {eventToEdit && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 px-3.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>{t.common.delete}</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={onClose}
