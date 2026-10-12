@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, doc, getDocFromServer, collection, setDoc, getDocs, deleteDoc, onSnapshot, writeBatch } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged, User, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged, User, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { MinistryEntry, ScheduledEvent, MinistryNote, NoteFolder, UserSettings } from '../types.ts';
 
@@ -28,6 +28,18 @@ export async function testConnection() {
 
 // Auto sign-in anonymously if not signed in so user data is isolated & persistent
 export function initAuth(onUserChange: (user: User | null) => void) {
+  // Check redirect result on load
+  getRedirectResult(auth).then((result) => {
+    if (result) {
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        cachedAccessToken = credential.accessToken;
+      }
+    }
+  }).catch((err) => {
+    console.warn('Redirect auth result warning:', err?.message || err);
+  });
+
   return onAuthStateChanged(auth, async (user) => {
     if (user) {
       onUserChange(user);
@@ -59,10 +71,26 @@ export const setAccessToken = (token: string | null) => {
 export async function signInWithGoogle(): Promise<{ user: User; accessToken: string | null }> {
   const provider = new GoogleAuthProvider();
   CALENDAR_SCOPES.forEach(scope => provider.addScope(scope));
-  const result = await signInWithPopup(auth, provider);
-  const credential = GoogleAuthProvider.credentialFromResult(result);
-  cachedAccessToken = credential?.accessToken || null;
-  return { user: result.user, accessToken: cachedAccessToken };
+
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    cachedAccessToken = credential?.accessToken || null;
+    return { user: result.user, accessToken: cachedAccessToken };
+  } catch (popupError: any) {
+    console.warn('Popup sign-in failed or blocked, falling back to redirect auth:', popupError?.code || popupError?.message);
+    if (popupError?.code === 'auth/unauthorized-domain') {
+      console.error('CRITICAL: This deployment domain is not authorized in Firebase Console -> Authentication -> Settings -> Authorized domains.');
+    }
+    // Fallback to redirect for mobile webviews / PWAs / strict popup blockers
+    try {
+      await signInWithRedirect(auth, provider);
+    } catch (redirectError) {
+      console.error('Redirect sign-in error:', redirectError);
+      throw redirectError;
+    }
+    return { user: auth.currentUser!, accessToken: cachedAccessToken };
+  }
 }
 
 export async function logOut() {
