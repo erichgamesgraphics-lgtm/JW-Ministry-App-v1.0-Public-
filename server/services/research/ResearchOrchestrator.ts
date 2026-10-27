@@ -4,7 +4,7 @@ import { ResearchPlanner } from './ResearchPlanner.js';
 import { ResearchTools } from './ResearchTools.js';
 import { MinistryAssistant } from '../MinistryAssistant.js';
 import { LanguageService } from '../LanguageService.js';
-import { SupportedLanguage } from '../../src/types.js';
+import { SupportedLanguage } from '../../../src/types.js';
 
 let geminiClient: GoogleGenAI | null = null;
 

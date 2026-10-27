@@ -22,7 +22,7 @@ export interface ResearchFilters {
   contentType?: ContentType | 'All';
   language?: string;
   audience?: 'young_people' | 'children' | 'parents' | 'marriage' | 'all' | string;
-  datePreference?: 'newer' | 'older' | 'any';
+  datePreference?: 'newer' | 'older' | 'any' | string;
   excludeTypes?: ContentType[];
 }
 

@@ -70,15 +70,21 @@ export const NoteCard: React.FC<NoteCardProps> = ({
     }
   };
 
-  const typeMeta = getTypeMeta(note.type);
+  const typeMeta = getTypeMeta(note.type || note.noteType || 'GENERAL');
   const TypeIcon = typeMeta.icon;
 
   // Clean snippet from plain text or HTML
-  const snippet = note.plainTextPreview || note.contentHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  const snippet =
+    note.plainTextPreview ||
+    (note.contentHtml
+      ? note.contentHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+      : note.content
+      ? note.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+      : '');
 
   // Territory / House progress stats
   const totalHouses = note.houseList?.length || 0;
-  const visitedHouses = note.houseList?.filter(h => h.status !== 'NOT_VISITED').length || 0;
+  const visitedHouses = note.houseList?.filter((h: any) => h.status !== 'NOT_VISITED').length || 0;
 
   // Format date
   const localeCode = language === 'hy' ? 'hy-AM' : language === 'ru' ? 'ru-RU' : language === 'hi' ? 'hi-IN' : language === 'pa' ? 'pa-IN' : 'en-US';
@@ -269,7 +275,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({
         {/* Tag chips */}
         {note.tags && note.tags.length > 0 && (
           <div className="mt-2.5 flex items-center gap-1 flex-wrap">
-            {note.tags.map((tag, idx) => (
+            {note.tags.map((tag: string, idx: number) => (
               <span
                 key={idx}
                 className="rounded-md bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:text-slate-400"

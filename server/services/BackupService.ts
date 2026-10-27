@@ -24,22 +24,39 @@ export interface StoredBackupRecord {
   updatedAt: number;
 }
 
-const BACKUP_DIR = (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)
+let activeBackupDir = (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.K_SERVICE)
   ? path.join('/tmp', 'backups')
   : path.join(process.cwd(), 'data', 'backups');
-const INDEX_FILE = path.join(BACKUP_DIR, 'index.json');
+
+function getIndexFile() {
+  return path.join(activeBackupDir, 'index.json');
+}
 
 function ensureDir() {
-  if (!fs.existsSync(BACKUP_DIR)) {
-    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(activeBackupDir)) {
+      fs.mkdirSync(activeBackupDir, { recursive: true });
+    }
+  } catch (err) {
+    // If standard data directory is read-only in container, fall back to /tmp
+    console.warn('Could not write to primary backup dir, falling back to /tmp/backups:', err);
+    activeBackupDir = path.join('/tmp', 'backups');
+    if (!fs.existsSync(activeBackupDir)) {
+      try {
+        fs.mkdirSync(activeBackupDir, { recursive: true });
+      } catch (innerErr) {
+        console.error('Failed to create /tmp/backups:', innerErr);
+      }
+    }
   }
 }
 
 function loadIndex(): Record<string, BackupMetadata> {
   ensureDir();
   try {
-    if (fs.existsSync(INDEX_FILE)) {
-      const data = fs.readFileSync(INDEX_FILE, 'utf-8');
+    const indexFile = getIndexFile();
+    if (fs.existsSync(indexFile)) {
+      const data = fs.readFileSync(indexFile, 'utf-8');
       return JSON.parse(data);
     }
   } catch (err) {
@@ -51,7 +68,8 @@ function loadIndex(): Record<string, BackupMetadata> {
 function saveIndex(index: Record<string, BackupMetadata>) {
   ensureDir();
   try {
-    fs.writeFileSync(INDEX_FILE, JSON.stringify(index, null, 2), 'utf-8');
+    const indexFile = getIndexFile();
+    fs.writeFileSync(indexFile, JSON.stringify(index, null, 2), 'utf-8');
   } catch (err) {
     console.error('Failed to save backup index:', err);
   }
@@ -73,7 +91,7 @@ export const BackupService = {
       throw new Error('Invalid recovery key');
     }
 
-    const filePath = path.join(BACKUP_DIR, `${sanitizedKey}.mtbackup`);
+    const filePath = path.join(activeBackupDir, `${sanitizedKey}.mtbackup`);
     const now = Date.now();
     metadata.lastBackupAt = now;
 
@@ -98,7 +116,7 @@ export const BackupService = {
     const sanitizedKey = recoveryKey.replace(/[^a-zA-Z0-9_-]/g, '');
     if (!sanitizedKey) return null;
 
-    const filePath = path.join(BACKUP_DIR, `${sanitizedKey}.mtbackup`);
+    const filePath = path.join(activeBackupDir, `${sanitizedKey}.mtbackup`);
     if (!fs.existsSync(filePath)) {
       return null;
     }
@@ -136,7 +154,7 @@ export const BackupService = {
         return index[sanitizedKey];
       }
       // Also verify if file exists on disk
-      const filePath = path.join(BACKUP_DIR, `${sanitizedKey}.mtbackup`);
+      const filePath = path.join(activeBackupDir, `${sanitizedKey}.mtbackup`);
       if (fs.existsSync(filePath)) {
         return {
           recoveryKey: sanitizedKey,
@@ -174,7 +192,7 @@ export const BackupService = {
     const sanitizedKey = recoveryKey.replace(/[^a-zA-Z0-9_-]/g, '');
     if (!sanitizedKey) return false;
 
-    const filePath = path.join(BACKUP_DIR, `${sanitizedKey}.mtbackup`);
+    const filePath = path.join(activeBackupDir, `${sanitizedKey}.mtbackup`);
     if (fs.existsSync(filePath)) {
       try {
         fs.unlinkSync(filePath);

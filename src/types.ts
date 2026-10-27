@@ -165,6 +165,10 @@ export interface ScheduledEvent {
   repeatOption: RepeatOptionType;
   isCompleted: boolean;
   createdAt: number;
+  eventType?: string;
+  partner?: string;
+  meetingPoint?: string;
+  territory?: string;
   excludedDates?: string[]; // Array of 'YYYY-MM-DD' dates excluded from recurring series
   completedDates?: string[]; // Array of 'YYYY-MM-DD' dates marked completed
   parentEventId?: number; // If an instance was detached / edited separately
@@ -221,12 +225,15 @@ export type HouseStatusType =
   | 'NOT_VISITED'
   | 'VISITED'
   | 'NO_ONE_HOME'
+  | 'NOT_AT_HOME'
   | 'RETURN_VISIT'
   | 'BIBLE_STUDY'
   | 'INTERESTED'
   | 'NOT_INTERESTED'
   | 'DO_NOT_CALL'
   | 'CUSTOM';
+
+export type HouseVisitStatus = HouseStatusType;
 
 export interface HouseItem {
   id: string;
@@ -237,12 +244,17 @@ export interface HouseItem {
   notes: string;
   createdAt: number;
   updatedAt: number;
+  numberOrLabel?: string;
+  residentName?: string;
+  lastVisitedMillis?: number;
   locationName?: string;
   address?: string;
   latitude?: number;
   longitude?: number;
   googleMapsUrl?: string;
 }
+
+export type NoteHouseItem = HouseItem;
 
 export type NoteTypeCategory =
   | 'GENERAL'
@@ -251,9 +263,14 @@ export type NoteTypeCategory =
   | 'HOUSE_LIST'
   | 'RETURN_VISIT'
   | 'BIBLE_STUDY'
+  | 'MEETING'
   | 'MEETING_NOTE'
   | 'PREPARATION'
   | 'PERSONAL';
+
+export type NoteType = NoteTypeCategory;
+export type NotesSortOption = 'MODIFIED_DESC' | 'CREATED_DESC' | 'OLDEST_FIRST' | 'TITLE_ASC' | 'TERRITORY';
+export type NoteItem = MinistryNote;
 
 export interface NoteFolder {
   id: string;
@@ -273,9 +290,15 @@ export interface MinistryNote {
   folderName?: string;
   tags: string[];
   noteType: NoteTypeCategory;
+  type?: NoteTypeCategory;
+  plainTextPreview?: string;
+  contentHtml?: string;
+  houseList?: HouseItem[];
   isPinned: boolean;
   isArchived: boolean;
   isDeleted: boolean; // In trash
+  isTrash?: boolean;
+  territoryNumber?: string;
   territoryId?: string;
   territoryName?: string;
   associatedEventId?: number;

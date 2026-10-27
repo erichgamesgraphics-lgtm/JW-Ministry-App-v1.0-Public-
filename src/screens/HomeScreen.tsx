@@ -266,10 +266,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           onClick={() => onNavigateToTab('notes')}
           className="rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 p-4 shadow-xs hover:border-blue-400/80 transition-all cursor-pointer select-none"
         >
-          {notes.filter(n => !n.isTrash).length > 0 ? (
+          {notes.filter(n => !n.isDeleted && !n.isTrash).length > 0 ? (
             <div className="space-y-2">
               {notes
-                .filter(n => !n.isTrash)
+                .filter(n => !n.isDeleted && !n.isTrash)
                 .slice(0, 2)
                 .map(n => (
                   <div
@@ -278,9 +278,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       {n.isPinned && <Pin className="h-3.5 w-3.5 text-blue-600 shrink-0 fill-current" />}
-                      {n.territoryNumber && (
+                      {(n.territoryNumber || n.territoryName) && (
                         <span className="rounded bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0">
-                          #{n.territoryNumber}
+                          #{n.territoryNumber || n.territoryName}
                         </span>
                       )}
                       <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
@@ -297,10 +297,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <div className="flex items-center justify-between py-1">
               <div className="space-y-0.5">
                 <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  {t.notes.emptyNotes}
+                  {t.notes.noNotesFound}
                 </p>
                 <p className="text-[11px] text-slate-400">
-                  {t.notes.emptyNotesDesc}
+                  {t.notes.noNotesDesc}
                 </p>
               </div>
               <span className="rounded-xl bg-blue-600 text-white px-3 py-1.5 text-xs font-bold shrink-0">

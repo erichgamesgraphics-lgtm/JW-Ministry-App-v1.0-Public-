@@ -321,14 +321,14 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onContinue }) => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
-                      {t.welcome.featureAiTitle}
+                      {t.welcome.feature4Title}
                     </h2>
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100/90 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
-                      {t.welcome.featureAiBadge || 'AI Assistant'}
+                      AI Assistant
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
-                    {t.welcome.featureAiDesc}
+                    {t.welcome.feature4Desc}
                   </p>
                 </div>
               </div>

@@ -41,24 +41,24 @@ export const SortFilterModal: React.FC<SortFilterModalProps> = ({
   if (!isOpen) return null;
 
   const sortOptionsList: { id: NotesSortOption; label: string }[] = [
-    { id: 'MODIFIED_DESC', label: t.notes.sortModifiedDesc },
-    { id: 'CREATED_DESC', label: t.notes.sortCreatedDesc },
-    { id: 'OLDEST_FIRST', label: t.notes.sortOldestFirst },
-    { id: 'TITLE_ASC', label: t.notes.sortTitleAsc },
-    { id: 'TERRITORY', label: t.notes.sortTerritory },
+    { id: 'MODIFIED_DESC', label: t.notes.sortRecentlyModified },
+    { id: 'CREATED_DESC', label: t.notes.sortRecentlyCreated },
+    { id: 'OLDEST_FIRST', label: t.notes.sortOldest },
+    { id: 'TITLE_ASC', label: t.notes.sortTitle },
+    { id: 'TERRITORY', label: t.notes.territoryName },
   ];
 
   const typeOptions: { id: NoteType | 'ALL'; label: string }[] = [
     { id: 'ALL', label: t.notes.allNotes },
-    { id: 'MINISTRY', label: t.notes.types.ministry },
-    { id: 'TERRITORY', label: t.notes.types.territory },
-    { id: 'HOUSE_LIST', label: t.notes.types.houseList },
-    { id: 'RETURN_VISIT', label: t.notes.types.returnVisit },
-    { id: 'BIBLE_STUDY', label: t.notes.types.bibleStudy },
-    { id: 'MEETING', label: t.notes.types.meeting },
-    { id: 'PREPARATION', label: t.notes.types.preparation },
-    { id: 'PERSONAL', label: t.notes.types.personal },
-    { id: 'GENERAL', label: t.notes.types.general },
+    { id: 'MINISTRY', label: 'Ministry' },
+    { id: 'TERRITORY', label: t.notes.territoryName },
+    { id: 'HOUSE_LIST', label: t.notes.houseList },
+    { id: 'RETURN_VISIT', label: t.notes.returnVisit },
+    { id: 'BIBLE_STUDY', label: t.notes.bibleStudy },
+    { id: 'MEETING', label: 'Meeting' },
+    { id: 'PREPARATION', label: 'Preparation' },
+    { id: 'PERSONAL', label: 'Personal' },
+    { id: 'GENERAL', label: 'General' },
   ];
 
   return (

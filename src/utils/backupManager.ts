@@ -2,7 +2,6 @@ import {
   createEncryptedMTBackup,
   unpackMTBackup,
   getOrCreateInstallationIdentity,
-  mergeMinistryData,
   DeviceInstallationMeta,
   DecryptedBackupPayload,
 } from './backupPackage.ts';

@@ -21,7 +21,7 @@ export const UnauthorizedDomainModal: React.FC<UnauthorizedDomainModalProps> = (
   // Subscribe to automatic auth errors
   useEffect(() => {
     const unsubscribe = subscribeToAuthError((info) => {
-      if (info.code === 'auth/unauthorized-domain') {
+      if (info.code === 'auth/unauthorized-domain' || info.code === 'auth/access-denied-403') {
         setErrorInfo(info);
         setInternalIsOpen(true);
       }
@@ -34,6 +34,8 @@ export const UnauthorizedDomainModal: React.FC<UnauthorizedDomainModalProps> = (
     initialDomain ||
     errorInfo?.domain ||
     (typeof window !== 'undefined' ? window.location.hostname : 'your-domain.vercel.app');
+
+  const is403 = errorInfo?.code === 'auth/access-denied-403';
 
   const handleClose = () => {
     if (controlledOnClose) {
@@ -67,24 +69,28 @@ export const UnauthorizedDomainModal: React.FC<UnauthorizedDomainModalProps> = (
 
   if (!isOpen) return null;
 
-  const firebaseConsoleUrl =
+  const firebaseAuthSettingsUrl =
     'https://console.firebase.google.com/project/ministry-tracker-5ffae/authentication/settings';
+  const gcpCredentialsUrl =
+    'https://console.cloud.google.com/apis/credentials?project=ministry-tracker-5ffae';
+  const gcpOAuthConsentUrl =
+    'https://console.cloud.google.com/apis/credentials/consent?project=ministry-tracker-5ffae';
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg rounded-3xl border border-amber-200/50 dark:border-amber-900/50 bg-white/95 dark:bg-[#131D31]/95 p-6 shadow-2xl backdrop-blur-xl space-y-4">
+      <div className="relative w-full max-w-lg rounded-3xl border border-amber-200/50 dark:border-amber-900/50 bg-white/95 dark:bg-[#131D31]/95 p-6 shadow-2xl backdrop-blur-xl space-y-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+            <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${is403 ? 'bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400' : 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'}`}>
               <ShieldAlert className="h-6 w-6" />
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Firebase Domain Authorization Required
+                {is403 ? 'Firebase Login: 403 Forbidden Diagnostic' : 'Firebase Domain Authorization Required'}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Action required for Vercel & Production deployment
+                {is403 ? 'Authentication blocked by Google Identity or Firebase settings' : 'Action required for Vercel & Production deployment'}
               </p>
             </div>
           </div>
@@ -100,15 +106,15 @@ export const UnauthorizedDomainModal: React.FC<UnauthorizedDomainModalProps> = (
         {/* Notice Body */}
         <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
           <p>
-            Firebase Authentication restricts Google Sign-In and Calendar integrations to explicitly authorized web domains.
-            Your deployment domain must be added to the Firebase Authorized Domains list:
+            {errorInfo?.detailedCause ||
+              'Firebase Authentication restricts Google Sign-In to authorized domains and configured OAuth consent settings.'}
           </p>
 
           {/* Domain Box */}
           <div className="flex items-center justify-between rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/70 dark:bg-amber-950/30 p-3">
             <div className="flex flex-col">
               <span className="text-[10px] uppercase font-bold text-amber-700 dark:text-amber-400 tracking-wider">
-                Current Domain to Add
+                Current Hostname to Authorize
               </span>
               <span className="font-mono text-sm font-semibold text-slate-900 dark:text-white select-all break-all">
                 {currentDomain}
@@ -134,22 +140,48 @@ export const UnauthorizedDomainModal: React.FC<UnauthorizedDomainModalProps> = (
           </div>
 
           {/* Quick Steps */}
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-3.5 space-y-2">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-3.5 space-y-2.5">
             <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span>Quick 30-Second Fix in Firebase Console</span>
+              <span>Resolution Checklist in Console</span>
             </h4>
-            <ol className="list-decimal list-inside space-y-1.5 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+            <ol className="list-decimal list-inside space-y-2 text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
               <li>
-                Click the button below to open{' '}
-                <strong className="text-slate-900 dark:text-white">Firebase Authentication Settings</strong>.
+                <strong className="text-slate-900 dark:text-white">1. Authorized Domains:</strong> Open{' '}
+                <a
+                  href={firebaseAuthSettingsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 underline inline-flex items-center gap-0.5"
+                >
+                  Firebase Auth Settings <ExternalLink className="h-3 w-3 inline" />
+                </a>
+                , scroll to <em>Authorized domains</em>, click <em>Add domain</em>, and add <code className="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">{currentDomain}</code>.
               </li>
               <li>
-                Scroll down to the{' '}
-                <strong className="text-slate-900 dark:text-white">Authorized domains</strong> table and click{' '}
-                <strong className="text-slate-900 dark:text-white">Add domain</strong>.
+                <strong className="text-slate-900 dark:text-white">2. Enable Google Provider:</strong> In Firebase Console &gt; Authentication &gt; Sign-in method, ensure <em>Google</em> is enabled and a project support email is saved.
               </li>
               <li>
-                Paste <code className="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded text-blue-600 dark:text-blue-400 font-mono">{currentDomain}</code> and click <strong className="text-slate-900 dark:text-white">Done</strong>.
+                <strong className="text-slate-900 dark:text-white">3. OAuth Test Users:</strong> If OAuth consent screen is in &quot;Testing&quot; mode, add your email to{' '}
+                <a
+                  href={gcpOAuthConsentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 underline inline-flex items-center gap-0.5"
+                >
+                  OAuth Consent Screen &gt; Test Users <ExternalLink className="h-3 w-3 inline" />
+                </a>.
+              </li>
+              <li>
+                <strong className="text-slate-900 dark:text-white">4. API Key Restrictions:</strong> In{' '}
+                <a
+                  href={gcpCredentialsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 underline inline-flex items-center gap-0.5"
+                >
+                  GCP Credentials <ExternalLink className="h-3 w-3 inline" />
+                </a>
+                , verify the Web API Key does not have HTTP referrer restrictions that block <code className="bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">{currentDomain}</code>.
               </li>
             </ol>
           </div>
@@ -158,12 +190,12 @@ export const UnauthorizedDomainModal: React.FC<UnauthorizedDomainModalProps> = (
         {/* Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
           <a
-            href={firebaseConsoleUrl}
+            href={firebaseAuthSettingsUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 text-xs font-bold transition-all cursor-pointer shadow-xs"
           >
-            <span>Open Firebase Console</span>
+            <span>Open Firebase Settings</span>
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
 

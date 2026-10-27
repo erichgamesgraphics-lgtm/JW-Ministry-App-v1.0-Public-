@@ -1,7 +1,7 @@
 import { ContentType, ResearchFilters, ResearchPlan, ResearchResult, ResearchSession } from './types.js';
 import { VERIFIED_JW_ARTICLES_CATALOG, MultilingualJWArticle } from '../JWOrgService.js';
 import { LanguageService } from '../LanguageService.js';
-import { SupportedLanguage } from '../../src/types.js';
+import { SupportedLanguage } from '../../../src/types.js';
 
 let cachedJWT: { token: string; expiresAt: number } | null = null;
 const searchCache = new Map<string, { timestamp: number; results: ResearchResult[] }>();
@@ -255,7 +255,7 @@ export class ResearchTools {
     const lowerQuery = cleanQuery.toLowerCase().trim();
     if (!lowerQuery) return 0;
 
-    const loc = article.localizations[lang] || article.localizations['en'];
+    const loc = (article.localizations as Record<string, any>)[lang] || article.localizations['en'];
     const title = loc.title.toLowerCase();
     const snippet = loc.snippet.toLowerCase();
     const keywords = (article.topicKeywords || []).map((k) => k.toLowerCase());

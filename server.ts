@@ -226,17 +226,17 @@ async function startServer() {
 
   // Vite development middleware or production static files
   const candidateDirnames = [
+    path.join(process.cwd(), 'dist'),
     __dirname,
     path.join(__dirname, 'dist'),
-    path.join(process.cwd(), 'dist'),
+    path.join(__dirname, '..', 'dist'),
     process.cwd(),
   ];
-  let distPath = candidateDirnames.find((dir) => fs.existsSync(path.join(dir, 'index.html'))) || path.join(process.cwd(), 'dist');
-  const hasDist = fs.existsSync(path.join(distPath, 'index.html'));
-  const isProduction = process.env.NODE_ENV === 'production' || hasDist;
+  const distPath = candidateDirnames.find((dir) => fs.existsSync(path.join(dir, 'index.html'))) || path.join(process.cwd(), 'dist');
+  const isBundledServer = __filename.endsWith('.js') || process.env.NODE_ENV === 'production';
 
   let viteMounted = false;
-  if (!isProduction) {
+  if (!isBundledServer) {
     try {
       const { createServer: createViteServer } = await import('vite');
       const vite = await createViteServer({
@@ -260,7 +260,7 @@ async function startServer() {
       if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
       } else {
-        res.status(200).send('<!DOCTYPE html><html><head><title>JW Ministry Tracker</title></head><body><div id="root"></div></body></html>');
+        res.status(200).send('<!DOCTYPE html><html><head><title>JW Ministry App</title></head><body><div id="root"></div></body></html>');
       }
     });
   }

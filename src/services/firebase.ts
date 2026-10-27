@@ -2,7 +2,6 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, doc, getDocFromServer, collection, setDoc, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
 import {
   getAuth,
-  signInAnonymously,
   onAuthStateChanged,
   User,
   GoogleAuthProvider,
@@ -25,6 +24,54 @@ export const db = (firebaseConfig as any).firestoreDatabaseId
 // Initialize Auth
 export const auth = getAuth(app);
 
+// Operation types and typed error handling per firebase-integration-rpc skill
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  };
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map((provider) => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || [],
+    },
+    operationType,
+    path,
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 // Validate connection per skill directives
 export async function testConnection() {
   try {
@@ -38,6 +85,7 @@ export async function testConnection() {
 
 // Google Calendar scope for reading and managing arrangement events
 export const CALENDAR_EVENTS_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+export const CALENDAR_SCOPES = CALENDAR_EVENTS_SCOPE;
 
 /**
  * Standard Google Auth Provider for basic login and account identity.
@@ -65,7 +113,7 @@ export function createGoogleCalendarProvider(): GoogleAuthProvider {
   return provider;
 }
 
-// Device & environment detector: popups are frequently blocked on mobile and inside PWAs
+// Device & environment detector
 export function isMobileOrWebView(): boolean {
   if (typeof window === 'undefined') return false;
   const ua = navigator.userAgent || '';
@@ -88,6 +136,8 @@ export interface AuthErrorInfo {
   code: string;
   message: string;
   domain: string;
+  detailedCause?: string;
+  resolutionSteps?: string[];
   timestamp: number;
 }
 
@@ -106,24 +156,44 @@ export function notifyAuthError(error: any) {
 
   let code = rawCode || 'auth/unknown';
   let message = rawMessage;
+  let detailedCause = 'An error occurred during authentication.';
+  let resolutionSteps: string[] = [];
 
   if (rawCode === 'auth/unauthorized-domain' || rawMessage.includes('unauthorized-domain')) {
     code = 'auth/unauthorized-domain';
     message = `Domain "${domain}" is not authorized in Firebase Authentication settings.`;
+    detailedCause = `Firebase Authentication requires that all hostnames making OAuth requests be added to the Authorized Domains list in your Firebase project.`;
+    resolutionSteps = [
+      `Open Firebase Console at https://console.firebase.google.com/project/ministry-tracker-5ffae/authentication/settings`,
+      `Scroll down to the "Authorized domains" section and click "Add domain"`,
+      `Add "${domain}" (and your Vercel production domain, e.g. your-app.vercel.app)`,
+      `Click "Done" to save`,
+    ];
   } else if (
     rawCode === 'auth/admin-restricted-operation' ||
+    rawCode === 'auth/operation-not-allowed' ||
     rawMessage.includes('403') ||
     rawMessage.includes('access_denied') ||
-    rawMessage.includes('PERMISSION_DENIED')
+    rawMessage.includes('PERMISSION_DENIED') ||
+    rawMessage.includes('restricted-operation')
   ) {
     code = 'auth/access-denied-403';
-    message = 'Google OAuth returned HTTP 403 Forbidden. Access was denied for this operation or client configuration.';
+    message = 'Google OAuth / Firebase returned HTTP 403 Forbidden.';
+    detailedCause = `A 403 Forbidden during sign-in is typically caused by: 1) The current domain "${domain}" not being in Firebase Authorized Domains, 2) Google Cloud OAuth Consent Screen is in "Testing" mode without your account added as a Test User, or 3) Google Sign-in provider is disabled in Firebase Console.`;
+    resolutionSteps = [
+      `1. Authorized Domain: Go to Firebase Console > Authentication > Settings > Authorized Domains, and add "${domain}".`,
+      `2. Google Sign-In Provider: Go to Firebase Console > Authentication > Sign-in method, ensure "Google" is enabled and Project Support Email is selected.`,
+      `3. OAuth Test Users: If your Google Cloud project is in "Testing" mode, go to Google Cloud Console > APIs & Services > OAuth consent screen > Test users, and add your email.`,
+      `4. API Key Restrictions: Go to Google Cloud Console > APIs & Services > Credentials, verify API key "AIzaSy..." allows Identity Toolkit API and does not restrict the referrer domain "${domain}".`,
+    ];
   }
 
   const info: AuthErrorInfo = {
     code,
     message,
     domain,
+    detailedCause,
+    resolutionSteps,
     timestamp: Date.now(),
   };
 
@@ -137,15 +207,15 @@ export function notifyAuthError(error: any) {
 }
 
 /**
- * Initializes Firebase Auth state with safe redirect processing before listening to state changes.
- * Avoids race conditions where anonymous sign-in could cancel a pending redirect credential.
+ * Initializes Firebase Auth state without unsolicited anonymous sign-ins.
+ * Inspects redirect credentials first for seamless returning navigation.
  */
 export function initAuth(
   onUserChange: (user: User | null) => void,
   onTokenChange?: (token: string | null) => void,
   onError?: (error: any) => void
 ) {
-  // Check redirect result first (for mobile/PWA redirect returns)
+  // Check redirect result first (if user returned from a redirect flow)
   getRedirectResult(auth)
     .then((result) => {
       if (result) {
@@ -171,19 +241,15 @@ export function initAuth(
       if (onError) onError(err);
     })
     .finally(() => {
-      // Subscribe to onAuthStateChanged once redirect handling is finished
-      onAuthStateChanged(auth, async (user) => {
+      // Subscribe to onAuthStateChanged once redirect inspection completes
+      onAuthStateChanged(auth, (user) => {
         if (user) {
           onUserChange(user);
         } else {
-          try {
-            const cred = await signInAnonymously(auth);
-            onUserChange(cred.user);
-          } catch (err) {
-            // Anonymous sign-in may be disabled on this Firebase project; app continues seamlessly in local mode
-            console.info('Anonymous sign-in not active; app operating in guest local storage mode.');
-            onUserChange(null);
-          }
+          // Do NOT call signInAnonymously: anonymous provider may be disabled,
+          // which causes HTTP 403 Forbidden errors on identitytoolkit.googleapis.com.
+          // The application functions completely with guest local storage mode until user clicks Sign In.
+          onUserChange(null);
         }
       });
     });
@@ -194,10 +260,10 @@ export function initAuth(
 }
 
 /**
- * Sign in with Google with automatic mobile detection and popup fallback.
- * Uses redirect directly on mobile/PWA to avoid blocked popup windows.
- * @param withCalendar If true, requests Google Calendar events scope (for calendar sync). If false, standard account login.
- * @param preferRedirect If true, forces redirect flow instead of popup.
+ * Sign in with Google using signInWithPopup by default.
+ * Popup is standard for web, iframe previews, and prevents the iframe 403/redirect issues.
+ * @param withCalendar If true, requests Google Calendar events scope. If false, basic login only.
+ * @param preferRedirect If explicitly true, uses redirect instead of popup.
  */
 export async function signInWithGoogle(
   withCalendar = false,
@@ -208,58 +274,64 @@ export async function signInWithGoogle(
   redirectInitiated?: boolean;
 }> {
   const provider = withCalendar ? createGoogleCalendarProvider() : createGoogleLoginProvider();
-  const shouldUseRedirect = preferRedirect || isMobileOrWebView();
 
-  if (shouldUseRedirect) {
+  // Try popup first (recommended by Firebase for web, iframe, and PWA apps)
+  if (!preferRedirect) {
     try {
-      console.info(`Initiating signInWithRedirect (${withCalendar ? 'Calendar' : 'Standard Login'})`);
-      await signInWithRedirect(auth, provider);
-      return { user: auth.currentUser, accessToken: cachedAccessToken, redirectInitiated: true };
-    } catch (redirectError: any) {
-      console.error('Redirect sign-in error:', redirectError);
-      notifyAuthError(redirectError);
-      throw redirectError;
-    }
-  }
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      cachedAccessToken = credential?.accessToken || null;
+      return { user: result.user, accessToken: cachedAccessToken, redirectInitiated: false };
+    } catch (popupError: any) {
+      console.warn('Popup sign-in encounter:', popupError?.code || popupError?.message);
 
-  try {
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    cachedAccessToken = credential?.accessToken || null;
-    return { user: result.user, accessToken: cachedAccessToken, redirectInitiated: false };
-  } catch (popupError: any) {
-    console.warn('Popup sign-in encounter:', popupError?.code || popupError?.message);
+      // Handle specific blocking errors directly
+      if (
+        popupError?.code === 'auth/unauthorized-domain' ||
+        popupError?.code === 'auth/admin-restricted-operation' ||
+        popupError?.code === 'auth/operation-not-allowed' ||
+        popupError?.message?.includes('403') ||
+        popupError?.message?.includes('access_denied')
+      ) {
+        notifyAuthError(popupError);
+        throw popupError;
+      }
 
-    if (
-      popupError?.code === 'auth/unauthorized-domain' ||
-      popupError?.code === 'auth/admin-restricted-operation' ||
-      popupError?.message?.includes('403')
-    ) {
+      // If user deliberately closed the popup window, don't fall back to redirect
+      if (
+        popupError?.code === 'auth/popup-closed-by-user' ||
+        popupError?.code === 'auth/cancelled-popup-request'
+      ) {
+        throw popupError;
+      }
+
+      // Check if running in an iframe (e.g. AI Studio preview)
+      const inIframe = typeof window !== 'undefined' && window.self !== window.top;
+
+      // Only attempt redirect fallback if popup was strictly blocked AND not inside an iframe
+      if (!inIframe && popupError?.code === 'auth/popup-blocked') {
+        try {
+          console.info('Popup blocked on standalone browser; attempting fallback redirect...');
+          await signInWithRedirect(auth, provider);
+          return { user: auth.currentUser, accessToken: cachedAccessToken, redirectInitiated: true };
+        } catch (redirectError: any) {
+          notifyAuthError(redirectError);
+          throw redirectError;
+        }
+      }
+
       notifyAuthError(popupError);
       throw popupError;
     }
+  }
 
-    const isPopupIssue = [
-      'auth/popup-blocked',
-      'auth/popup-closed-by-user',
-      'auth/cancelled-popup-request',
-      'auth/operation-not-supported-in-this-environment',
-      'auth/internal-error',
-    ].includes(popupError?.code);
-
-    if (isPopupIssue) {
-      console.info('Popup issue encountered, falling back to signInWithRedirect:', popupError?.code);
-      try {
-        await signInWithRedirect(auth, provider);
-        return { user: auth.currentUser, accessToken: cachedAccessToken, redirectInitiated: true };
-      } catch (fallbackError: any) {
-        notifyAuthError(fallbackError);
-        throw fallbackError;
-      }
-    }
-
-    notifyAuthError(popupError);
-    throw popupError;
+  // Explicit redirect requested
+  try {
+    await signInWithRedirect(auth, provider);
+    return { user: auth.currentUser, accessToken: cachedAccessToken, redirectInitiated: true };
+  } catch (err: any) {
+    notifyAuthError(err);
+    throw err;
   }
 }
 
@@ -268,37 +340,40 @@ export async function logOut() {
   return signOut(auth);
 }
 
-// Firestore persistence helpers for Ministry data
+// Firestore persistence helpers for Ministry data with typed error handling
 export const firestoreSync = {
   // Entries
   async saveEntry(userId: string, entry: MinistryEntry) {
     if (!userId) return;
+    const path = `users/${userId}/entries/${entry.id}`;
     try {
       const ref = doc(db, 'users', userId, 'entries', String(entry.id));
       await setDoc(ref, entry, { merge: true });
     } catch (e) {
-      console.warn('Firestore saveEntry notice:', e);
+      handleFirestoreError(e, OperationType.WRITE, path);
     }
   },
 
   async deleteEntry(userId: string, entryId: number) {
     if (!userId) return;
+    const path = `users/${userId}/entries/${entryId}`;
     try {
       const ref = doc(db, 'users', userId, 'entries', String(entryId));
       await deleteDoc(ref);
     } catch (e) {
-      console.warn('Firestore deleteEntry notice:', e);
+      handleFirestoreError(e, OperationType.DELETE, path);
     }
   },
 
   async loadEntries(userId: string): Promise<MinistryEntry[]> {
     if (!userId) return [];
+    const path = `users/${userId}/entries`;
     try {
       const ref = collection(db, 'users', userId, 'entries');
       const snap = await getDocs(ref);
-      return snap.docs.map(d => d.data() as MinistryEntry);
+      return snap.docs.map((d) => d.data() as MinistryEntry);
     } catch (e) {
-      console.warn('Firestore loadEntries notice:', e);
+      handleFirestoreError(e, OperationType.LIST, path);
       return [];
     }
   },
@@ -306,32 +381,35 @@ export const firestoreSync = {
   // Events
   async saveEvent(userId: string, event: ScheduledEvent) {
     if (!userId) return;
+    const path = `users/${userId}/events/${event.id}`;
     try {
       const ref = doc(db, 'users', userId, 'events', String(event.id));
       await setDoc(ref, event, { merge: true });
     } catch (e) {
-      console.warn('Firestore saveEvent notice:', e);
+      handleFirestoreError(e, OperationType.WRITE, path);
     }
   },
 
   async deleteEvent(userId: string, eventId: number) {
     if (!userId) return;
+    const path = `users/${userId}/events/${eventId}`;
     try {
       const ref = doc(db, 'users', userId, 'events', String(eventId));
       await deleteDoc(ref);
     } catch (e) {
-      console.warn('Firestore deleteEvent notice:', e);
+      handleFirestoreError(e, OperationType.DELETE, path);
     }
   },
 
   async loadEvents(userId: string): Promise<ScheduledEvent[]> {
     if (!userId) return [];
+    const path = `users/${userId}/events`;
     try {
       const ref = collection(db, 'users', userId, 'events');
       const snap = await getDocs(ref);
-      return snap.docs.map(d => d.data() as ScheduledEvent);
+      return snap.docs.map((d) => d.data() as ScheduledEvent);
     } catch (e) {
-      console.warn('Firestore loadEvents notice:', e);
+      handleFirestoreError(e, OperationType.LIST, path);
       return [];
     }
   },
@@ -339,32 +417,35 @@ export const firestoreSync = {
   // Notes
   async saveNote(userId: string, note: MinistryNote) {
     if (!userId) return;
+    const path = `users/${userId}/notes/${note.id}`;
     try {
       const ref = doc(db, 'users', userId, 'notes', String(note.id));
       await setDoc(ref, note, { merge: true });
     } catch (e) {
-      console.warn('Firestore saveNote notice:', e);
+      handleFirestoreError(e, OperationType.WRITE, path);
     }
   },
 
   async deleteNote(userId: string, noteId: string) {
     if (!userId) return;
+    const path = `users/${userId}/notes/${noteId}`;
     try {
       const ref = doc(db, 'users', userId, 'notes', String(noteId));
       await deleteDoc(ref);
     } catch (e) {
-      console.warn('Firestore deleteNote notice:', e);
+      handleFirestoreError(e, OperationType.DELETE, path);
     }
   },
 
   async loadNotes(userId: string): Promise<MinistryNote[]> {
     if (!userId) return [];
+    const path = `users/${userId}/notes`;
     try {
       const ref = collection(db, 'users', userId, 'notes');
       const snap = await getDocs(ref);
-      return snap.docs.map(d => d.data() as MinistryNote);
+      return snap.docs.map((d) => d.data() as MinistryNote);
     } catch (e) {
-      console.warn('Firestore loadNotes notice:', e);
+      handleFirestoreError(e, OperationType.LIST, path);
       return [];
     }
   },
@@ -372,22 +453,24 @@ export const firestoreSync = {
   // Settings
   async saveSettings(userId: string, settings: UserSettings) {
     if (!userId) return;
+    const path = `users/${userId}/settings/current`;
     try {
       const ref = doc(db, 'users', userId, 'settings', 'current');
       await setDoc(ref, settings, { merge: true });
     } catch (e) {
-      console.warn('Firestore saveSettings notice:', e);
+      handleFirestoreError(e, OperationType.WRITE, path);
     }
   },
 
   async loadSettings(userId: string): Promise<UserSettings | null> {
     if (!userId) return null;
+    const path = `users/${userId}/settings/current`;
     try {
       const ref = doc(db, 'users', userId, 'settings', 'current');
       const snap = await getDocFromServer(ref).catch(() => null);
       return snap && snap.exists() ? (snap.data() as UserSettings) : null;
     } catch (e) {
-      console.warn('Firestore loadSettings notice:', e);
+      handleFirestoreError(e, OperationType.GET, path);
       return null;
     }
   },
@@ -401,6 +484,7 @@ export const firestoreSync = {
     settings: UserSettings
   ) {
     if (!userId) return;
+    const path = `users/${userId}`;
     try {
       const batch = writeBatch(db);
 
@@ -417,7 +501,7 @@ export const firestoreSync = {
 
       await batch.commit();
     } catch (e) {
-      console.warn('Firestore syncAllToCloud notice:', e);
+      handleFirestoreError(e, OperationType.WRITE, path);
     }
-  }
+  },
 };

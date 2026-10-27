@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { ContentType, ResearchPlan, ResearchSession } from './types.js';
 import { LanguageService } from '../LanguageService.js';
-import { SupportedLanguage } from '../../src/types.js';
+import { SupportedLanguage } from '../../../src/types.js';
 
 let geminiClient: GoogleGenAI | null = null;
 

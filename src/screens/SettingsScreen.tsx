@@ -21,8 +21,6 @@ import {
   CheckCircle2,
   Filter,
   FileText,
-  Calendar,
-  Clock,
   Cloud,
 } from 'lucide-react';
 import { useMinistry } from '../context/MinistryContext.tsx';

@@ -62,11 +62,15 @@ export const HouseListTracker: React.FC<HouseListTrackerProps> = ({
 
   const handleAddHouse = () => {
     const nextNumber = houseList.length + 1;
+    const now = Date.now();
     const newHouse: NoteHouseItem = {
-      id: `h_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: `h_${now}_${Math.random().toString(36).substring(2, 6)}`,
+      number: `${nextNumber}`,
       numberOrLabel: `${nextNumber}`,
       status: 'NOT_VISITED',
       notes: '',
+      createdAt: now,
+      updatedAt: now,
     };
     onChange([...houseList, newHouse]);
   };
@@ -75,13 +79,17 @@ export const HouseListTracker: React.FC<HouseListTrackerProps> = ({
     if (batchCount <= 0) return;
     const currentLength = houseList.length;
     const newItems: NoteHouseItem[] = [];
+    const now = Date.now();
     for (let i = 1; i <= batchCount; i++) {
       const num = currentLength + i;
       newItems.push({
-        id: `h_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`,
+        id: `h_${now}_${i}_${Math.random().toString(36).substring(2, 6)}`,
+        number: `${num}`,
         numberOrLabel: batchPrefix ? `${batchPrefix} ${num}` : `${num}`,
         status: 'NOT_VISITED',
         notes: '',
+        createdAt: now,
+        updatedAt: now,
       });
     }
     onChange([...houseList, ...newItems]);
