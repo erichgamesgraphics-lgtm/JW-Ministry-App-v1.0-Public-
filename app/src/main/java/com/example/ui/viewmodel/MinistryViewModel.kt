@@ -14,6 +14,7 @@ import com.example.data.model.ScheduledEvent
 import com.example.data.model.TimerStateEntity
 import com.example.data.model.UserSettings
 import com.example.notifications.NotificationHelper
+import com.example.notifications.MinistryTimerService
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -299,24 +300,28 @@ class MinistryViewModel(application: Application) : AndroidViewModel(application
     fun startTimer() {
         viewModelScope.launch {
             timerRepo.startTimer()
+            MinistryTimerService.startService(getApplication())
         }
     }
 
     fun pauseTimer() {
         viewModelScope.launch {
             timerRepo.pauseTimer()
+            MinistryTimerService.pauseService(getApplication())
         }
     }
 
     fun resumeTimer() {
         viewModelScope.launch {
             timerRepo.resumeTimer()
+            MinistryTimerService.resumeService(getApplication())
         }
     }
 
     fun stopTimer(onStopped: (durationMinutes: Int) -> Unit) {
         viewModelScope.launch {
             val seconds = timerRepo.stopTimer()
+            MinistryTimerService.stopService(getApplication())
             val minutes = maxOf(1, ((seconds + 30) / 60).toInt()) // round to nearest minute, minimum 1
             onStopped(minutes)
         }
@@ -325,6 +330,7 @@ class MinistryViewModel(application: Application) : AndroidViewModel(application
     fun cancelTimer() {
         viewModelScope.launch {
             timerRepo.resetTimer()
+            MinistryTimerService.stopService(getApplication())
         }
     }
 
